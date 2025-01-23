@@ -388,4 +388,16 @@
             <cfreturn result>
   
     </cffunction>
+
+    <cffunction name="removeRoomAmenities" access="remote" returntype="struct" returnformat="JSON">
+        <cfargument name="roomId" type="numeric" required="true">
+            <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                DELETE FROM #this.DBSCHEMA#.ROOM_AMENITIES
+                WHERE ROOM_ID = <cfqueryparam value="#arguments.roomId#" cfsqltype="cf_sql_numeric">
+            </cfquery>
+            <cfreturn {
+                "success": true,
+                "roomId": arguments.roomId
+            } />
+    </cffunction>
 </cfcomponent>

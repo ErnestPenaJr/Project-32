@@ -416,6 +416,7 @@
                     reader.readAsDataURL(file);
                 }
             });
+
             AOS.init();
             initializeDataTable();
 
@@ -851,53 +852,113 @@
 
         // Save room changes
         function saveRoomChanges() {
-
             const imageInput = document.getElementById('editImage');
-            let imageBase64 = $('#currentImage').val();
+            let imageBase64 = '';
 
             if (imageInput.files && imageInput.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     imageBase64 = e.target.result;
-                    submitRoomChangesWithImage(imageBase64);
+                    submitRoomChanges(imageBase64);
                 };
                 reader.readAsDataURL(imageInput.files[0]);
             } else {
-                submitRoomChangesWithImage(imageBase64);
+                submitRoomChanges('');
             }
         }
 
-        function submitRoomChangesWithImage(imageBase64) {
-            // Submit room details first
-            submitRoomChanges(() => {
-                const roomId = $('#editRoomId').val();
+        function submitRoomChanges(imageBase64) {
+            var currentImage = $('#currentImage').val();
 
-                // Handle amenity removals
-                deselectedAmenities.forEach(amenityId => {
-                    removeAmenity(roomId, amenityId);
-                });
+            if (imageBase64.length > 0) {
+                image = imageBase64;
+            } else {
+                image = currentImage;
+            }
 
-                // Handle amenity additions
-                newlySelectedAmenities.forEach(amenityId => {
-                    saveAmenities(roomId, amenityId);
-                });
+            var roomdata = {
+                id: $('#editRoomId').val(),
+                roomName: $('#editRoomName').val(),
+                building: $('#editBuilding').val(),
+                roomNumber: $('#editRoomNumber').val(),
+                capacity: $('#editCapacity').val(),
+                description: $('#editDescription').val(),
+                recurring: $('#editRecurring').prop('checked') ? 'YES' : 'NO',
+                maintenance: $('#editMaintenanceStatus').prop('checked') ? 'YES' : 'NO',
+                image: image
 
-                // Clear tracking arrays
-                deselectedAmenities = [];
-                newlySelectedAmenities = [];
+            };
 
-                // Show success feedback
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Room updated successfully',
-                    showConfirmButton: false,
-                    timer: 1500
-                });
+            $.ajax({
+                url: 'assets/cfc/room.cfc?method=updateRoom',
+                type: 'POST',
+                dataType: 'json',
+                data: roomdata,
+                success: function (response) {
+                    //console.log(response);
+                    if (response.success) {
+                        //delete all room amenities funmction
+                        deleteRoomAmenities(roomdata.id);
+                        // After room is updated, update amenities
+                        const selectedAmenities = [];
+                        $('#editAmenityIcons .icon-item.selected').each(function () {
+                            selectedAmenities.push($(this).data('amenity-id'));
+                        });
+                        //loop through selectedRoomId and selectedAmenities
+                        for (let i = 0; i < selectedAmenities.length; i++) {
+                            saveAmenities(roomdata.id, selectedAmenities[i]);
+                        }
 
-                // Close modal and refresh data
-                $('#editRoomModal').modal('hide');
-                refreshRoomsTable();
-            }, imageBase64);
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "success",
+                            title: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+
+                        $('#editRoomModal').modal('hide');
+                        refreshRoomsTable();
+                    } else {
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "error",
+                            title: "Oops...",
+                            text: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error updating room: ' + error,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+        }
+        function deleteRoomAmenities(id) {
+            $.ajax({
+                url: 'assets/cfc/amenity.cfc?method=removeRoomAmenities',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    roomId: id
+                },
+                success: function (amenityResponse) {
+                    if (amenityResponse.success) {
+                        console.log(amenityResponse);
+                    }
+                }
+            });
         }
         function saveAmenities(id, amenityId) {
             $.ajax({
@@ -1000,79 +1061,7 @@
             }
         }
 
-        function submitRoomChanges(imageBase64) {
-            // First update room details
-            $.ajax({
-                url: 'assets/cfc/room.cfc?method=updateRoom',
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    id: $('#editRoomId').val(),
-                    roomName: $('#editRoomName').val(),
-                    building: $('#editBuilding').val(),
-                    roomNumber: $('#editRoomNumber').val(),
-                    capacity: $('#editCapacity').val(),
-                    description: $('#editDescription').val(),
-                    recurring: $('#editRecurring').prop('checked') ? 'YES' : 'NO',
-                    maintenance: $('#editMaintenanceStatus').prop('checked') ? 'YES' : 'NO',
-                    image: imageBase64
-                },
-                success: function (response) {
-                    //console.log(response);
-                    if (response.success) {
-                        // After room is updated, update amenities
-                        const selectedAmenities = [];
-                        $('#editAmenityIcons .icon-item.selected').each(function () {
-                            selectedAmenities.push($(this).data('amenity-id'));
-                        });
-                        //loop through selectedRoomId and selectedAmenities
-                        for (let i = 0; i < selectedAmenities.length; i++) {
-                            saveAmenities($('#editRoomId').val(), selectedAmenities[i]);
-                        }
-                        //if class "selected" is missiing then delete the room from amenities
-                        // $('.icon-item').each(function () {
-                        //     if (!$(this).hasClass('selected')) {
-                        //         //removeAmenity($('#editRoomId').val(), $(this).data('amenity-id'));
-                        //         console.log('deleteamenity', $('#editRoomId').val(), $(this).data('amenity-id'));
-                        //     }
-                        // });
 
-                        Swal.fire({
-                            position: "top-end",
-                            icon: "success",
-                            title: response.message,
-                            showConfirmButton: false,
-                            timer: 1500
-                        });
-
-                        $('#editRoomModal').modal('hide');
-                        refreshRoomsTable();
-                    } else {
-                        Swal.fire({
-                            position: "top-end",
-                            icon: "error",
-                            title: "Oops...",
-                            text: response.message,
-                            showConfirmButton: false,
-                            timer: 1500
-                        });
-                    }
-                },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Error updating room: ' + error,
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true
-                    });
-                }
-            });
-        }
 
 
         // Show alert message using SweetAlert2
