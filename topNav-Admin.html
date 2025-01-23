@@ -73,7 +73,7 @@ Developer Notes:
                     <button class="btn btn-outline-danger logout-btn">Logout</button>
                 </li>
                 <!--- Offcanvas--->
-                <li class="nav-item d-flex align-items-center justify-content-end mx-2">
+                <li id="offcanvasTrigger" class="nav-item d-flex align-items-center justify-content-end mx-2">
                     <button class="btn btn-outline-info" data-bs-toggle="offcanvas" data-bs-target="#offcanvasExample"
                         aria-controls="offcanvasExample" aria-expanded="false" aria-label="Toggle offcanvas">
                         <i class="fas fa-info-circle fa-lg"></i>
@@ -98,7 +98,7 @@ Developer Notes:
 
 <script>
     $('document').ready(function () {
-        console.log(sessionStorage);
+
         if (sessionStorage.getItem('ROLE') === 'Site Admin' || sessionStorage.getItem('ROLE') === 'Admin') {
             $('#bookingApprovalsLink, #amenityLink').show();
         }

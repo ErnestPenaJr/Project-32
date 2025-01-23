@@ -492,149 +492,74 @@
             <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
 
-
         <div class="offcanvas-body">
             <div class="mb-3 mt-0">
-                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download User
-                    Guide</button>
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download User Guide</button>
             </div>
             <div class="mb-3">
                 <h4>TABLE OF CONTENTS</h4>
                 <ul>
                     <li><a href="#welcome">Welcome Message</a></li>
                     <li><a href="#overview">Overview</a></li>
-                    <li><a href="#bookings">Bookings</a></li>
-                    <li><a href="#booking-history">Booking History</a></li>
-                    <li><a href="#dashboard">Dashboard</a></li>
-                    <li><a href="#calendar">Calendar</a></li>
-                    <cfif isAdmin>
-                        <li><a href="#user-management">User Management</a></li>
-                        <li><a href="#room-management">Room Management</a></li>
-                        <li><a href="#amenity-management">Amenity Management</a></li>
-                        <li><a href="#icon-management">Icon Management</a></li>
-                    </cfif>
+                    <li><a href="#bookings">Making a Booking</a></li>
+                    <li><a href="#booking-history">Viewing Booking History</a></li>
+                    <li><a href="#calendar">Using the Calendar</a></li>
+                    <li><a href="#cancel-booking">Cancel a Booking</a></li>
                 </ul>
             </div>
-            <div class="mb-3">
-                <h4 id="welcome">Welcome Message</h4>
-                <p>Welcome to the admin panel.</p>
+            <div id="welcome">
+                <h5>Welcome Message</h5>
+                <p>Welcome to the DoCM Office Space Reservation Calendar. Use this tool to manage your room bookings
+                    efficiently and stay organized.</p>
             </div>
-            <div class="mb-3">
-                <h4 id="overview">Overview</h4>
-                <p>Get an overview of the system and its features.</p>
+            <div id="overview">
+                <h5>Overview</h5>
+                <p>This page allows you to view available office spaces, reserve rooms, and manage your bookings using a
+                    calendar interface.</p>
             </div>
-
-            <div class="mb-3">
-                <h4 id="bookings">Bookings</h4>
-                <p>Use the "Book Now" button to reserve a room.</p>
+            <div id="bookings">
+                <h5>Making a Booking</h5>
+                <ul>
+                    <li>Click the "New Booking" button in the top-right corner to open the booking form.</li>
+                    <li>Select a room from the dropdown menu.</li>
+                    <li>Enter the start and end times for your booking.</li>
+                    <li>Optionally, select a recurring schedule (daily, weekly, or monthly).</li>
+                    <li>Click "Book Room" to finalize your booking.</li>
+                </ul>
             </div>
-
-            <div class="mb-3">
-                <h4 id="booking-history">Booking History</h4>
-                <p>View your past and future bookings.</p>
+            <div id="booking-history">
+                <h5>Viewing Booking History</h5>
+                <ul>
+                    <li>Navigate to the "My Bookings" section from the top navigation bar.</li>
+                    <li>View all your past and upcoming bookings.</li>
+                    <li>Click on any booking to see detailed information.</li>
+                </ul>
             </div>
-
-            <div class="mb-3">
-                <h4 id="dashboard">Dashboard</h4>
-                <p>Get an overview of your reservations and available rooms.</p>
+            <div id="calendar">
+                <h5>Using the Calendar</h5>
+                <ul>
+                    <li>View bookings for all rooms or filter by specific rooms using the dropdown menu.</li>
+                    <li>Click on a booking to view details or manage it (if you are the creator or an admin).</li>
+                    <li>Navigate through different calendar views: day, week, or month.</li>
+                    <li>Hover over bookings to see quick details in a tooltip.</li>
+                </ul>
             </div>
-
-            <div class="mb-3">
-                <h4 id="calendar">Calendar</h4>
-                <p>View and manage your bookings on a calendar.</p>
+            <div id="cancel-booking">
+                <h5>Cancel a Booking</h5>
+                <ul>
+                    <li>Click on the booking in on the calendar to cancel it.</li>
+                    <li>Confirm the cancellation by clicking "Yes, Cancel" in the modal.</li>
+                    <li> The booking will be removed from the calendar and you will be notified of the cancellation.
+                    </li>
+                </ul>
             </div>
-
-            <cfif isAdmin>
-                <div class="mb-3">
-                    <h4 id="user-management">User Management</h4>
-                    <p>Manage user accounts and permissions.</p>
-                </div>
-
-                <div class="mb-3">
-                    <h4 id="room-management">Room Management</h4>
-                    <p>Manage room details and availability.</p>
-                </div>
-
-                <div class="mb-3">
-                    <h4 id="amenity-management">Amenity Management</h4>
-                    <p>Manage amenity details and availability.</p>
-                </div>
-
-                <div class="mb-3">
-                    <h4 id="icon-management">Icon Management</h4>
-                    <p>Manage icon details and availability.</p>
-                </div>
-            </cfif>
-
         </div>
     </div>
 
 
+
     <!-- Main Content -->
     <div class="container">
-
-
-        <!-- Dashboard Cards
-        <div class="row">
-            <div class="col-md-4">
-                <div class="dashboard-card" data-aos="fade-right" data-aos-delay="100">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="row w-100">
-                            <div class="col-6">
-                                <div class="row col-12">
-                                    <h6 class="mb-1">My History</h6>
-                                </div>
-                                <div class="row col-12">
-                                    <div class="card-number text-primary float-end" id="myHistory">00</div>
-                                </div>
-                            </div>
-                            <div class="col-6 d-flex align-items-center justify-content-end">
-                                <i class="fal fa-calendar-alt fa-3x text-primary"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="dashboard-card" data-aos="fade-up" data-aos-delay="200">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="row w-100">
-                            <div class="col-6">
-                                <div class="row col-12">
-                                    <h6 class="mb-1">Available Rooms</h6>
-                                </div>
-                                <div class="row col-12">
-                                    <div class="card-number text-success float-end" id="availableRooms">00</div>
-                                </div>
-
-                            </div>
-                            <div class="col-6  d-flex align-items-center justify-content-end">
-                                <i class="fal fa-door-open fa-3x text-success"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="dashboard-card" data-aos="fade-left" data-aos-delay="300">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="row w-100">
-                            <div class="col-6">
-                                <div class="row col-12">
-                                    <h6 class="mb-1">My Pending</h6>
-                                </div>
-                                <div class="row col-12">
-                                    <div class="card-number text-warning float-end" id="myBookings">00</div>
-                                </div>
-                            </div>
-                            <div class="col-6  d-flex align-items-center justify-content-end">
-                                <i class="fal fa-calendar-check fa-3x text-warning"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>--->
 
         <!-- Calendar Section -->
         <div class="upcoming-bookings frosted-glass">
@@ -864,8 +789,14 @@
             // Load top navigation
             if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
                 $('#topNav').load('topNav-Admin.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
+                });
             } else {
                 $('#topNav').load('topNav-User.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_User_Reservation_Help_Guide.pdf', '_blank');
+                });
             }
             $('#myBookingsLink').on('click', function (e) {
                 e.preventDefault();

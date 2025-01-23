@@ -16,10 +16,89 @@
 <body>
     <!-- Navigation -->
     <div id="topNav"></div>
+    <!-- Offcanvas -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasExampleLabel">Site User Management</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-3 mt-0">
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download Complete User
+                    Guide</button>
+            </div>
+            <div class="mb-3">
+                <h4>TABLE OF CONTENTS</h4>
+                <ul>
+                    <li><a href="#addingUser">Adding a User</a></li>
+                    <li><a href="#deleteUser">Deleting a User</a></li>
+                    <li><a href="#changingUserStatus">Changing a User's Status</a></li>
+                    <li><a href="#changingUserRole">Changing a User's Role</a></li>
+                    <li><a href="#searchingforUser">Searching for a User</a></li>
+                    <li><a href="#sortingtable">Sorting Table Data</a></li>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <h4>ABOUT THIS PAGE</h4>
+                <p>This page allows you to manage site users.</p>
+            </div>
+            <hr>
+            <div id="addingUser">
+                <h5>Adding a User</h5>
+                <ul>
+                    <li>Click on the "Add New User" button.</li>
+                    <li>Search for an employee by entering their name or ID in the search box.</li>
+                    <li>Select permissions and status from the dropdown menus.</li>
+                    <li>Click "Add User" to finalize.</li>
+                </ul>
+            </div>
+            <div id="deleteUser">
+                <h5>Deleting a User</h5>
+                <ul>
+                    <li>Select a user from the table by clicking the "Edit" button in the Actions column.</li>
+                    <li>Click the "Delete" button in the Edit User modal.</li>
+                    <li>Confirm the deletion in the popup to finalize the process.</li>
+                </ul>
+            </div>
+            <div id="changingUserStatus">
+                <h5>Changing a User's Status</h5>
+                <ul>
+                    <li>Select a user from the table by clicking the "Edit" button in the Actions column.</li>
+                    <li>In the Edit User modal, change the status using the dropdown menu.</li>
+                    <li>Click "Update User" to save the changes.</li>
+                </ul>
+            </div>
+            <div id="changingUserRole">
+                <h5>Changing a User's Role</h5>
+                <ul>
+                    <li>Select a user from the table by clicking the "Edit" button in the Actions column.</li>
+                    <li>In the Edit User modal, change the role using the dropdown menu.</li>
+                    <li>Click "Update User" to save the changes.</li>
+                </ul>
+            </div>
+            <div id="searchingforUser">
+                <h5>Searching for a User</h5>
+                <ul>
+                    <li>Use the search box at the top of the page.</li>
+                    <li>Enter a name or ID to find a specific user.</li>
+                    <li>The table will update dynamically with the search results.</li>
+                </ul>
+            </div>
+            <div id="sortingtable">
+                <h5>Sorting Table Data</h5>
+                <ul>
+                    <li>Click on any column header in the table to sort the data.</li>
+                    <li>The data will sort in ascending or descending order based on the column selected.</li>
+                    <li>Click the header again to reverse the order.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-3 text-white" data-aos="fade-right" data-aos-duration="800">User Management</h2>
+            <h2 class="mb-3 text-white" data-aos="fade-right" data-aos-duration="800">Site User Management</h2>
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal" data-aos="fade-left"
                 data-aos-delay="300">
                 <i class="fas fa-user-plus"></i> Add New User
@@ -178,8 +257,14 @@
             // Load top navigation
             if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
                 $('#topNav').load('topNav-Admin.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
+                });
             } else {
                 $('#topNav').load('topNav-User.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_User_Reservation_Help_Guide.pdf', '_blank');
+                });
             }
 
             $('#emplSearch').on('keyup', function () {

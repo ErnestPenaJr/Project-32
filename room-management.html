@@ -181,9 +181,110 @@
     </style>
 </head>
 
-<body class="bg-light">
+<body>
+
     <!-- Navigation -->
     <div id="topNav"></div>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasExampleLabel">Room Management</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-3 mt-0">
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download Complete User
+                    Guide</button>
+            </div>
+            <div class="mb-3">
+                <h4>TABLE OF CONTENTS</h4>
+                <ul>
+                    <li><a href="#addingRoom">Adding a Room</a></li>
+                    <li><a href="#editingRoom">Editing a Room</a></li>
+                    <li><a href="#deletingRoom">Deleting a Room</a></li>
+                    <li><a href="#managingAmenities">Managing Room Amenities</a></li>
+                    <li><a href="#managingMaintenance">Managing Maintenance Status</a></li>
+                    <li><a href="#managingRecurring">Managing Recurring Status</a></li>
+                    <li><a href="#searchingRooms">Searching Rooms</a></li>
+                    <li><a href="#sortingRoomTable">Sorting Room Table</a></li>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <h4>ABOUT THIS PAGE</h4>
+                <p>This page allows you to manage rooms, including adding, editing, and deleting rooms, as well as
+                    managing
+                    their amenities, maintenance, and recurring status.</p>
+            </div>
+            <hr>
+            <div id="addingRoom">
+                <h5>Adding a Room</h5>
+                <ul>
+                    <li>Click the "Add New Room" button.</li>
+                    <li>Enter the room's name, capacity, and description in the provided fields.</li>
+                    <li>Specify the building and room number.</li>
+                    <li>Upload an image of the room, if available.</li>
+                    <li>Select the amenities associated with the room by clicking the desired icons.</li>
+                    <li>Click "Add Room" to save the new room.</li>
+                </ul>
+            </div>
+            <div id="editingRoom">
+                <h5>Editing a Room</h5>
+                <ul>
+                    <li>Click the "Edit" button in the Actions column for the room you wish to modify.</li>
+                    <li>Update the room's name, capacity, description, or other details as needed.</li>
+                    <li>Change the amenities associated with the room by selecting or deselecting icons.</li>
+                    <li>Click "Update Room" to save your changes.</li>
+                </ul>
+            </div>
+            <div id="deletingRoom">
+                <h5>Deleting a Room</h5>
+                <ul>
+                    <li>Click the "Delete" button in the Actions column for the room you want to remove.</li>
+                    <li>Confirm the deletion in the popup dialog to complete the process.</li>
+                </ul>
+            </div>
+            <div id="managingAmenities">
+                <h5>Managing Room Amenities</h5>
+                <ul>
+                    <li>Amenity icons are displayed in the amenity selection grid.</li>
+                    <li>To add an amenity, click on the corresponding icon (it will highlight as selected).</li>
+                    <li>To remove an amenity, click on the selected icon to deselect it.</li>
+                    <li>Amenities can be updated when adding or editing a room.</li>
+                </ul>
+            </div>
+            <div id="managingMaintenance">
+                <h5>Managing Maintenance Status</h5>
+                <ul>
+                    <li>Click the "Maintenance" button in the Actions column for the room.</li>
+                    <li>Confirm the status change in the popup dialog.</li>
+                    <li>The button will update to indicate the current maintenance status.</li>
+                </ul>
+            </div>
+            <div id="managingRecurring">
+                <h5>Managing Recurring Status</h5>
+                <ul>
+                    <li>Click the "Recurring" button in the Actions column for the room.</li>
+                    <li>Confirm the status change in the popup dialog.</li>
+                    <li>The button will update to indicate whether recurring is enabled or disabled.</li>
+                </ul>
+            </div>
+            <div id="searchingRooms">
+                <h5>Searching Rooms</h5>
+                <ul>
+                    <li>Use the search box located above the room table.</li>
+                    <li>Enter keywords related to the room name, location, or other details.</li>
+                    <li>The table will automatically filter to display matching results.</li>
+                </ul>
+            </div>
+            <div id="sortingRoomTable">
+                <h5>Sorting Room Table</h5>
+                <ul>
+                    <li>Click on any column header in the table (e.g., Room Name, Capacity).</li>
+                    <li>The table data will sort in ascending or descending order based on the selected column.</li>
+                    <li>Click the same column header again to reverse the sort order.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="container mt-4">
@@ -369,8 +470,14 @@
             // Load top navigation
             if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
                 $('#topNav').load('topNav-Admin.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
+                });
             } else {
                 $('#topNav').load('topNav-User.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_User_Reservation_Help_Guide.pdf', '_blank');
+                });
             }
 
             // Manage modal focus and accessibility

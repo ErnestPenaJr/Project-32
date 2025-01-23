@@ -90,7 +90,77 @@
     </style>
 </head>
 
-<body class="bg-light">
+<body>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasExampleLabel">Amenity Management</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-3 mt-0">
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download Complete
+                    User
+                    Guide</button>
+            </div>
+            <div class="mb-3">
+                <h4>TABLE OF CONTENTS</h4>
+                <ul>
+                    <li><a href="#addingAmenity">Adding an Amenity</a></li>
+                    <li><a href="#editingAmenity">Editing an Amenity</a></li>
+                    <li><a href="#deletingAmenity">Deleting an Amenity</a></li>
+                    <li><a href="#searchingAmenity">Searching Amenities</a></li>
+                    <li><a href="#sortingAmenityTable">Sorting Amenity Table</a></li>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <h4>ABOUT THIS PAGE</h4>
+                <p>This page allows you to manage the amenities available for reservations, including adding, editing,
+                    and
+                    deleting amenities.</p>
+            </div>
+            <hr>
+            <div id="addingAmenity">
+                <h5>Adding an Amenity</h5>
+                <ul>
+                    <li>Click the "Add New Amenity" button.</li>
+                    <li>Enter the amenity's name and description in the provided fields.</li>
+                    <li>Select an icon by clicking on an icon from the displayed options.</li>
+                    <li>Click "Add Amenity" to save the new amenity.</li>
+                </ul>
+            </div>
+            <div id="editingAmenity">
+                <h5>Editing an Amenity</h5>
+                <ul>
+                    <li>Click the "Edit" button in the Actions column for the amenity you wish to modify.</li>
+                    <li>Update the amenity's name, description, or icon as needed.</li>
+                    <li>Click "Update Amenity" to save your changes.</li>
+                </ul>
+            </div>
+            <div id="deletingAmenity">
+                <h5>Deleting an Amenity</h5>
+                <ul>
+                    <li>Click the "Delete" button in the Actions column for the amenity you want to remove.</li>
+                    <li>Confirm the deletion in the popup dialog to complete the process.</li>
+                </ul>
+            </div>
+            <div id="searchingAmenity">
+                <h5>Searching Amenities</h5>
+                <ul>
+                    <li>Use the search box located above the amenities table.</li>
+                    <li>Enter keywords related to the amenity name or description.</li>
+                    <li>The table will automatically filter to display matching results.</li>
+                </ul>
+            </div>
+            <div id="sortingAmenityTable">
+                <h5>Sorting Amenity Table</h5>
+                <ul>
+                    <li>Click on any column header in the table (e.g., Name, Description).</li>
+                    <li>The table data will sort in ascending or descending order based on the column selected.</li>
+                    <li>Click the same column header again to reverse the order.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Top Navigation -->
     <div id="topNav"></div>
@@ -564,8 +634,14 @@
             // Load top navigation
             if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
                 $('#topNav').load('topNav-Admin.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
+                });
             } else {
                 $('#topNav').load('topNav-User.html');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_User_Reservation_Help_Guide.pdf', '_blank');
+                });
             }
             AOS.init();
             initializeAmenitiesDataTable();
