@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amenity Management - MD Anderson amenity Reservation</title>
+
+    <!-- CSS Dependencies -->
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <style>
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-selection {
+            height: 38px !important;
+            padding: 5px !important;
+            border: 1px solid #dee2e6 !important;
+        }
+
+        .select2-selection__arrow {
+            height: 36px !important;
+        }
+
+        .amenity-icon-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .icon-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-item.selected {
+            background: #e3f2fd;
+            border: 2px solid #1976d2;
+        }
+
+        .icon-item i {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #1976d2;
+        }
+
+        .icon-item span {
+            font-size: 0.8rem;
+            text-align: center;
+            color: #666;
+            word-break: break-word;
+        }
+
+        /* Add styles for centered table icons */
+        .table-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+
+        .table-icon i {
+            font-size: 1.5rem;
+            width: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+
+    <!-- Top Navigation -->
+    <div id="topNav"></div>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white" data-aos="fade-up" data-aos-duration="800">Amenity Management</h2>
+            <button class="btn btn-primary" id="addAmenityBtn" data-aos="fade-left" data-aos-delay="300">
+                <i class="fas fa-plus"></i> Add New Amenity
+            </button>
+        </div>
+
+        <!-- Amenities Table -->
+        <div class="card" data-aos="fade-up" data-aos-duration="1000" data-aos-delay="400">
+            <div class="card-body">
+                <table id="amenitiesTable" class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-center">ID</th>
+                            <th class="text-center">Icon</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Amenity Modal -->
+    <div class="modal fade" id="addAmenityModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Amenity</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-dark">
+                    <form id="addAmenityForm">
+                        <div class="mb-3">
+                            <label for="amenityName" class="form-label">Amenity Name</label>
+                            <input type="text" class="form-control" id="amenityName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amenityDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="amenityDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Select Icon</label>
+                            <div id="amenityIconContainer" class="amenity-icon-grid"></div>
+                            <input type="hidden" id="amenityIcon" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addAmenity()">Add Amenity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Amenity Modal -->
+    <div class="modal fade" id="editAmenityModal" tabindex="-1" aria-labelledby="editAmenityModalLabel">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Amenity</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-dark">
+                    <form id="editAmenityForm text-dark">
+                        <input type="hidden" id="editAmenityId">
+                        <div class="mb-3">
+                            <label for="editAmenityName" class="form-label">Amenity Name</label>
+                            <input type="text" class="form-control" id="editAmenityName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editAmenityDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editAmenityDescription" rows="3" required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Select Icon</label>
+                            <div id="editAmenityIconContainer" class="amenity-icon-grid">
+
+
+                            </div>
+                            <input type="hidden" id="editAmenityIcon" required>
+                        </div>
+
+
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="updateAmenity()">Update Amenity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="node_modules/jquery/dist/jquery.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/DataTables-2.1.8/datatables.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.min.js"></script>
+
+    <script>
+        // Initialize AOS
+        AOS.init({
+            once: true, // whether animation should happen only once - while scrolling down
+            mirror: false, // whether elements should animate out while scrolling past them
+        });
+
+        // Function to refresh AOS when adding new elements dynamically
+        function refreshAOS() {
+            AOS.refresh();
+        }
+
+        // Initialize DataTable for amenities
+        function initializeAmenitiesDataTable() {
+            var table = $('#amenitiesTable').DataTable({
+                ajax: {
+                    url: 'assets/cfc/amenity.cfc?method=getAllAmenities',
+                    type: 'GET',
+                    dataSrc: 'DATA'
+
+                },
+                columns: [
+                    {
+                        data: 'id',
+                        class: 'text-center'
+                    },
+                    {
+                        data: 'icon',
+                        render: function (data) {
+                            return `<div class="table-icon"><i class="fas ${data} fa-lg"></i></div>`;
+                        }
+                    },
+                    { data: 'name' },
+                    { data: 'description' },
+                    {
+                        data: 'id',
+                        render: function (data) {
+                            return `
+                                <button class="btn btn-sm btn-primary" onclick="editAmenity(${data})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteAmenity(${data})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            `;
+                        },
+                        orderable: false,
+                        class: 'text-center'
+                    }
+                ]
+            });
+
+            // Add AOS attributes to newly created rows
+            table.on('draw', function () {
+                $('tbody tr').each(function (index) {
+                    $(this).attr({
+                        'data-aos': 'fade-up',
+                        'data-aos-delay': index * 100,
+                        'data-aos-duration': '800'
+                    });
+                });
+                refreshAOS();
+            });
+        }
+
+        // Refresh amenities table
+        function refreshAmenitiesTable() {
+            $('#amenitiesTable').DataTable().ajax.reload();
+        }
+
+        // Define office equipment icons
+        const officeIcons = [
+            { class: 'fa-map-pin', name: 'Click Share' },
+            { class: 'fa-projector', name: 'Projector' },
+            { class: 'fa-tv', name: 'TV/Monitor' },
+            { class: 'fa-video', name: 'Video Conference' },
+            { class: 'fa-microphone-alt', name: 'Microphone' },
+            { class: 'fa-wifi', name: 'WiFi' },
+            { class: 'fa-network-wired', name: 'Network Connection' },
+            { class: 'fa-air-conditioner', name: 'Air Conditioning' },
+            { class: 'fa-print', name: 'Printer' },
+            { class: 'fa-scanner-touchscreen', name: 'Scanner' },
+            { class: 'fa-chair-office', name: 'Office Chair' },
+            { class: 'fa-computer-classic', name: 'Workstation' },
+            { class: 'fa-laptop', name: 'Docking Station' },
+            { class: 'fa-keyboard', name: 'Keyboard' },
+            { class: 'fa-mouse', name: 'Mouse' },
+            { class: 'fa-chalkboard', name: 'Whiteboard' },
+            { class: 'fa-phone', name: 'Phone' },
+            { class: 'fa-coffee-pot', name: 'Coffee Machine' },
+            { class: 'fa-glass', name: 'Water Dispenser' },
+            { class: 'fa-plug', name: 'Power Outlet' },
+            { class: 'fa-lightbulb', name: 'Lighting' },
+            { class: 'fa-window-frame', name: 'Window' },
+            { class: 'fa-webcam', name: 'Webcam' },
+            { class: 'fa-door-open', name: 'Door' },
+            { class: 'fa-clock', name: 'Clock' },
+            { class: 'fa-calendar-alt', name: 'Calendar' },
+            { class: 'fa-network-wired', name: 'Network' },
+            { class: 'fa-laptop', name: 'Laptop Support' },
+            { class: 'fa-tablet-alt', name: 'Tablet Support' },
+            { class: 'fa-refrigerator', name: 'Mini-Refrigerator' },
+            { class: 'fa-volume-up', name: 'Speakers' },
+            { class: 'fa-phone-volume', name: 'Conference Phone' },
+            { class: 'fa-border-all', name: 'Conference Table' },
+            { class: 'fa-podium', name: 'Podium' },
+            { class: 'fa-archive', name: 'Filing Cabinet' }
+        ];
+
+        // Function to load icons into container
+        function loadAmenityIcons(containerId, selectedIcon = '') {
+            const container = $(`#${containerId}`);
+            container.empty();
+
+            // Add office equipment icons
+            officeIcons.forEach(icon => {
+                const iconElement = $('<div>', {
+                    class: `icon-item ${selectedIcon === icon.class ? 'selected' : ''}`,
+                    'data-icon': icon.class,
+                    click: function () {
+                        $('.icon-item').removeClass('selected');
+                        $(this).addClass('selected');
+                        $(`#${containerId === 'amenityIconContainer' ? 'amenityIcon' : 'editAmenityIcon'}`).val(icon.class);
+                    }
+                }).append(
+                    $('<i>', {
+                        class: `fas ${icon.class}`
+                    }),
+                    $('<span>', {
+                        text: icon.name
+                    })
+                );
+                container.append(iconElement);
+            });
+
+            // Also fetch and add any custom icons from the database
+            $.ajax({
+                url: 'assets/cfc/icons.cfc?method=getAllIcons',
+                type: 'GET',
+                success: function (response) {
+                    if (response && response.icons) {
+                        response.icons.forEach(icon => {
+                            // Skip if icon is already in officeIcons
+                            if (!officeIcons.some(officeIcon => officeIcon.class === icon.ICON_CLASS)) {
+                                const iconElement = $('<div>', {
+                                    class: `icon-item ${selectedIcon === icon.ICON_CLASS ? 'selected' : ''}`,
+                                    'data-icon': icon.ICON_CLASS,
+                                    click: function () {
+                                        $('.icon-item').removeClass('selected');
+                                        $(this).addClass('selected');
+                                        $(`#${containerId === 'amenityIconContainer' ? 'amenityIcon' : 'editAmenityIcon'}`).val(icon.ICON_CLASS);
+                                    }
+                                }).append(
+                                    $('<i>', {
+                                        class: `fas ${icon.ICON_CLASS}`
+                                    }),
+                                    $('<span>', {
+                                        text: icon.ICON_NAME
+                                    })
+                                );
+                                container.append(iconElement);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // Update existing functions to use the new icon loading
+        $('#addAmenityBtn').click(function () {
+            loadAmenityIcons('amenityIconContainer');
+            $('#addAmenityModal').modal('show');
+        });
+
+        function editAmenity(amenityId) {
+            $.ajax({
+                url: 'assets/cfc/amenity.cfc?method=getAmenity',
+                dataType: 'json',
+                type: 'GET',
+                data: { amenityId: amenityId },
+                success: function (response) {
+                    console.log(response);
+                    const amenity = response;
+                    if (amenity) {
+                        $('#editAmenityId').val(amenity.id);
+                        $('#editAmenityName').val(amenity.name);
+                        $('#editAmenityDescription').val(amenity.description);
+                        $('#editAmenityIcon').val(amenity.icon);
+                        loadAmenityIcons('editAmenityIconContainer', amenity.icon);
+                        $('#editAmenityModal').modal('show');
+                    }
+                }
+            });
+        }
+
+        // Add new amenity
+        function addAmenity() {
+            const amenityData = {
+                amenityName: $('#amenityName').val(),
+                description: $('#amenityDescription').val(),
+                icon: $('#amenityIcon').val()
+            };
+
+            $.ajax({
+                url: 'assets/cfc/amenity.cfc?method=addAmenity',
+                method: 'POST',
+                dataType: 'json',
+                data: amenityData,
+                success: function (response) {
+                    $('#addAmenityModal').modal('hide');
+                    refreshAmenitiesTable();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Amenity added successfully',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                },
+                error: function (xhr) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error adding amenity',
+                        text: xhr.responseText,
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                }
+            });
+        }
+
+        // Update amenity
+        function updateAmenity() {
+            const userId = parseInt(sessionStorage.getItem('EMPLID'));
+            const amenityData = {
+                amenityId: parseInt($('#editAmenityId').val()),
+                amenityName: $('#editAmenityName').val().trim(),
+                description: $('#editAmenityDescription').val().trim(),
+                icon: $('#editAmenityIcon').val().trim(),
+                userId: userId || 0
+            };
+
+            if (!amenityData.amenityName || !amenityData.description || !amenityData.icon) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validation Error',
+                    text: 'Please fill in all required fields',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+                return;
+            }
+
+            $.ajax({
+                url: 'assets/cfc/amenity.cfc?method=updateAmenity',
+                type: 'POST',
+                data: amenityData,
+                success: function (response) {
+                    $('#editAmenityModal').modal('hide');
+                    refreshAmenitiesTable();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Amenity updated successfully',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error updating amenity:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to update amenity: ' + error,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+            });
+        }
+
+        // Delete amenity
+        function deleteAmenity(amenityId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'assets/cfc/amenity.cfc?method=deleteAmenity',
+                        method: 'POST',
+                        data: { amenityId: amenityId },
+                        success: function (response) {
+                            const result = JSON.parse(response);
+                            if (result.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: result.message,
+                                    showConfirmButton: false,
+                                    timer: 1500
+                                });
+                                refreshAmenitiesTable();
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: result.message || 'Error deleting amenity'
+                                });
+                            }
+                        },
+                        error: function (xhr) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Server error occurred while deleting amenity'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Logout handler
+        function handleLogout() {
+            window.location.href = 'logout.html';
+        }
+
+        // Show alert message
+        function showAlert(message, type) {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+
+            Toast.fire({
+                icon: type,
+                title: message
+            });
+        }
+
+        // Initialize when document is ready
+        $(document).ready(function () {
+            // Load top navigation
+            if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html');
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+            AOS.init();
+            initializeAmenitiesDataTable();
+            loadAmenityIcons('amenityIconContainer');
+
+            // Add Amenity button handler
+            $('#addAmenityBtn').click(function () {
+                $('#amenityName').val('');
+                $('#amenityDescription').val('');
+                $('#amenityIcon').val('');
+                $('#amenityIconContainer .icon-item ').removeClass('selected');
+                $('#addAmenityModal').modal('show');
+            });
+        });
+    </script>
+</body>
+
+</html>

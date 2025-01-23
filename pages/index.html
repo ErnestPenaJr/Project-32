@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Management System</title>
+    
+    <!-- CSS -->
+    <link href="../assets/css/tailwind.css" rel="stylesheet">
+    <link href="../assets/css/daisyui.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <style>
+        .hero {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('../assets/images/hotel-hero.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-100">
+    <!-- Navigation -->
+    <div id="navigation-placeholder"></div>
+
+    <!-- Hero Section -->
+    <section class="hero h-[600px] flex items-center justify-center text-white">
+        <div class="text-center">
+            <h1 class="text-5xl font-bold mb-4">Welcome to Luxury Hotel</h1>
+            <p class="text-xl mb-8">Experience comfort and elegance at its finest</p>
+            <div class="space-x-4">
+                <a href="booking.html" class="btn btn-primary">Book Now</a>
+                <a href="rooms.html" class="btn btn-outline btn-white">View Rooms</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Our Services</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <h3 class="card-title">Luxury Rooms</h3>
+                        <p>Experience ultimate comfort in our carefully designed rooms.</p>
+                    </div>
+                </div>
+                <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <h3 class="card-title">Fine Dining</h3>
+                        <p>Savor exquisite cuisine at our world-class restaurants.</p>
+                    </div>
+                </div>
+                <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <h3 class="card-title">Spa & Wellness</h3>
+                        <p>Rejuvenate your body and mind at our premium spa.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Room Preview Section -->
+    <section class="py-16 bg-gray-100">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Featured Rooms</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="featured-rooms">
+                <!-- Room cards will be dynamically loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Guest Reviews</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="testimonials">
+                <!-- Testimonials will be dynamically loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <div id="footer-placeholder"></div>
+
+    <!-- JavaScript -->
+    <script src="../assets/js/main.js"></script>
+    <script>
+        // Load components
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('../components/navigation.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('navigation-placeholder').innerHTML = data;
+                });
+
+            fetch('../components/footer.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('footer-placeholder').innerHTML = data;
+                });
+
+            // Load featured rooms
+            loadFeaturedRooms();
+            
+            // Load testimonials
+            loadTestimonials();
+        });
+
+        function loadFeaturedRooms() {
+            // API call to get featured rooms
+            fetch('/api/room.cfc?method=getFeaturedRooms')
+                .then(response => response.json())
+                .then(rooms => {
+                    const container = document.getElementById('featured-rooms');
+                    rooms.forEach(room => {
+                        container.innerHTML += `
+                            <div class="card bg-base-100 shadow-xl">
+                                <figure><img src="${room.image}" alt="${room.name}"></figure>
+                                <div class="card-body">
+                                    <h3 class="card-title">${room.name}</h3>
+                                    <p>${room.description}</p>
+                                    <div class="card-actions justify-end">
+                                        <a href="room-details.html?id=${room.id}" class="btn btn-primary">View Details</a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                });
+        }
+
+        function loadTestimonials() {
+            // API call to get testimonials
+            fetch('/api/testimonials.cfc?method=getTestimonials')
+                .then(response => response.json())
+                .then(testimonials => {
+                    const container = document.getElementById('testimonials');
+                    testimonials.forEach(testimonial => {
+                        container.innerHTML += `
+                            <div class="card bg-base-100 shadow-xl">
+                                <div class="card-body">
+                                    <p class="italic">${testimonial.content}</p>
+                                    <div class="flex items-center mt-4">
+                                        <img src="${testimonial.avatar}" alt="${testimonial.name}" class="w-12 h-12 rounded-full mr-4">
+                                        <div>
+                                            <h4 class="font-bold">${testimonial.name}</h4>
+                                            <p class="text-sm text-gray-600">${testimonial.date}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                });
+        }
+    </script>
+</body>
+</html>

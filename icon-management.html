@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Management - MD Anderson Room Reservation</title>
+
+    <!-- CSS Dependencies -->
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+    <!-- Navigation -->
+    <div id="topNav"></div>
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white" data-aos="fade-right" data-aos-duration="800">Icon Management</h2>
+            <button class="btn btn-primary" id="addIconBtn" data-aos="fade-left" data-aos-delay="200">
+                <i class="fas fa-plus"></i> Add New Icon
+            </button>
+        </div>
+
+        <!-- Icons Table -->
+        <div class="card" data-aos="fade-up" data-aos-duration="1000" data-aos-delay="400">
+            <div class="card-body">
+                <table id="iconsTable" class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-center">ID</th>
+                            <th class="text-center">Icon</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Icon Modal -->
+    <div class="modal fade" id="addIconModal" tabindex="-1" aria-labelledby="addIconModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" data-aos="zoom-in" data-aos-duration="300">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addIconModalLabel">Add New Icon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-dark">
+                    <form id="addIconForm">
+                        <div class="mb-3">
+                            <label for="iconName" class="form-label">Icon Name</label>
+                            <input type="text" class="form-control" id="iconName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="iconSearch" class="form-label">Search FontAwesome Icons</label>
+                            <input type="text" class="form-control" id="iconSearch" placeholder="Search icons...">
+                        </div>
+                        <div class="icon-search-container" data-aos="fade-up" data-aos-delay="100">
+                            <div id="iconGrid" class="icons-grid">
+                                <!-- Icons will be loaded here -->
+                            </div>
+                        </div>
+                        <input type="hidden" id="selectedIconClass" required>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addIcon()">Add Icon</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Icon Modal -->
+    <div class="modal fade" id="editIconModal" tabindex="-1" aria-labelledby="editIconModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Icon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-dark">
+                    <form id="editIconForm">
+                        <input type="hidden" id="editIconId">
+                        <div class="mb-3">
+                            <label for="editIconName" class="form-label">Icon Name</label>
+                            <input type="text" class="form-control" id="editIconName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editIconSearch" class="form-label">Search FontAwesome Icons</label>
+                            <input type="text" class="form-control" id="editIconSearch" placeholder="Search icons...">
+                        </div>
+                        <div class="icon-search-container">
+                            <div id="editIconGrid" class="icons-grid">
+                                <!-- Icons will be loaded here -->
+                            </div>
+                        </div>
+                        <input type="hidden" id="editSelectedIconClass" required>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="updateIcon()">Update Icon</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/DataTables-2.1.8/datatables.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+
+    <script>
+        // Initialize when document is ready
+        $(document).ready(function () {
+            // Load top navigation
+            if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html');
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+
+            AOS.init();
+            initializeIconsTable();
+
+            // Add icon button click handler
+            $('#addIconBtn').click(function () {
+                loadIconGrid('iconGrid', '#iconSearch');
+                $('#addIconModal').modal('show');
+            });
+
+            // Icon search handlers
+            $('#iconSearch').on('input', function () {
+                loadIconGrid('iconGrid', '#iconSearch');
+            });
+
+            $('#editIconSearch').on('input', function () {
+                loadIconGrid('editIconGrid', '#editIconSearch');
+            });
+        });
+        // Initialize AOS
+        AOS.init({
+            once: true,
+            mirror: false
+        });
+
+        // Function to refresh AOS when adding new elements dynamically
+        function refreshAOS() {
+            AOS.refresh();
+        }
+
+        // FontAwesome icon classes (sample list - you can expand this)
+        const fontAwesomeIcons = [
+            'fa-desktop', 'fa-laptop', 'fa-tablet', 'fa-mobile', 'fa-tv',
+            'fa-keyboard', 'fa-mouse', 'fa-headphones', 'fa-microphone',
+            'fa-camera', 'fa-video', 'fa-projector', 'fa-screen',
+            'fa-wifi', 'fa-network-wired', 'fa-ethernet',
+            'fa-chair', 'fa-table', 'fa-desk', 'fa-door',
+            'fa-air-conditioner', 'fa-temperature-high', 'fa-lightbulb',
+            'fa-phone', 'fa-phone-office', 'fa-fax',
+            'fa-printer', 'fa-scanner', 'fa-copy',
+            'fa-whiteboard', 'fa-chalkboard', 'fa-easel',
+            'fa-coffee', 'fa-water', 'fa-sink'
+        ];
+
+        // Initialize DataTable for icons with AOS
+        function initializeIconsTable() {
+            var table = $('#iconsTable').DataTable({
+                ajax: {
+                    url: 'assets/cfc/icons.cfc?method=getAllIcons',
+                    type: 'GET',
+                    dataSrc: 'icons'
+                },
+                columns: [
+                    {
+                        data: 'ICON_ID',
+                        class: 'text-center'
+                    },
+                    {
+                        data: 'ICON_CLASS',
+                        class: 'text-center',
+                        render: function (data) {
+                            return `<div class="table-icon"><i class="fas ${data} fa-lg"></i></div>`;
+                        }
+                    },
+                    { data: 'ICON_NAME' },
+                    {
+                        data: 'ICON_CLASS'
+                    },
+                    {
+                        data: 'ICON_ID',
+                        class: 'text-center',
+                        render: function (data) {
+                            return `
+                                <button class="btn btn-sm btn-primary" onclick="editIcon(${data})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteIcon(${data})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            `;
+                        },
+                        sortable: false
+                    }
+                ]
+            });
+
+            // Add AOS attributes to newly created rows
+            table.on('draw', function () {
+                $('tbody tr').each(function (index) {
+                    $(this).attr({
+                        'data-aos': 'fade-up',
+                        'data-aos-delay': index * 100,
+                        'data-aos-duration': '800'
+                    });
+                });
+                refreshAOS();
+            });
+        }
+
+        // Refresh icons table
+        function refreshIconsTable() {
+            $('#iconsTable').DataTable().ajax.reload();
+        }
+
+        // Load FontAwesome icons into grid with AOS
+        function loadIconGrid(containerId, searchInput) {
+            const searchTerm = $(searchInput).val().toLowerCase();
+            const filteredIcons = fontAwesomeIcons.filter(icon => icon.toLowerCase().includes(searchTerm));
+            const $container = $(`#${containerId}`);
+            
+            $container.empty();
+            
+            filteredIcons.forEach(icon => {
+                const $iconDiv = $('<div>')
+                    .addClass('icon-item')
+                    .attr('data-icon-class', icon)
+                    .html(`<i class="fas ${icon} fa-2x"></i>`)
+                    .click(function() {
+                        // Remove selected class from all icons in this container
+                        $container.find('.icon-item').removeClass('selected');
+                        // Add selected class to clicked icon
+                        $(this).addClass('selected');
+                        // Update the hidden input with selected icon class
+                        const selectedInput = containerId === 'iconGrid' ? '#selectedIconClass' : '#editSelectedIconClass';
+                        $(selectedInput).val(icon);
+                    });
+                
+                // Check if this icon is currently selected
+                const selectedInput = containerId === 'iconGrid' ? '#selectedIconClass' : '#editSelectedIconClass';
+                if ($(selectedInput).val() === icon) {
+                    $iconDiv.addClass('selected');
+                }
+                
+                $container.append($iconDiv);
+            });
+            
+            refreshAOS();
+        }
+
+        // Add new icon
+        function addIcon() {
+            const iconData = {
+                iconName: $('#iconName').val(),
+                iconClass: $('#selectedIconClass').val()
+            };
+
+            $.ajax({
+                url: 'assets/cfc/icons.cfc?method=addIcon',
+                method: 'POST',
+                data: iconData,
+                success: function (response) {
+                    $('#addIconModal').modal('hide');
+                    refreshIconsTable();
+                    showAlert('Icon added successfully', 'success');
+                },
+                error: function (xhr) {
+                    showAlert('Error adding icon: ' + xhr.responseText, 'danger');
+                }
+            });
+        }
+
+        // Edit icon
+        function editIcon(iconId) {
+            $.ajax({
+                url: 'assets/cfc/icons.cfc?method=getIcon',
+                method: 'GET',
+                dataType: 'json',
+                data: { iconId: iconId },
+                success: function (response) {
+                    console.log('Icon details:', response.icons[0]);
+                    $('#editIconId').val(response.icons[0].ICON_ID);
+                    $('#editIconName').val(response.icons[0].ICON_NAME);
+                    $('#editSelectedIconClass').val(response.icons[0].ICON_CLASS);
+
+                    loadIconGrid('editIconGrid', '#editIconSearch');
+
+                    // Select the current icon
+                    const iconItem = $(`#editIconGrid .icon-item[data-icon-class="${response.icons[0].ICON_CLASS}"]`);
+                    if (iconItem.length) {
+                        iconItem.addClass('selected');
+                    }
+
+                    $('#editIconModal').modal('show');
+                },
+                error: function (xhr) {
+                    showAlert('Error loading icon details: ' + xhr.responseText, 'danger');
+                }
+            });
+        }
+
+        // Update icon
+        function updateIcon() {
+            const iconData = {
+                iconId: $('#editIconId').val(),
+                iconName: $('#editIconName').val(),
+                iconClass: $('#editSelectedIconClass').val()
+            };
+
+            $.ajax({
+                url: 'assets/cfc/icons.cfc?method=updateIcon',
+                method: 'POST',
+                data: iconData,
+                success: function (response) {
+                    $('#editIconModal').modal('hide');
+                    refreshIconsTable();
+                    showAlert('Icon updated successfully', 'success');
+                },
+                error: function (xhr) {
+                    showAlert('Error updating icon: ' + xhr.responseText, 'danger');
+                }
+            });
+        }
+
+        // Delete icon
+        function deleteIcon(iconId) {
+            if (confirm('Are you sure you want to delete this icon?')) {
+                $.ajax({
+                    url: 'assets/cfc/icons.cfc?method=deleteIcon',
+                    method: 'POST',
+                    data: { iconId: iconId },
+                    success: function (response) {
+                        refreshIconsTable();
+                        showAlert('Icon deleted successfully', 'success');
+                    },
+                    error: function (xhr) {
+                        showAlert('Error deleting icon: ' + xhr.responseText, 'danger');
+                    }
+                });
+            }
+        }
+
+        // Show alert message
+        function showAlert(message, type) {
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+
+            // Remove any existing alerts
+            $('.alert').remove();
+
+            // Add the new alert before the table
+            $('.card').before(alertHtml);
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                $('.alert').fadeOut('slow', function () {
+                    $(this).remove();
+                });
+            }, 5000);
+        }
+
+
+
+        // Logout handler
+        function handleLogout() {
+            window.location.href = 'logout.html';
+        }
+    </script>
+</body>
+
+</html>

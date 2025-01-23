@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Management - MD Anderson Room Reservation</title>
+
+    <!-- CSS Dependencies -->
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <style>
+        .dashboard-card {
+            background-color: azure;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .dashboard-bg {
+            background: rgb(14, 29, 68);
+            opacity: 0.5;
+            z-index: -1;
+        }
+
+        .card-icon {
+            font-size: 24px;
+            margin-right: 1rem;
+        }
+
+        .card-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .upcoming-bookings {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        #upcomingBookings {
+            min-height: 600px;
+            margin: 1em 0;
+            padding: 0;
+            width: 100%;
+            position: relative;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        .fc {
+            max-width: 100%;
+            height: 100%;
+        }
+
+        .btn-new-booking {
+            background: #4F46E5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+        .welcome-title {
+            font-weight: bold;
+            color: #4F46E5;
+        }
+
+        .btn-new-booking:hover {
+            background: #4338CA;
+            color: white;
+        }
+
+        .notification-icon {
+            position: relative;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #EF4444;
+            color: white;
+            border-radius: 50%;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-selection {
+            height: auto !important;
+            min-height: 38px !important;
+        }
+
+        .select2-selection__rendered {
+            line-height: 38px !important;
+        }
+
+        .select2-selection__arrow {
+            height: 38px !important;
+        }
+
+        .action-buttons {
+            white-space: nowrap;
+            min-width: 200px;
+        }
+
+        .action-buttons .btn {
+            margin-right: 4px;
+        }
+
+        .action-buttons .btn:last-child {
+            margin-right: 0;
+        }
+
+        .center-column {
+            text-align: center !important;
+        }
+
+        .center-column .badge {
+            min-width: 70px;
+        }
+
+        .amenity-icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .icon-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-item.selected {
+            background: #e3f2fd;
+            border: 2px solid #1976d2;
+        }
+
+        .icon-item i {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #1976d2;
+        }
+
+        .icon-item span {
+            font-size: 0.8rem;
+            text-align: center;
+            color: #666;
+            word-break: break-word;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <!-- Navigation -->
+    <div id="topNav"></div>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white" data-aos="fade-right" data-aos-duration="800">Room Management</h2>
+            <button class="btn btn-primary" id="addRoomBtn" data-aos="fade-left" data-aos-delay="300">
+                <i class="fas fa-plus"></i> Add New Room
+            </button>
+        </div>
+
+        <!-- Rooms Table -->
+        <div class="card" data-aos="fade-up" data-aos-duration="1000" data-aos-delay="400">
+            <div class=" card-body">
+                <div class="table-responsive">
+                    <table id="roomsTable" class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Room Name</th>
+                                <th>Location</th>
+                                <th>Capacity</th>
+                                <th>Maintenance</th>
+                                <th>Recurring</th>
+                                <th>Status</th>
+                                <th class="action-buttons text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Room Modal -->
+    <div class="modal" id="addRoomModal" tabindex="-1" role="dialog" aria-labelledby="addRoomModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" data-aos="zoom-in" data-aos-duration="300">
+            <div class="modal-content" role="document">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addRoomModalLabel">Add New Room</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-dark">
+                    <form id="addRoomForm">
+                        <div class="row">
+                            <div class="mb-3 col-9">
+                                <label for="roomName" class="form-label">Room Name</label>
+                                <input type="text" class="form-control" id="roomName" required>
+                            </div>
+                            <div class="mb-3 col-3">
+                                <label for="capacity" class="form-label">Capacity</label>
+                                <input type="number" class="form-control" id="capacity" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" rows="3" required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="mb-3 col">
+                                <label for="building" class="form-label">Building</label>
+                                <input type="text" class="form-control" id="building" required
+                                    placeholder="example: FC-11">
+                            </div>
+                            <div class="mb-3 col">
+                                <label for="roomNumber" class="form-label">Room Number</label>
+                                <input type="text" class="form-control" id="roomNumber" required>
+                            </div>
+                        </div>
+                        <div class="mb-3 row">
+                            <div class="col">
+                                <label for="image" class="form-label">Upload Room Image</label>
+                                <input type="file" class="form-control" id="image" accept="image/*">
+
+                            </div>
+                            <div class="col d-flex align-items-center justify-content-center">
+                                <img id="addImagePreview" src="assets/images/officePlaceholder.png" width="100"
+                                    height="100" alt="Room Image Preview">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="amenities" class="form-label">Amenities</label>
+                            <div class="amenities-container">
+                                <div class="amenity-icon-grid" id="amenityIcons">
+                                    <!-- Amenities will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addRoom()">Add Room</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Room Modal -->
+    <div class="modal" id="editRoomModal" tabindex="-1" role="dialog" aria-labelledby="editRoomModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" data-aos="zoom-in" data-aos-duration="300">
+            <div class="modal-content" role="document">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editRoomModalLabel">Edit Room</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-dark">
+                    <form id="editRoomForm">
+                        <input type="hidden" id="editRoomId">
+                        <div class="row">
+                            <div class="mb-3 col-9">
+                                <label for="editRoomName" class="form-label">Room Name</label>
+                                <input type="text" class="form-control" id="editRoomName" required>
+                            </div>
+                            <div class="mb-3 col-3">
+                                <label for="editCapacity" class="form-label">Capacity</label>
+                                <input type="number" class="form-control" id="editCapacity" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <div class="col">
+                                <label for="editDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="editDescription" rows="3" required></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="mb-3 col">
+                                <label for="editBuilding" class="form-label">Building</label>
+                                <input type="text" class="form-control" id="editBuilding" required>
+                            </div>
+                            <div class="mb-3 col">
+                                <label for="editRoomNumber" class="form-label">Room Number</label>
+                                <input type="text" class="form-control" id="editRoomNumber" required>
+                            </div>
+                        </div>
+
+                        <div class="row ">
+                            <div class="mb-3 col-6">
+                                <label for="editImage" class="form-label">Replace Room image</label>
+                                <input type="file" class="form-control" id="editImage" accept="image/*">
+
+                            </div>
+                            <div class="mb-3 col-6 d-flex align-items-center justify-content-center">
+                                <img id="editImagePreview" class="img-fluid rounded"
+                                    src="assets/images/officePlaceholder.png" alt="Room Image Preview">
+                                <input type="hidden" id="currentImage" value="">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editAmenities" class="form-label">Amenities</label>
+                            <div class="amenities-container">
+                                <div class="amenity-icon-grid" id="editAmenityIcons">
+                                    <!-- Amenities will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="updateRoomBtn">Update Room</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.min.js"></script>
+    <script src="assets/DataTables-2.1.8/datatables.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Load top navigation
+            if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html');
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+
+            // Manage modal focus and accessibility
+            $('.modal').on('show.bs.modal', function () {
+                // Remove aria-hidden from modal and descendants
+                $(this).removeAttr('aria-hidden').find('*').removeAttr('aria-hidden');
+
+                // Add inert to background content
+                $('body > *:not(.modal)').attr('inert', '');
+            });
+            // //remove room amentity when selected is removed
+            // $('#amenityIcons').on('click', '.icon-item', function () {
+            //     $(this).toggleClass('selected');
+            //     console.log('added');
+            // });
+            // //remove room amentity when selected is removed
+            // $('#amenityIcons').on('click', '.icon-item.selected', function () {
+            //     $(this).removeClass('selected');
+            //     console.log('removed');
+            // });
+
+
+            $('.modal').on('hidden.bs.modal', function () {
+                // Restore inert attribute on background content
+                $('body > *:not(.modal)').removeAttr('inert');
+
+                // Set focus back to the modal trigger button
+                const triggerButton = $(this).data('triggered-by');
+                if (triggerButton) {
+                    $(triggerButton).focus();
+                }
+            });
+            // Image preview handling for add and edit room modals
+            $('#image, #editImage').on('change', function (e) {
+                const file = e.target.files[0];
+                const previewId = $(this).attr('id') === 'image' ? 'addImagePreview' : 'editImagePreview';
+
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        $(`#${previewId}`).attr('src', e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            AOS.init();
+            initializeDataTable();
+
+            // Load amenities when document is ready
+            loadAmenities();
+
+            // Handle click event on amenity icon
+            $('.amenities-container').on('click', '.icon-item.selected', function () {
+                if ($(this).hasClass('selected')) {
+                    $(this).removeClass('selected').attr('aria-selected', 'false');
+                    console.log('removed');
+                } else {
+                    $(this).addClass('selected').attr('aria-selected', 'true');
+                    console.log('added');
+                }
+            });
+
+
+
+            // Add room form submission
+            $('#addRoomForm').submit(function (e) {
+                e.preventDefault();
+                addRoom();
+            });
+            // Handle file input change for add room
+            $('#image').on('change', function (e) {
+                handleImageUpload(e, 'addImagePreview');
+            });
+
+            // Handle file input change for edit room
+            $('#editImage').on('change', function (e) {
+                handleImageUpload(e, 'editImagePreview');
+            });
+
+            $('#updateRoomBtn').on('click', function (e) {
+                e.preventDefault();
+                var roomId = $('#editRoomId').val();
+                var n = $('#editRoomName').val();
+                var d = $('#editDescription').val();
+                var c = $('#editCapacity').val();
+                var b = $('#editBuilding').val();
+                var r = $('#editRoomNumber').val();
+                var i = $('#editImage').val();
+                if (i == '') {
+                    i = $('#editImagePreview').attr('src');
+                }
+                var imageBase64 = i;
+
+                //updateRoom(n, d, c, b, r, i, imageBase64, roomId);
+            });
+
+            function handleImageUpload(e, previewId) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        $(`#${previewId}`).attr('src', e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            // Make content outside modal inert when modal is shown
+            $('.modal').on('show.bs.modal', function () {
+                $(this).siblings(':not(.modal)').attr('inert', '');
+                $(this).removeClass('fade');
+            }).on('hide.bs.modal', function () {
+                $(this).siblings().removeAttr('inert');
+            });
+        });
+        // Initialize AOS
+        AOS.init({
+            once: true,
+            mirror: false
+        });
+
+        // Function to refresh AOS when adding new elements dynamically
+        function refreshAOS() {
+            AOS.refresh();
+        }
+        // Function to initialize tooltips
+        function initializeTooltips() {
+            $('[data-bs-toggle="tooltip"]').tooltip('dispose').tooltip({
+                trigger: 'hover',
+                placement: 'top',
+                container: 'body',
+                animation: true,
+                html: false
+            }).on('click', function () {
+                $(this).tooltip('hide');
+            });
+        }
+
+        // Initialize DataTable for rooms
+        function initializeDataTable() {
+            var roomTable = $('#roomsTable').DataTable({
+                "ajax": {
+                    url: 'assets/cfc/room.cfc?method=getRooms',
+                    type: 'GET',
+                    dataSrc: 'rooms'
+                },
+                "drawCallback": function () {
+                    // Reinitialize tooltips after table is drawn
+                    initializeTooltips();
+                },
+                "columns": [
+                    {
+                        data: 'id',
+                        className: 'center-column'
+                    },
+                    { data: 'roomName' },
+                    {
+                        data: null,
+                        render: function (data, type, row) {
+                            return `${row.building}-${row.roomNumber}`;
+                        }
+                    },
+                    { data: 'capacity' },
+                    {
+                        data: 'maintenance',
+                        render: function (data, type, row) {
+                            return `<span class="badge bg-${data === 'YES' ? 'warning' : 'success'}">${data}</span>`;
+                        },
+                        orderable: false,
+                        className: 'center-column'
+                    },
+                    {
+                        data: 'recurring',
+                        render: function (data, type, row) {
+                            const recurringClass = data === 'YES' ? 'info' : 'secondary';
+                            return `<span class="badge bg-${recurringClass}">${data}</span>`;
+                        },
+                        orderable: false,
+                        className: 'center-column'
+                    },
+                    { data: 'active_status' },
+                    {
+                        data: null,
+                        render: function (data, type, row) {
+                            return `
+                            <div class="action-buttons">
+
+                                <button class="btn btn-sm ${row.active_status === 'Inactive' ? 'btn-danger' : 'btn-success'} active-toggle" data-id="${row.id}" data-bs-toggle="tooltip" data-bs-placement="top" title="${row.active_status === 'Inactive' ? 'Activate Room' : 'Deactivate Room'}">
+                                    <i class="fas ${row.active_status === 'Inactive' ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary edit-room" data-id="${row.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm ${row.maintenance === 'YES' ? 'btn-warning' : 'btn-success'} maintenance-toggle" 
+                                    data-room-id="${row.id}" data-aos="fade">
+                                    <i class="fas ${row.maintenance === 'YES' ? 'fa-tools' : 'fa-check'}"></i>
+                                    ${row.maintenance === 'YES' ? 'In Maintenance' : 'Available'}
+                                </button>
+                                <button class="btn btn-sm ${row.recurring === 'YES' ? 'btn-info' : 'btn-secondary'} recurring-toggle" 
+                                    data-room-id="${row.id}" data-aos="fade">
+                                    <i class="fas ${row.recurring === 'YES' ? 'fa-sync' : 'fa-times'}"></i>
+                                    Recurring ${row.recurring === 'YES' ? 'On' : 'Off'}
+                                </button>
+                            </div>
+                            `;
+                        },
+                        className: 'action-buttons',
+                        orderable: false
+                    }
+                ]
+            });
+
+            // Add AOS attributes to newly created rows
+            roomTable.on('draw', function () {
+                $('tbody tr').each(function (index) {
+                    $(this).attr({
+                        'data-aos': 'fade-up',
+                        'data-aos-delay': index * 100,
+                        'data-aos-duration': '800'
+                    });
+                });
+                refreshAOS();
+            });
+            //editRoom click handler
+            $('#roomsTable').on('click', '.edit-room', function () {
+                const roomId = $(this).data('id');
+                editRoom(roomId);
+            });
+
+            //deleteRoom click handler
+            $('#roomsTable').on('click', '.delete-room', function () {
+                const roomId = $(this).data('id');
+                deleteRoom(roomId);
+            });
+            $('#roomsTable').on('click', '.active-toggle', function () {
+                const roomId = $(this).data('id');
+                toggleActiveStatus(roomId);
+            });
+
+            // Handle maintenance toggle
+            $('#roomsTable').on('click', '.maintenance-toggle', function () {
+                const roomId = $(this).data('room-id');
+                const $button = $(this);
+
+                // Show confirmation dialog
+                showConfirmation(
+                    'Toggle Maintenance Mode',
+                    'Are you sure you want to change the maintenance status of this room?',
+                    'Yes, Change It',
+                    function () {
+                        $.ajax({
+                            url: 'assets/cfc/room.cfc?method=toggleMaintenance',
+                            method: 'POST',
+                            data: { roomId: roomId },
+                            dataType: 'json',
+                            success: function (response) {
+                                if (response.success) {
+                                    // Update button appearance
+                                    if (response.newStatus === 'YES') {
+                                        $button
+                                            .removeClass('btn-success')
+                                            .addClass('btn-warning')
+                                            .html('<i class="fas fa-tools"></i> In Maintenance');
+                                    } else {
+                                        $button
+                                            .removeClass('btn-warning')
+                                            .addClass('btn-success')
+                                            .html('<i class="fas fa-check"></i> Available');
+                                    }
+
+                                    // Show success message
+                                    showAlert('Maintenance status updated successfully', 'success');
+
+                                    // Refresh the rooms table
+                                    refreshRoomsTable();
+                                } else {
+                                    showAlert(response.message, 'error');
+                                }
+                            },
+                            error: function () {
+                                showAlert('Error updating maintenance status', 'error');
+                            }
+                        });
+                    }
+                );
+            });
+
+            // Handle recurring toggle
+            $('#roomsTable').on('click', '.recurring-toggle', function () {
+                const roomId = $(this).data('room-id');
+                const $button = $(this);
+
+                // Show confirmation dialog
+                showConfirmation(
+                    'Toggle Recurring Status',
+                    'Are you sure you want to change the recurring status of this room?',
+                    'Yes, Change It',
+                    function () {
+                        $.ajax({
+                            url: 'assets/cfc/room.cfc?method=toggleRecurring',
+                            method: 'POST',
+                            data: { roomId: roomId },
+                            dataType: 'json',
+                            success: function (response) {
+                                if (response.success) {
+                                    // Update button appearance
+                                    if (response.newStatus === 'YES') {
+                                        $button
+                                            .removeClass('btn-secondary')
+                                            .addClass('btn-info')
+                                            .html('<i class="fas fa-sync"></i> Recurring On');
+                                    } else {
+                                        $button
+                                            .removeClass('btn-info')
+                                            .addClass('btn-secondary')
+                                            .html('<i class="fas fa-times"></i> Recurring Off');
+                                    }
+
+                                    // Show success message
+                                    showAlert('Recurring status updated successfully', 'success');
+
+                                    // Refresh the rooms table
+                                    refreshRoomsTable();
+                                } else {
+                                    showAlert(response.message, 'error');
+                                }
+                            },
+                            error: function () {
+                                showAlert('Error updating recurring status', 'error');
+                            }
+                        });
+                    }
+                );
+            });
+        }
+
+        // Refresh rooms table
+        function refreshRoomsTable() {
+            $('#roomsTable').DataTable().ajax.reload();
+        }
+        // Load rooms
+        function loadRooms() {
+            $.ajax({
+                url: 'assets/cfc/room.cfc?method=getRooms',
+                type: 'GET',
+                success: function (response) {
+                    populateRoomTable(response);
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error loading rooms:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error loading rooms. Please try again.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+        }
+
+        // Check admin access
+        function checkAdminAccess() {
+            const userId = sessionStorage.getItem('EMPLID');
+            return userId && userId.trim() !== '';
+        }
+
+        function toggleActiveStatus(roomId) {
+            $.ajax({
+                url: 'assets/cfc/room.cfc?method=toggleActiveStatus',
+                method: 'POST',
+                data: { roomId: roomId },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.success) {
+                        refreshRoomsTable();
+                    } else {
+                        showAlert(response.message, 'error');
+                    }
+                },
+                error: function () {
+                    showAlert('Error toggling active status', 'error');
+                }
+            });
+        }
+        // Edit room
+        function editRoom(roomId) {
+            $.ajax({
+                url: `assets/cfc/room.cfc?method=getRoom&roomId=${roomId}`,
+                type: 'GET',
+                dataType: 'json',
+                beforeSend: function () {
+                    Swal.fire({
+                        html: '<div class="d-flex align-items-center justify-content-center" data-aos="zoom-in" data-aos-anchor-placement="top-bottom"><div class="card p-1"><span class="fs-1">Loading Room Image <div class="spinner-border text-danger" role="status"></div></span></div></div>',
+                        showConfirmButton: false,
+                    });
+                },
+                success: function (response) {
+                    if (response.success) {
+                        Swal.close();
+                        const roomData = response;
+                        $('#editRoomId').val(roomData.id);
+                        $('#editRoomName').val(roomData.roomName);
+                        $('#editBuilding').val(roomData.building);
+                        $('#editRoomNumber').val(roomData.roomNumber);
+                        $('#editCapacity').val(roomData.capacity);
+                        $('#editDescription').val(roomData.description);
+                        $('#editMaintenanceStatus').prop('checked', roomData.maintenance === 'YES' || roomData.maintenance === 'true');
+                        $('#editRecurring').prop('checked', roomData.recurring === 'YES' || roomData.recurring === 'true');
+
+                        if (roomData.image) {
+                            $('#editImagePreview').attr('src', roomData.image);
+                            $('#currentImage').val(roomData.image);
+                        } else {
+                            $('#editImagePreview').attr('src', 'assets/images/officePlaceholder.png');
+                            $('#currentImage').val('');
+                        }
+
+                        // Load room amenities
+                        $.ajax({
+                            url: `assets/cfc/amenity.cfc?method=getRoomAmenities&roomId=${roomId}`,
+                            type: 'GET',
+                            dataType: 'json',
+                            success: function (amenityResponse) {
+                                //console.log(amenityResponse);
+                                $(`#editAmenityIcons .icon-item`).removeClass('selected');
+
+                                for (let i = 0; i < amenityResponse.length; i++) {
+                                    $(`#editAmenityIcons .icon-item[data-amenity-id="${amenityResponse[i].id}"]`).addClass('selected');
+                                }
+                                // Show the modal after amenities are loaded
+                                const editModal = new bootstrap.Modal(document.getElementById('editRoomModal'));
+                                //get selected amenities 
+                                editModal.show();
+                            },
+                            error: function (xhr, status, error) {
+                                console.error('Error loading room amenities:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Error loading room amenities. Please try again.',
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true
+                                });
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.MESSAGE || 'Error loading room details',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error loading room details:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error loading room details. Please try again.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+        }
+        // Initialize arrays to track changes
+        let deselectedAmenities = [];
+        let newlySelectedAmenities = [];
+
+        // Handle click events for amenity icons
+        $('#amenityIcons .icon-item').on('click', function () {
+            const amenityId = $(this).data('amenity-id');
+            if ($(this).hasClass('selected')) {
+                // If already selected, deselect it and add to deselected list
+                $(this).removeClass('selected');
+                deselectedAmenities.push(amenityId);
+                // Remove from newly selected if it was recently added
+                newlySelectedAmenities = newlySelectedAmenities.filter(id => id !== amenityId);
+            } else {
+                // If not selected, select it and add to newly selected list
+                $(this).addClass('selected');
+                newlySelectedAmenities.push(amenityId);
+                // Remove from deselected if it was previously deselected
+                deselectedAmenities = deselectedAmenities.filter(id => id !== amenityId);
+            }
+        });
+
+        // Save room changes
+        function saveRoomChanges() {
+
+            const imageInput = document.getElementById('editImage');
+            let imageBase64 = $('#currentImage').val();
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    imageBase64 = e.target.result;
+                    submitRoomChangesWithImage(imageBase64);
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            } else {
+                submitRoomChangesWithImage(imageBase64);
+            }
+        }
+
+        function submitRoomChangesWithImage(imageBase64) {
+            // Submit room details first
+            submitRoomChanges(() => {
+                const roomId = $('#editRoomId').val();
+
+                // Handle amenity removals
+                deselectedAmenities.forEach(amenityId => {
+                    removeAmenity(roomId, amenityId);
+                });
+
+                // Handle amenity additions
+                newlySelectedAmenities.forEach(amenityId => {
+                    saveAmenities(roomId, amenityId);
+                });
+
+                // Clear tracking arrays
+                deselectedAmenities = [];
+                newlySelectedAmenities = [];
+
+                // Show success feedback
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Room updated successfully',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+
+                // Close modal and refresh data
+                $('#editRoomModal').modal('hide');
+                refreshRoomsTable();
+            }, imageBase64);
+        }
+        function saveAmenities(id, amenityId) {
+            $.ajax({
+                url: 'assets/cfc/amenity.cfc?method=updateRoomAmenities',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    roomId: id,
+                    amenityId: amenityId
+                },
+                success: function (amenityResponse) {
+                    if (amenityResponse.success) {
+                        console.log(amenityResponse);
+                    }
+                }
+            });
+        }
+
+        // Delete room
+        function deleteRoom(roomId) {
+            Swal.fire({
+                title: 'Delete Room',
+                text: 'Are you sure you want to delete this room? This action cannot be undone.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'assets/cfc/room.cfc?method=deleteRoom',
+                        dataType: 'json',
+                        type: 'POST',
+                        data: { roomId: roomId },
+                        success: function (response) {
+                            if (response.success) {
+                                $('#roomsTable').DataTable().ajax.reload();
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success',
+                                    text: response.message,
+                                    toast: false,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: response.message,
+                                    toast: false,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true
+                                });
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error deleting room:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error deleting room. Please try again.',
+                                toast: false,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Handle logout
+        function handleLogout() {
+            window.location.href = 'login.html';
+        }
+
+        // Add room
+        function addRoom() {
+            const imageInput = document.getElementById('image');
+            let imageBase64 = '';
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    imageBase64 = e.target.result;
+                    submitRoom(imageBase64);
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            } else {
+                submitRoom('');
+            }
+        }
+
+        function submitRoomChanges(imageBase64) {
+            // First update room details
+            $.ajax({
+                url: 'assets/cfc/room.cfc?method=updateRoom',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    id: $('#editRoomId').val(),
+                    roomName: $('#editRoomName').val(),
+                    building: $('#editBuilding').val(),
+                    roomNumber: $('#editRoomNumber').val(),
+                    capacity: $('#editCapacity').val(),
+                    description: $('#editDescription').val(),
+                    recurring: $('#editRecurring').prop('checked') ? 'YES' : 'NO',
+                    maintenance: $('#editMaintenanceStatus').prop('checked') ? 'YES' : 'NO',
+                    image: imageBase64
+                },
+                success: function (response) {
+                    //console.log(response);
+                    if (response.success) {
+                        // After room is updated, update amenities
+                        const selectedAmenities = [];
+                        $('#editAmenityIcons .icon-item.selected').each(function () {
+                            selectedAmenities.push($(this).data('amenity-id'));
+                        });
+                        //loop through selectedRoomId and selectedAmenities
+                        for (let i = 0; i < selectedAmenities.length; i++) {
+                            saveAmenities($('#editRoomId').val(), selectedAmenities[i]);
+                        }
+                        //if class "selected" is missiing then delete the room from amenities
+                        // $('.icon-item').each(function () {
+                        //     if (!$(this).hasClass('selected')) {
+                        //         //removeAmenity($('#editRoomId').val(), $(this).data('amenity-id'));
+                        //         console.log('deleteamenity', $('#editRoomId').val(), $(this).data('amenity-id'));
+                        //     }
+                        // });
+
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "success",
+                            title: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+
+                        $('#editRoomModal').modal('hide');
+                        refreshRoomsTable();
+                    } else {
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "error",
+                            title: "Oops...",
+                            text: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error updating room: ' + error,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+        }
+
+
+        // Show alert message using SweetAlert2
+        function showAlert(message, type) {
+            Swal.fire({
+                icon: type === 'success' ? 'success' : 'error',
+                title: type === 'success' ? 'Success' : 'Error',
+                text: message,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        }
+
+        // Show confirmation dialog using SweetAlert2
+        function showConfirmation(title, text, confirmButtonText, callback) {
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: confirmButtonText,
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    callback();
+                }
+            });
+        }
+
+        // Load amenities for room forms
+        function loadAmenities() {
+            $.ajax({
+                url: 'assets/cfc/amenity.cfc?method=getAllAmenities',
+                type: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    if (response.SUCCESS) {
+                        populateAmenityIcons('#amenityIcons', response.DATA);
+                        populateAmenityIcons('#editAmenityIcons', response.DATA);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'Error loading amenities',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    //.error('Error loading amenities:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error loading amenities. Please try again.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+        }
+
+        // Populate amenity icons in the specified container
+        function populateAmenityIcons(containerId, amenities) {
+            const container = $(containerId);
+            console.log(containerId, amenities);
+            container.empty();
+
+            amenities.forEach((amenity, index) => {
+                const iconItem = $('<div>', {
+                    class: 'icon-item',
+                    'data-aos': 'fade-up',
+                    'data-aos-delay': index * 50,
+                    'data-amenity-id': amenity.id,
+                    'data-amenity-name': amenity.name,
+                    title: amenity.name
+                });
+
+                const icon = $('<i>', {
+                    class: `fas ${amenity.icon} fa-2x`
+                });
+
+                const label = $('<span>', {
+                    class: 'icon-name text-dark',
+                    text: amenity.name
+                });
+
+                iconItem.append(icon, label);
+                container.append(iconItem);
+            });
+
+            // Add click handler for amenity selection
+            $(`${containerId} .icon-item`).click(function () {
+                $(this).toggleClass('selected');
+            });
+        }
+
+        // Get selected amenities from a container
+        function getSelectedAmenities(containerId) {
+            const selectedAmenities = [];
+            $(`${containerId} .icon-item.selected`).each(function () {
+                selectedAmenities.push({
+                    id: $(this).data('amenity-id'),
+                    name: $(this).data('amenity-name')
+                });
+            });
+            return selectedAmenities;
+        }
+
+        // Set selected amenities in a container
+        function setSelectedAmenities(containerId, selectedIds) {
+            console.log(containerId, selectedIds);
+            $(`${containerId} .icon-item`).removeClass('selected');
+            selectedIds.forEach(id => {
+                $(`${containerId} .icon-item[data-amenity-id="${id}"]`).addClass('selected');
+            });
+        }
+        function removeAmenity(roomID, amenityID) {
+            $.ajax({
+                url: 'assets/cfc/amenity.cfc?method=removeAmenity',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    roomID: roomID,
+                    amenityID: amenityID
+                },
+                success: function (response) {
+                    if (response.SUCCESS) {
+                        refreshRoomsTable();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error removing amenity:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error removing amenity. Please try again.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+
+        }
+
+
+    </script>
+</body>
+
+</html>

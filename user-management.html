@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <div id="topNav"></div>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-3 text-white" data-aos="fade-right" data-aos-duration="800">User Management</h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal" data-aos="fade-left"
+                data-aos-delay="300">
+                <i class="fas fa-user-plus"></i> Add New User
+            </button>
+        </div>
+
+        <div class="card" data-aos="fade-up">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="usersTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center">User ID</th>
+                                <th class="text-center">Emplid</th>
+                                <th class="text-start">Full Name</th>
+                                <th class="text-start">Email</th>
+                                <th class="text-center">Role</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user-plus"></i> Add New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-dark">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="emplSearch"
+                                placeholder="Search by First , Last Name or EID.">
+                            <label for="emplSearch">Search by First , Last Name or EID</label>
+                        </div>
+
+                        <div id="results" class="mt-1"
+                            style="color:#000; z-index: 2; position: absolute; box-shadow: 5px 5px 5px rgba(0,0,0,0.37);">
+                        </div>
+                        <div class="form-floating">
+                            <select class="form-select" id="permissions" aria-label="Floating label select example">
+                                <option selected>Permissions</option>
+                                <option value="2">Admin</option>
+                                <option value="3">User</option>
+                            </select>
+                            <label for="permissions">Choose One</label>
+                        </div>
+
+                        <div class="form-floating">
+                            <select class="form-select" name="status" required>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                            <label class="form-label">Status</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary addUser-btn">Add User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content p-0">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User - Permissions & Status</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editUserForm">
+                    <input type="hidden" name="userId">
+                    <input type="hidden" name="username">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="text-center">
+                                            <p id="editFullName">Name & Jobtitle</p>
+                                            <h6 id="editEmplid">EmployeeID</h6>
+                                            <h6 id="editDepartment">Department</h6>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3 mt-3">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="editStatus" required>
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                        </select>
+                                        <label class="form-label">Status</label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="form-floating">
+                                        <select class="form-select" id="editPermissions"
+                                            aria-label="Floating label select example">
+                                            <option selected>Permissions</option>
+
+                                            <option value="2">Admin</option>
+                                            <option value="3">User</option>
+                                        </select>
+                                        <label for="editPermissions">Choose One</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger deleteUser-btn float-start">Delete</button>
+                    <button type="submit" class="btn btn-primary editUser-btn">Update User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.min.js"></script>
+    <script src="assets/DataTables-2.1.8/datatables.js"></script>
+    <script>
+        // Global DataTable instance
+        var userTable;
+
+        // Initialize AOS
+        AOS.init({
+            once: true,
+            mirror: false
+        });
+
+        // Function to refresh AOS when adding new elements dynamically
+        function refreshAOS() {
+            AOS.refresh();
+        }
+
+        $(document).ready(function () {
+            if (sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#editPermissions').append('<option value="1">Site Admin</option>');
+            }
+            // Load top navigation
+            if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html');
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+
+            $('#emplSearch').on('keyup', function () {
+                $('.returnMessage').removeClass('alert alert-danger').empty()
+                var x = $(this).val();
+
+                if (x != '') {
+                    employeeSearch(x)
+                } else {
+                    $(this).attr('emplid', '');
+                    $(this).attr('deptid', '');
+                    $(this).attr('divid', '');
+                    $('#results').hide();
+                    $('#addUser').removeClass('btn-warning').addClass('btn-secondary');
+                }
+            });
+            // Initialize DataTable
+            userTable = $('#usersTable').DataTable({
+                ajax: {
+                    url: 'assets/cfc/user.cfc?method=getUsers',
+                    type: 'GET',
+                    dataSrc: 'users'
+                },
+                columns: [
+                    {
+                        data: 'ID',
+                        render: function (data, type, row) {
+                            return `<span class="d-flex justify-content-center">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: 'EMPLID',
+                        render: function (data, type, row) {
+                            return `<span class="d-flex justify-content-center">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: 'FULL_NAME',
+                        render: function (data, type, row) {
+                            return `<span class="d-flex justify-content-start">${data}</span>`;
+                        }
+                    },
+                    { data: 'EMAIL' },
+                    {
+                        data: 'ROLE',
+                        render: function (data) {
+                            return `<span class="badge bg-${getPermissionsBadgeClass(data)} d-flex justify-content-center">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: 'STATUS',
+                        render: function (data) {
+                            return `<span class="badge bg-${getStatusBadgeClass(data)} d-flex justify-content-center">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function (data, type, row) {
+                            return `<span class="d-flex justify-content-center"><button class="btn btn-sm btn-outline-dark editUser" data-user-id="${row.ID}">
+                                    <i class="fas fa-user-edit fa-lg"></i>
+                                </button></span>`;
+                        },
+                        orderable: false
+                    }
+                ]
+            });
+            // Initialize DataTable click events using event delegation
+            $('#usersTable').on('click', '.editUser', function () {
+                const userId = $(this).data('user-id');
+                editUser(userId);
+            });
+            // Handle status toggle
+            $('#usersTable').on('click', '.toggle-status', function () {
+                const userId = $(this).data('user-id');
+                const currentStatus = $(this).closest('tr').find('td:eq(5)').text().trim();
+                const newStatus = $(this).find('i').hasClass('fa-times-square') ? 'Inactive' : 'Active';
+
+                $.ajax({
+                    url: 'assets/cfc/user.cfc',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        method: 'updateUserStatus',
+                        userId: userId,
+                        status: newStatus
+                    },
+                    success: function (response) {
+                        if (response.SUCCESS) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Status Updated',
+                                text: `User status has been updated to ${newStatus}`,
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                            // Refresh table and check for new users if status changed from New
+                            userTable.ajax.reload();
+                            if (currentStatus.toLowerCase() === 'new') {
+                                checkNewUsers();
+                            }
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.MESSAGE || 'Failed to update user status'
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to update user status'
+                        });
+                    }
+                });
+            });
+
+            // Add AOS attributes to newly created rows
+            userTable.on('draw', function () {
+                $('tbody tr').each(function (index) {
+                    $(this).attr({
+                        'data-aos': 'fade-up',
+                        'data-aos-delay': index * 100,
+                        'data-aos-duration': '800'
+                    });
+                });
+                refreshAOS();
+            });
+
+            loadUsers();
+
+            $('.addUser-btn').on('click', function () {
+                // Validate required fields
+                if (!$('#emplSearch').attr('emplid')) {
+                    Swal.fire('Error', 'Please select a valid employee', 'error');
+                    return;
+                }
+                if ($('#permissions').val() === 'Permissions') {
+                    Swal.fire('Error', 'Please select user permissions', 'error');
+                    return;
+                }
+
+                const addUserForm = $('#addUserModal');
+                const formData = {
+                    method: 'addUser',
+                    emplid: $('#emplSearch').attr('emplid'),
+                    permissions: $('#permissions').val(),
+                    status: $('select[name="status"]').val() || 'active',
+                    eid: sessionStorage.getItem('EMPLID')
+                };
+
+                // Show loading state
+                const addButton = $(this);
+                addButton.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Adding...');
+
+                $.ajax({
+                    url: 'assets/cfc/user.cfc',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: formData,
+                    success: function (response) {
+                        if (response.SUCCESS) {
+                            //refreash new user badge
+                            checkNewUsers();
+                            // Hide modal first
+                            const modal = bootstrap.Modal.getInstance($('#addUserModal'));
+                            modal.hide();
+
+                            // Reset form fields
+                            $('#emplSearch').val('').removeAttr('emplid');
+                            $('#permissions').val('Permissions');
+                            $('select[name="status"]').val('active');
+                            $('#results').empty().hide();
+
+                            // Refresh table
+                            userTable.ajax.reload(null, false);
+
+                            // Show success message
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: 'User added successfully',
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                        } else {
+                            Swal.fire('Error', (response && response.MESSAGE) || 'Failed to add user. Please try again.', 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Add user error:', error);
+                        Swal.fire('Error', 'A network error occurred. Please try again.', 'error');
+                    },
+                    complete: function () {
+                        // Reset button state
+                        addButton.prop('disabled', false).html('Add User');
+                    }
+                });
+            });
+
+            $('.editUser-btn').on('click', function () {
+                var permissions = $('#editPermissions').val();
+                var status = $('#editStatus').val();
+                var userId = $('#editUserForm [name="userId"]').val();
+                var username = $('#editUserForm [name="username"]').val();
+                var modifiedbyid = sessionStorage.getItem('EMPLID');
+
+                $.ajax({
+                    url: 'assets/cfc/user.cfc?method=updateUser',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: { userId: userId, role: permissions, status: status, username: username, modifiedbyid: modifiedbyid },
+                    success: function (response) {
+                        if (response.SUCCESS) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: 'User updated successfully',
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                            $('#editUserModal').modal('hide');
+                            userTable.ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Error', response.MESSAGE || 'Failed to update user', 'error');
+                        }
+                    }
+                });
+            });
+
+            $(".deleteUser-btn").on("click", function () {
+                const userId = $('#editUserForm [name="userId"]').val();
+                deleteUser(userId);
+            });
+        });
+
+        function loadUsers() {
+            $.ajax({
+                url: 'assets/cfc/user.cfc?method=getUsers',
+                method: 'GET',
+                success: function (response) {
+                    if (response.SUCCESS) {
+                        userTable.clear().rows.add(response.DATA).draw();
+
+                    }
+                }
+            });
+        }
+
+
+        function editUser(userId) {
+            $.ajax({
+                url: 'assets/cfc/user.cfc?method=getUser',
+                method: 'GET',
+                dataType: 'json',
+                data: { userId: userId },
+                success: function (response) {
+                    if (response.SUCCESS) {
+                        const user = response.DATA;
+                        $('#editUserForm [name="userId"]').val(user.ID);
+                        $('#editUserForm [name="username"]').val(user.EMPLID);
+                        $('#editEmplid').html('EID: ' + user.EMPLID);
+                        $('#editFullName').html(`<h4 class="mb-0">${user.FULL_NAME}</h4><small >${user.JOBTITLE}</small>`);
+                        $('#editPermissions').val(user.ROLE_ID);
+                        $('#editDepartment').html(user.DEPARTMENTNAME);
+                        $('#editEmail').html(`<a href="mailto:${user.EMAIL}">Send Email <i class="fas fa-paper-plane fa-lg"></i></a>`);
+                        $('#editStatus').val(user.STATUS);
+                        $('#editUserModal').modal('show');
+                    }
+                }
+            });
+        }
+
+        function deleteUser(userId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This action cannot be undone!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'assets/cfc/user.cfc?method=deleteUser',
+                        method: 'POST',
+                        dataType: 'json',
+                        data: { userId: userId, uid: sessionStorage.getItem('USER_ID') },
+                        success: function (response) {
+                            if (response.SUCCESS) {
+                                userTable.ajax.reload();
+                                Swal.fire('Deleted!', 'User has been deleted.', 'success');
+                                $('#editUserModal').modal('hide');
+                            } else {
+                                Swal.fire('Error', response.MESSAGE || 'Failed to delete user', 'error');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Delete user error:', error);
+                            Swal.fire('Error', 'A network error occurred. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status.toLowerCase()) {
+                case 'active': return 'success';
+                case 'inactive': return 'warning';
+                case 'new': return 'primary';
+                default: return 'secondary';
+            }
+        }
+        function getPermissionsBadgeClass(permissions) {
+            switch (permissions.toLowerCase()) {
+                case 'site admin': return 'danger';
+                case 'admin': return 'warning';
+                case 'user': return 'success';
+                default: return 'secondary';
+            }
+        }
+        function employeeSearch(x) {
+            $.ajax({
+                type: "GET",
+                dataType: "json",
+                url: "assets/cfc/user.cfc",
+                data: {
+                    method: "search4Employees",
+                    query: x
+                },
+                success: function (data) {
+                    var x = data.EMPLOYEESFOUND
+                    //console.log(x)
+                    var str = '<div class="list-group">';
+                    for (var i = 0; i < x.length; i++) {
+                        str +=
+                            '<a href="#"  class="list-group-item list-group-item-action" id="searchResults_' +
+                            x[i].emplID + '" username ="' + x[i].username + '" orgcode="' + x[i].orgcode +
+                            '" divid="' + x[i].divid + '" email="' + x[i].email + '" fullName="' + x[i].fullName + '" emplid="' + x[i]
+                                .emplID + '" display = "' + x[i].displayName + '">(' + x[i].emplID +
+                            ') <span style="color:royalblue; font-weight:bold">' + x[i].displayName +
+                            '</span> <span style="color:orange">' + x[i].departmentname + '</span></a>';
+                    }
+                    str += '</div>';
+                    $('#results').html(str).show()
+
+                    $("a[id^='searchResults_'").on('click', function () {
+                        var disName = $(this).attr('display')
+                        var email = $(this).attr('email')
+                        var orgcode = $(this).attr('orgcode')
+                        var divid = $(this).attr('divid')
+                        var userid = $(this).attr('username')
+                        var emplid = $(this).attr('emplid')
+                        var fullName = $(this).attr('fullName')
+                        var lastName = $(this).attr('fullName').split(',')[0]
+                        var firstName = $(this).attr('fullName').split(',')[1]
+
+                        $('#emplSearch').val(emplid + ' ' + disName).attr({
+                            'EMPLID': emplid,
+                            'DEPTID': orgcode,
+                            'DIVID': divid
+                        }).focus();
+
+                        $('#addUser').removeClass('btn-secondary').addClass('btn-warning')
+
+                        $('#EMAIL_ADDRESS').val(email).parents('.form-group').addClass(
+                            'has-success has-feedback').find('span.email').removeAttr('style');
+                        $('#USERID').val(userid).parents('.form-group').addClass(
+                            'has-success has-feedback').find('span.email').removeAttr('style');
+                        $('#ORGCODE').val(orgcode).parents('.form-group').addClass(
+                            'has-success has-feedback').find('span.email').removeAttr('style');
+                        $('#EMPLID').val(emplid).parents('.form-group').addClass(
+                            'has-success has-feedback').find('span.email').removeAttr('style');
+                        $('#FULL_NAME').val(fullName).parents('.form-group').addClass(
+                            'has-success has-feedback').find('span.email').removeAttr('style');
+                        $('#LAST_NAME').val(lastName);
+                        $('#FIRST_NAME').val(firstName);
+                        $('#results').hide();
+
+                    });
+                },
+                error: function (jqXHR, exception) {
+                    var s = jqXHR.status;
+                    var t = jqXHR.responseText;
+                    var e = exception
+                    dbErrors(s, t, e);
+                }
+            })
+
+        }
+    </script>
+</body>
+
+</html>

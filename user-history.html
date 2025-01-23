@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking History</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="mb-4" data-aos="fade-right">Booking History</h2>
+
+                <!-- Filters -->
+                <div class="card mb-4" data-aos="fade-up">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <input type="text" id="searchInput" class="form-control"
+                                    placeholder="Search bookings...">
+                            </div>
+                            <div class="col-md-3">
+                                <select id="statusFilter" class="form-select">
+                                    <option value="">All Statuses</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="date" id="dateFilter" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <button id="resetFilters" class="btn btn-secondary w-100">Reset Filters</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking List -->
+                <div class="table-responsive" data-aos="fade-up">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="sortable" data-sort="bookingId">Booking ID <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort="date">Date <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort="timeSlot">Time Slot <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort="service">Room <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort="location">Location <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort="status">Status <i class="fas fa-sort"></i></th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsList">
+                            <!-- Dynamically populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="Booking history pagination">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        <!-- Dynamically populated by JavaScript -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Details Modal -->
+    <div class="modal fade" id="bookingDetailsModal" tabindex="-1" aria-labelledby="bookingDetailsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bookingDetailsModalLabel">Booking Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="bookingDetailsContent">
+                    <!-- Dynamically populated by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            // Initialize AOS
+            AOS.init();
+            console.log(sessionStorage);
+            // Initialize variables
+            let currentSort = { field: 'date', direction: 'desc' };
+            let currentPage = 1;
+            const itemsPerPage = 10;
+            let bookingsData = [];
+
+            // Fetch bookings data
+            function fetchBookings() {
+                $.ajax({
+                    url: 'assets/cfc/functions.cfc?method=getBookingHistory',
+                    method: 'GET',
+                    dataType: 'json',
+                    data: {
+                        userId: sessionStorage.getItem('USER_ID')
+                    },
+                    success: function (response) {
+                        bookingsData = response;
+                        applyFiltersAndSort();
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to load booking history'
+                        });
+                    }
+                });
+            }
+
+            // Apply filters and sort
+            function applyFiltersAndSort() {
+                let filteredData = bookingsData.filter(booking => {
+                    const searchTerm = $('#searchInput').val().toLowerCase();
+                    const statusFilter = $('#statusFilter').val();
+                    const dateFilter = $('#dateFilter').val();
+
+                    return (!searchTerm ||
+                        booking.bookingId.toLowerCase().includes(searchTerm) ||
+                        booking.service.toLowerCase().includes(searchTerm)) &&
+                        (!statusFilter || booking.status === statusFilter) &&
+                        (!dateFilter || booking.date.includes(dateFilter));
+                });
+
+                // Sort data
+                filteredData.sort((a, b) => {
+                    const aValue = a[currentSort.field];
+                    const bValue = b[currentSort.field];
+                    return currentSort.direction === 'asc' ?
+                        aValue.localeCompare(bValue) :
+                        bValue.localeCompare(aValue);
+                });
+
+                renderBookings(filteredData);
+                renderPagination(filteredData.length);
+            }
+
+            // Render bookings
+            function renderBookings(data) {
+                const start = (currentPage - 1) * itemsPerPage;
+                const end = start + itemsPerPage;
+                const pageData = data.slice(start, end);
+
+                const tbody = $('#bookingsList');
+                tbody.empty();
+
+                pageData.forEach(booking => {
+                    const row = $('<tr>').append(
+                        $('<td>').text(booking.bookingId),
+                        $('<td>').text(new Date(booking.date).toLocaleDateString()),
+                        $('<td>').text(booking.timeSlot),
+                        $('<td>').text(booking.service),
+                        $('<td>').text(booking.location),
+                        $('<td>').append($('<span>')
+                            .addClass(`badge bg-${getStatusColor(booking.status)}`)
+                            .text(booking.status)),
+                        $('<td>').append(
+                            $('<button>')
+                                .addClass('btn btn-sm btn-primary me-2')
+                                .text('Details')
+                                .on('click', () => showBookingDetails(booking))
+                        )
+                    );
+                    tbody.append(row);
+                });
+            }
+
+            // Render pagination
+            function renderPagination(totalItems) {
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                const pagination = $('#pagination');
+                pagination.empty();
+
+                if (totalPages <= 1) return;
+
+                // Previous button
+                pagination.append(
+                    $('<li>')
+                        .addClass(`page-item ${currentPage === 1 ? 'disabled' : ''}`)
+                        .append(
+                            $('<a>')
+                                .addClass('page-link')
+                                .html('&laquo;')
+                                .on('click', () => {
+                                    if (currentPage > 1) {
+                                        currentPage--;
+                                        applyFiltersAndSort();
+                                    }
+                                })
+                        )
+                );
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    pagination.append(
+                        $('<li>')
+                            .addClass(`page-item ${currentPage === i ? 'active' : ''}`)
+                            .append(
+                                $('<a>')
+                                    .addClass('page-link')
+                                    .text(i)
+                                    .on('click', () => {
+                                        currentPage = i;
+                                        applyFiltersAndSort();
+                                    })
+                            )
+                    );
+                }
+
+                // Next button
+                pagination.append(
+                    $('<li>')
+                        .addClass(`page-item ${currentPage === totalPages ? 'disabled' : ''}`)
+                        .append(
+                            $('<a>')
+                                .addClass('page-link')
+                                .html('&raquo;')
+                                .on('click', () => {
+                                    if (currentPage < totalPages) {
+                                        currentPage++;
+                                        applyFiltersAndSort();
+                                    }
+                                })
+                        )
+                );
+            }
+
+            // Show booking details
+            function showBookingDetails(booking) {
+                const content = $('#bookingDetailsContent');
+                content.empty().append(`
+                    <div class="mb-3">
+                        <strong>Booking ID:</strong> ${booking.bookingId}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Time Slot:</strong> ${booking.timeSlot}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Room:</strong> ${booking.service}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Location:</strong> ${booking.location}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Status:</strong> 
+                        <span class="badge bg-${getStatusColor(booking.status)}">${booking.status}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Notes:</strong> ${booking.notes || 'No notes available'}
+                    </div>
+                `);
+
+                new bootstrap.Modal('#bookingDetailsModal').show();
+            }
+
+            // Helper function for status colors
+            function getStatusColor(status) {
+                const colors = {
+                    'confirmed': 'success',
+                    'pending': 'warning',
+                    'cancelled': 'danger'
+                };
+                return colors[status.toLowerCase()] || 'secondary';
+            }
+
+            // Event listeners
+            $('.sortable').on('click', function () {
+                const field = $(this).data('sort');
+                if (currentSort.field === field) {
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.field = field;
+                    currentSort.direction = 'asc';
+                }
+                applyFiltersAndSort();
+            });
+
+            $('#searchInput, #statusFilter, #dateFilter').on('input change', function () {
+                currentPage = 1;
+                applyFiltersAndSort();
+            });
+
+            $('#resetFilters').on('click', function () {
+                $('#searchInput').val('');
+                $('#statusFilter').val('');
+                $('#dateFilter').val('');
+                currentPage = 1;
+                applyFiltersAndSort();
+            });
+
+            // Initial load
+            fetchBookings();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,65 @@
+/* Site Tutorial Styles */
+.shepherd-button {
+    background: #3288e6;
+    border: 0;
+    border-radius: 3px;
+    color: #ffffff;
+    cursor: pointer;
+    margin-right: 0.5rem;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.shepherd-button:not(:disabled):hover {
+    background: #196fcc;
+}
+
+.shepherd-button.shepherd-button-secondary {
+    background: #f1f2f3;
+    color: #888;
+}
+
+.shepherd-button.shepherd-button-secondary:not(:disabled):hover {
+    background: #d7d9db;
+    color: #555;
+}
+
+.shepherd-text {
+    color: rgba(0, 0, 0, 0.75);
+    font-size: 1rem;
+    line-height: 1.5em;
+    padding: 1rem;
+}
+
+.shepherd-header {
+    background: #f6f7f9;
+    padding: 1rem;
+}
+
+.shepherd-title {
+    color: rgba(0, 0, 0, 0.75);
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.shepherd-cancel-icon {
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 1.6rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.shepherd-cancel-icon:hover {
+    color: rgba(0, 0, 0, 0.75);
+}
+
+.shepherd-element {
+    border-radius: 5px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+}
+
+.shepherd-arrow:before {
+    background: #ffffff;
+}

@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DoCM Office Space Reservation Calendar</title>
+
+    <!-- CSS Dependencies -->
+
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <!-- AOS CSS -->
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/site_tutorial.css">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="node_modules/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="node_modules/flatpickr/dist/themes/material_blue.css">
+    <link rel="stylesheet" href="node_modules/flatpickr/dist/plugins/confirmDate/confirmDate.css">
+    <script src="node_modules/flatpickr/dist/flatpickr.min.js"></script>
+    <script src="node_modules/flatpickr/dist/plugins/confirmDate/confirmDate.js"></script>
+
+    <style>
+        /* .navbar {
+            padding: 1rem;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand img {
+            height: 40px;
+        } */
+        .flatpickr-confirm {
+            background: #4676e5;
+            color: white;
+        }
+
+        .dashboard-card {
+            background-color: azure;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .dashboard-bg {
+            background: rgb(14, 29, 68);
+            opacity: 0.5;
+            z-index: -1;
+        }
+
+        .card-icon {
+            font-size: 24px;
+            margin-right: 1rem;
+        }
+
+        .card-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .upcoming-bookings {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        #upcomingBookings {
+            min-height: 600px;
+            margin: 1em 0;
+            padding: 0;
+            width: 100%;
+            position: relative;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        .fc {
+            /* the calendar root */
+            max-width: 100%;
+            height: 100%;
+        }
+
+        .btn-new-booking {
+            background: #4F46E5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+        .btn-new-booking:hover {
+            background: #4338CA;
+            color: white;
+            border-color: white;
+        }
+
+        .btn-user-topNav {
+            border: 1px solid #4F46E5;
+            color: #4F46E5;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+        .btn-user-topNav:hover {
+            background: #4338CA;
+            color: white;
+            border-color: white;
+
+        }
+
+        .btn-admin-topNav {
+            border: 1px solid #ffffff;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+
+        .btn-admin-topNav:hover {
+            background: #bbbabe;
+            color: rgb(0, 0, 0);
+            border-color: #2d2b3b;
+        }
+
+        .welcome-container {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .welcome-title {
+            color: #4338CA;
+            font-size: 1.50rem;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .welcome-title i {
+            font-size: 1.5rem;
+            opacity: 0.9;
+        }
+
+        .notification-icon {
+            position: relative;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #EF4444;
+            color: white;
+            border-radius: 50%;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .calendar-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            min-height: 600px;
+        }
+
+        .fc {
+            /* the calendar root */
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Calendar event styling */
+        .fc-event {
+            cursor: pointer !important;
+            border-radius: 4px !important;
+            padding: 4px 6px !important;
+            margin: 1px 0 !important;
+            border: none !important;
+            transition: all 0.3s ease !important;
+            color: white !important;
+            min-height: 45px !important;
+        }
+
+        /* Status indicators - only opacity and border */
+        .booking-status-pending {
+            opacity: 0.7;
+            border-left: 4px solid #FFC107 !important;
+        }
+
+        .booking-status-approved {
+            opacity: 1;
+            border-left: 4px solid #4CAF50 !important;
+        }
+
+        .booking-status-rejected {
+            opacity: 0.5;
+            text-decoration: line-through;
+            border-left: 4px solid #F44336 !important;
+        }
+
+        .fc-event:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .fc-event-title {
+            font-weight: 500 !important;
+            font-size: 0.85em !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            padding: 2px 0 !important;
+            color: white !important;
+            line-height: 1.2 !important;
+        }
+
+        .fc-event-time {
+            font-size: 0.75em !important;
+            opacity: 0.9 !important;
+            font-weight: normal !important;
+            color: white !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+        }
+
+        /* Status indicator dot */
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .status-dot-pending {
+            background-color: #FFC107;
+        }
+
+        .status-dot-approved {
+            background-color: #4CAF50;
+        }
+
+        .status-dot-rejected {
+            background-color: #F44336;
+        }
+
+        /* Different colors for 16 different rooms and 3 different conference rooms */
+        .fc-event[data-room="Focus Room 1"] {
+            background: linear-gradient(45deg, #2ecc71, #27ae60) !important;
+        }
+
+        .fc-event[data-room="Focus Room 2"] {
+            background: linear-gradient(45deg, #3498db, #2980b9) !important;
+        }
+
+        .fc-event[data-room="Focus Room 3"] {
+            background: linear-gradient(45deg, #e67e22, #d35400) !important;
+        }
+
+        .fc-event[data-room="Focus Room 4"] {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad) !important;
+        }
+
+        .fc-event[data-room="Focus Room 5"] {
+            background: linear-gradient(45deg, #e74c3c, #c0392b) !important;
+        }
+
+        .fc-event[data-room="Focus Room 6"] {
+            background: linear-gradient(45deg, #f1c40f, #f39c12) !important;
+        }
+
+        .fc-event[data-room="Focus Room 7"] {
+            background: linear-gradient(45deg, #34495e, #2c3e50) !important;
+        }
+
+        .fc-event[data-room="Focus Room 8"] {
+            background: linear-gradient(45deg, #1abc9c, #16a085) !important;
+        }
+
+        .fc-event[data-room="Focus Room 9"] {
+            background: linear-gradient(45deg, #f39c12, #e67e22) !important;
+        }
+
+        .fc-event[data-room="Focus Room 10"] {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad) !important;
+        }
+
+        .fc-event[data-room="Focus Room 11"] {
+            background: linear-gradient(45deg, #e74c3c, #c0392b) !important;
+        }
+
+        .fc-event[data-room="Focus Room 12"] {
+            background: linear-gradient(45deg, #f1c40f, #f39c12) !important;
+        }
+
+        .fc-event[data-room="Focus Room 13"] {
+            background: linear-gradient(45deg, #34495e, #2c3e50) !important;
+        }
+
+        .fc-event[data-room="Focus Room 14"] {
+            background: linear-gradient(45deg, #1abc9c, #16a085) !important;
+        }
+
+        .fc-event[data-room="Focus Room 15"] {
+            background: linear-gradient(45deg, #f39c12, #e67e22) !important;
+        }
+
+        .fc-event[data-room="Focus Room 16"] {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad) !important;
+        }
+
+        .fc-event[data-room="Meeting Room"] {
+            background: linear-gradient(45deg, #2ecc71, #27ae60) !important;
+        }
+
+        .fc-event[data-room="Library"] {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad) !important;
+        }
+
+        .fc-event[data-room="Conference Room"] {
+            background: linear-gradient(45deg, #e74c3c, #c0392b) !important;
+        }
+
+
+        .fc-toolbar-title {
+            font-size: 1.2em !important;
+            font-weight: 600;
+        }
+
+        .fc-button-primary {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            text-transform: capitalize !important;
+            font-weight: 500 !important;
+        }
+
+        .fc-button-primary:hover {
+            background-color: #0b5ed7 !important;
+            border-color: #0a58ca !important;
+        }
+
+        /* Calendar header styling */
+        .fc-col-header-cell {
+            background-color: #f8f9fa !important;
+            padding: 8px 0 !important;
+        }
+
+        .fc-timegrid {
+            text-align: center !important;
+            color: #495057 !important;
+        }
+
+        .fc-col-header-cell-cushion {
+            color: #495057 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+        }
+
+        /* Today highlight */
+        .fc-day-today {
+            background-color: rgba(13, 110, 253, 0.05) !important;
+        }
+
+        .user-profile-section {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .user-profile-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .user-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #4F46E5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-right: 1rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .user-details h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: #1F2937;
+        }
+
+        .user-details p {
+            margin: 0;
+            color: #6B7280;
+            font-size: 0.875rem;
+        }
+
+        .user-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #E5E7EB;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #4F46E5;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6B7280;
+        }
+
+        /*create a frosted glass effect*/
+        .frosted-glass {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            /* margin-bottom: 2rem; */
+            position: relative;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        #roomImageContainer {
+            margin: 1rem 0;
+            text-align: center;
+            transition: opacity 0.3s ease;
+        }
+
+        #selectedRoomImage {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        #selectedRoomImage.loaded {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+
+<body class="bg-light">
+    <!-- Navigation -->
+    <div id="topNav"></div>
+
+    <!--- Offcanvas --->
+    <div class="offcanvas offcanvas-end" data-bs-backdrop="static" tabindex="-1" id="offcanvasExample"
+        aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+            <h4 class="offcanvas-title d-flex align-items-center justify-content-center" id="offcanvasExampleLabel">
+                USER GUIDE
+            </h4>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+
+
+        <div class="offcanvas-body">
+            <div class="mb-3 mt-0">
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download User
+                    Guide</button>
+            </div>
+            <div class="mb-3">
+                <h4>TABLE OF CONTENTS</h4>
+                <ul>
+                    <li><a href="#welcome">Welcome Message</a></li>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#bookings">Bookings</a></li>
+                    <li><a href="#booking-history">Booking History</a></li>
+                    <li><a href="#dashboard">Dashboard</a></li>
+                    <li><a href="#calendar">Calendar</a></li>
+                    <cfif isAdmin>
+                        <li><a href="#user-management">User Management</a></li>
+                        <li><a href="#room-management">Room Management</a></li>
+                        <li><a href="#amenity-management">Amenity Management</a></li>
+                        <li><a href="#icon-management">Icon Management</a></li>
+                    </cfif>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <h4 id="welcome">Welcome Message</h4>
+                <p>Welcome to the admin panel.</p>
+            </div>
+            <div class="mb-3">
+                <h4 id="overview">Overview</h4>
+                <p>Get an overview of the system and its features.</p>
+            </div>
+
+            <div class="mb-3">
+                <h4 id="bookings">Bookings</h4>
+                <p>Use the "Book Now" button to reserve a room.</p>
+            </div>
+
+            <div class="mb-3">
+                <h4 id="booking-history">Booking History</h4>
+                <p>View your past and future bookings.</p>
+            </div>
+
+            <div class="mb-3">
+                <h4 id="dashboard">Dashboard</h4>
+                <p>Get an overview of your reservations and available rooms.</p>
+            </div>
+
+            <div class="mb-3">
+                <h4 id="calendar">Calendar</h4>
+                <p>View and manage your bookings on a calendar.</p>
+            </div>
+
+            <cfif isAdmin>
+                <div class="mb-3">
+                    <h4 id="user-management">User Management</h4>
+                    <p>Manage user accounts and permissions.</p>
+                </div>
+
+                <div class="mb-3">
+                    <h4 id="room-management">Room Management</h4>
+                    <p>Manage room details and availability.</p>
+                </div>
+
+                <div class="mb-3">
+                    <h4 id="amenity-management">Amenity Management</h4>
+                    <p>Manage amenity details and availability.</p>
+                </div>
+
+                <div class="mb-3">
+                    <h4 id="icon-management">Icon Management</h4>
+                    <p>Manage icon details and availability.</p>
+                </div>
+            </cfif>
+
+        </div>
+    </div>
+
+
+    <!-- Main Content -->
+    <div class="container">
+
+
+        <!-- Dashboard Cards
+        <div class="row">
+            <div class="col-md-4">
+                <div class="dashboard-card" data-aos="fade-right" data-aos-delay="100">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="row w-100">
+                            <div class="col-6">
+                                <div class="row col-12">
+                                    <h6 class="mb-1">My History</h6>
+                                </div>
+                                <div class="row col-12">
+                                    <div class="card-number text-primary float-end" id="myHistory">00</div>
+                                </div>
+                            </div>
+                            <div class="col-6 d-flex align-items-center justify-content-end">
+                                <i class="fal fa-calendar-alt fa-3x text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="dashboard-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="row w-100">
+                            <div class="col-6">
+                                <div class="row col-12">
+                                    <h6 class="mb-1">Available Rooms</h6>
+                                </div>
+                                <div class="row col-12">
+                                    <div class="card-number text-success float-end" id="availableRooms">00</div>
+                                </div>
+
+                            </div>
+                            <div class="col-6  d-flex align-items-center justify-content-end">
+                                <i class="fal fa-door-open fa-3x text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="dashboard-card" data-aos="fade-left" data-aos-delay="300">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="row w-100">
+                            <div class="col-6">
+                                <div class="row col-12">
+                                    <h6 class="mb-1">My Pending</h6>
+                                </div>
+                                <div class="row col-12">
+                                    <div class="card-number text-warning float-end" id="myBookings">00</div>
+                                </div>
+                            </div>
+                            <div class="col-6  d-flex align-items-center justify-content-end">
+                                <i class="fal fa-calendar-check fa-3x text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>--->
+
+        <!-- Calendar Section -->
+        <div class="upcoming-bookings frosted-glass">
+            <div class="row">
+
+                <div class="col-md-12">
+
+                    <div class="d-flex justify-content-between align-items-center row">
+                        <div class="row w-100">
+                            <div class="col-4">
+                                <div class=" gap-3">
+                                    <h2 class="text-uppercase fw-bold text-white mb-0">Reserved Rooms</h2>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <select id="roomFilter" class="form-select" style="width: auto; min-width: 150px;">
+                                    <option value="">All Rooms</option>
+                                </select>
+                            </div>
+                            <div class="col-2">
+                                <!---add tooltip -->
+                                <button class="btn btn-primary" id="officeMap" data-bs-toggle="tooltip"
+                                    data-bs-placement="bottom" data-bs-title="Open FC11 Floor Map"><i
+                                        class="fas fa-map"></i></button>
+                            </div>
+                            <div class="col-3">
+                                <button class="btn-new-booking float-end">
+                                    <i class="fas fa-plus me-2"></i>New Booking
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div id="upcomingBookings" class="calendar-containe p-3 rounded"></div>
+                </div>
+
+            </div>
+        </div>
+        <!-- Office Map Modal -->
+        <div class="modal fade" id="officeMapModal" tabindex="-1" aria-labelledby="officeMapModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-uppercase" id="officeMapModalLabel">FC11 Office Map</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <img id="officeMapImage" src="assets/images/maps/FC11-Map.png" class="img-fluid"
+                            alt="Office Map">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Room Booking Modal -->
+        <div class="modal fade" id="bookingModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-sm">
+                    <div class="modal-header bg-primary text-dark">
+                        <h5 class="modal-title text-dark">
+                            <i class="fas fa-calendar-check me-2"></i>Reserve a Focus Room
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                    </div>
+                    <form id="bookingForm" class="needs-validation" novalidate>
+                        <div class="modal-body p-2 bg-light bg-gradient">
+
+                            <!-- Room Selection Section -->
+
+
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="card shadow-sm">
+                                        <label for="roomSelect" class="form-label"><i class="fas fa-door-open"></i>
+                                            Select
+                                            Room</label>
+                                        <select class="form-select" id="roomSelect" name="roomSelect" required>
+                                            <option value="">Choose a room...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="card shadow-sm" style="min-height: 136px;">
+                                        <div class="card-body">
+                                            <label class="form-label mb-0" style=" vertical-align: top;"><i
+                                                    class="fas fa-map-signs"></i>
+                                                Location</label>
+                                            <div id="locationContainer" class="fw-bold text-center"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="card shadow-sm" style="min-height: 136px;">
+                                        <div class="card-body">
+                                            <label class="form-label mb-0"><i class="fas fa-users"></i>
+                                                Capacity</label>
+                                            <div id="capacityContainer" class="fw-bold text-center"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-2">
+                                    <div class="card shadow-sm" style="min-height: 136px;">
+                                        <div class="card-body d-flex justify-content-center align-items-center">
+                                            <span id="roomMapContainer" class="btn btn-primary btn-sm"><i
+                                                    class="fas fa-map"></i></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <!-- Room Details Section -->
+                            <div class="row">
+                                <div class="col-md-6">
+
+                                    <!-- <div class="card h-25 border-0 shadow-sm p-0">
+                                        <div class="card-body">
+                                            <i class="fas fa-info-circle me-1"></i>Description
+                                            <div class="description-box bg-light rounded mb-2">
+                                                <span id="descriptionContainer" class="text-dark small h-100"></span>
+                                            </div>
+                                        </div>
+                                    </div> -->
+                                    <div class="card border-0 shadow-sm p-0">
+                                        <div class="card-body">
+
+                                            <div class="row g-2">
+                                                <h6 class="card-title">
+                                                    <i class="fas fa-clock me-1"></i>Booking Time
+                                                </h6>
+                                                <div class="col-md-12">
+                                                    <label for="startTime" class="form-label mb-1">Starting
+                                                        On:</label>
+                                                    <input type="text"
+                                                        class="form-control flatpickr-datetime booking-time"
+                                                        id="startTime" data-time-type="start"
+                                                        placeholder="Select date & time (AM/PM)" required>
+                                                </div>
+                                            </div>
+
+                                            <div class="row g-2">
+                                                <div class="col-md-12">
+                                                    <label for="endTime" class="form-label mb-1">Ending On</label>
+                                                    <input type="text"
+                                                        class="form-control flatpickr-datetime booking-time"
+                                                        id="endTime" data-time-type="end"
+                                                        placeholder="Select date & time (AM/PM)" required>
+                                                </div>
+                                            </div>
+
+                                            <div class="row g-2">
+                                                <div class="col-md-12">
+                                                    <div id="recurringDetailsContainer">
+                                                        <label for="recurringDetails" class="form-label mb-1">Recurring
+                                                            Schedule</label>
+                                                        <select class="form-select" id="recurringDetails">
+                                                            <option value="">No recurring</option>
+                                                            <option value="daily">Daily</option>
+                                                            <option value="weekly">Weekly</option>
+                                                            <option value="monthly">Monthly</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    <div class="card h-25 border-0 shadow-sm p-0">
+                                        <div class="card-body">
+                                            <div class="amenities-section">
+                                                <h6 class="card-title"><i class="fas fa-building"></i> Room
+                                                    Amenities</h6>
+                                                <div class="amentiesContainer d-flex flex-wrap gap-1"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 align-items-center justify-content-center">
+                                    <div id="roomImageContainer">
+                                        <img id="selectedRoomImage" class="img-fluid rounded-2 "
+                                            style="max-height: 500px;" src="assets/images/officePlaceholder.png"
+                                            alt="Room Image"><span id="descriptionContainer"
+                                            class="text-dark small h-100"></span>
+                                        <input type="hidden" id="currentImage" value="">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
+                            <button type="button" class="btn btn-primary" id="saveBooking">
+                                <i class="fas fa-check me-1"></i>Book Room
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.min.js"></script>
+    <!-- FullCalendar JS -->
+    <script src='assets/fullcalendar-6.1.15/dist/index.global.js'></script>
+    <script src='assets/js/session-timeout.js'></script>
+    <!-- AOS JS -->
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="assets/js/booking_datetime.js"></script>
+    <script>
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+        AOS.init();
+        $(document).ready(function () {
+            $('#officeMap').on('click', function () {
+                $('#officeMapModal').modal('show');
+            });
+
+            //cleanupCalendar();
+            // Load top navigation
+            if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html');
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+            $('#myBookingsLink').on('click', function (e) {
+                e.preventDefault();
+                showMyBookings();
+            });
+
+
+            checkUserRole();
+            $('#roomListContainer').load('roomList.html');
+
+            const timeValidation = {
+                roundToInterval: date => {
+                    const minutes = Math.ceil(date.getMinutes() / 15) * 15;
+                    return new Date(date.setMinutes(minutes, 0, 0));
+                },
+
+                showError: (title, text) => {
+                    return Swal.fire({
+                        icon: 'error',
+                        title,
+                        text,
+                        confirmButtonClass: 'btn btn-primary'
+                    });
+                },
+
+                validateTimeRange: ($input) => {
+                    const $startTime = $('#startTime');
+                    const $endTime = $('#endTime');
+                    const currentTime = new Date();
+                    const selectedTime = new Date($input.val());
+                    const startTime = new Date($startTime.val());
+                    const endTime = new Date($endTime.val());
+                    const isStartTime = $input.data('timeType') === 'start';
+                    const isEndTime = $input.data('timeType') === 'end';
+
+                    if (selectedTime < currentTime) {
+                        timeValidation.showError('Invalid Time', 'Selected time cannot be in the past');
+                        $input.val('');
+                        return false;
+                    }
+
+                    if (isEndTime && startTime && endTime <= startTime) {
+                        timeValidation.showError('Invalid Time Range', 'End time must be after start time');
+                        $input.val('');
+                        return false;
+                    }
+
+                    return true;
+                }
+            };
+
+            $('.booking-time').on('change', function () {
+                timeValidation.validateTimeRange($(this));
+            });
+
+            // Function to round time to nearest 15 minutes
+            function roundToNearest15(date) {
+                const minutes = date.getMinutes();
+                const roundedMinutes = Math.ceil(minutes / 15) * 15;
+                date.setMinutes(roundedMinutes);
+                date.setSeconds(0);
+                date.setMilliseconds(0);
+                return date;
+            }
+
+            // Set default values and validate time selections
+            const now = roundToNearest15(new Date());
+
+            $('#startTime, #endTime').on('change', function () {
+                const startTime = new Date($('#startTime').val());
+                const endTime = new Date($('#endTime').val());
+                const currentTime = new Date();
+
+                // Validate start time is not in past
+                if (startTime < currentTime) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Time',
+                        text: 'Start time cannot be in the past'
+                    });
+                    $(this).val('');
+                    return;
+                }
+
+                // Validate end time is after start time
+                if (this.id === 'endTime' && startTime && endTime <= startTime) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Time Range',
+                        text: 'End time must be after start time'
+                    });
+                    $(this).val('');
+                }
+            });
+
+            flatpickr("#startTime", {
+                enableTime: true,
+                dateFormat: "m/d/Y h:i K",
+                time_24hr: false,
+                minuteIncrement: 15,
+                minDate: "today",
+                defaultDate: now,
+                altFormat: "m/d/Y h:i K", // Show a readable format with AM/PM
+                altInput: true,
+                plugins: [new confirmDatePlugin({})],
+                onChange: function (selectedDates, dateStr, instance) {
+                    const selectedTime = new Date(dateStr);
+                    const currentTime = new Date();
+                    if (selectedTime < currentTime) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Time',
+                            text: 'Selected time cannot be in the past'
+                        });
+                        instance.clear();
+                    }
+                }
+            });
+
+            flatpickr("#endTime", {
+                enableTime: true,
+                dateFormat: "m/d/Y h:i K",
+                time_24hr: false,
+                minuteIncrement: 15,
+                minDate: "today",
+                defaultDate: (() => {
+                    const date = new Date();
+                    date.setHours(date.getHours() + 8);
+                    return roundToNearest15(date);
+                })(),
+                altFormat: "m/d/Y h:i K", // Show a readable format with AM/PM
+                altInput: true,
+                plugins: [new confirmDatePlugin({})],
+                onChange: function (selectedDates, dateStr, instance) {
+                    const selectedTime = new Date(dateStr);
+                    const currentTime = new Date();
+                    if (selectedTime < currentTime) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Time',
+                            text: 'Selected time cannot be in the past'
+                        });
+                        instance.clear();
+                    }
+                }
+            });
+
+            $('#bookingModal').on('show.bs.modal', function () {
+                $(this).removeAttr('aria-hidden');
+            }).on('hidden.bs.modal', function () {
+                $(this).attr('aria-hidden', 'true');
+            });
+
+            const bookingManager = {
+                init() {
+                    this.setupEventHandlers();
+                    this.loadUserBookings();
+
+                    // Check recurring status from database
+                    // $.ajax({
+                    //     url: 'cfcs/dashboard-data.cfc',
+                    //     type: 'GET',
+                    //     dataType: 'json',
+                    //     data: {
+                    //         method: 'getRecurringStatus',
+                    //         returnformat: 'json'
+                    //     },
+                    //     success: function (response) {
+                    //         if (response.STATUS === 'SUCCESS' && response.ROLE === 'ADMIN') {
+                    //             $('#recurringDetailsContainer').show();
+                    //         }
+                    //     }
+                    // });
+                },
+
+                loadUserBookings() {
+                    const userId = getCurrentUserId();
+                    if (!userId) {
+                        console.warn('No user ID found in session');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: 'cfcs/dashboard-data.cfc',
+                        method: 'GET',
+                        data: {
+                            method: 'MyBookings',
+                            userId: userId
+                        },
+                        dataType: 'json',
+                        success: function (response) {
+                            if (response && response.success) {
+                                // Update the bookings display
+                                const bookings = response.data || [];
+                                $('#userBookings').empty();
+
+                                if (bookings.length === 0) {
+                                    $('#userBookings').append('<div class="alert alert-info">No upcoming bookings</div>');
+                                    return;
+                                }
+
+                                const bookingsHtml = bookings.map(booking => `
+                                    <div class="booking-item card mb-2" data-booking-id="${booking.ID}">
+                                        <div class="card-body">
+                                            <h5 class="card-title">${booking.TITLE}</h5>
+                                            <div class="card-text">
+                                                <div class="booking-time">
+                                                    <i class="fas fa-clock"></i> 
+                                                    ${new Date(booking.START_TIME).toLocaleString()} - 
+                                                    ${new Date(booking.END_TIME).toLocaleString()}
+                                                </div>
+                                                <div class="booking-status">
+                                                    <span class="badge bg-${booking.STATUS === 'CONFIRMED' ? 'success' : 'warning'}">
+                                                        ${booking.STATUS}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('');
+
+                                $('#userBookings').html(bookingsHtml);
+
+                            } else {
+                                console.error('Error loading bookings:', response);
+                                $('#userBookings').html('<div class="alert alert-danger">Error loading bookings</div>');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('AJAX error:', error);
+                            $('#userBookings').html('<div class="alert alert-danger">Error loading bookings</div>');
+                        }
+                    });
+                },
+
+                setupEventHandlers() {
+                    // Initialize the booking modal
+                    const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+
+                    // Handle new booking button click
+                    $('.btn-new-booking').on('click', function () {
+                        //reset form
+                        $('#bookingForm')[0].reset();
+                        $("#locationContainer").html('');
+                        $("#capacityContainer").html('');
+                        $(".amentiesContainer").html('');
+                        $("#descriptionContainer").html('');
+                        $("#recurringDetailsContainer").hide();
+                        $('#selectedRoomImage').attr('src', 'assets/images/officePlaceholder.png')
+                        $('#roomMapContainer').off('click');
+
+                        // Load available rooms
+                        $.ajax({
+                            url: 'cfcs/dashboard-data.cfc',
+                            method: 'GET',
+                            data: {
+                                method: 'getRooms'
+                            },
+                            dataType: 'json',
+
+                            success: function (response) {
+
+                                Swal.close();
+
+                                const roomSelect = $('#roomSelect');
+                                roomSelect.empty();
+                                roomSelect.append('<option value="">Choose a room...</option>');
+
+                                response.forEach(room => {
+                                    //if room is booked disable it
+                                    if (room.maintenance === 'YES' || room.active_status === 'Inactive') {
+                                        roomSelect.append(`<option value="${room.id}" disabled>${room.roomName} </option>`);
+                                    } else {
+                                        roomSelect.append(`<option value="${room.id}" data-recurring="${room.recurring}">${room.roomName} </option>`);
+                                    }
+                                });
+
+                                // Initially hide recurring container
+                                $('#recurringDetailsContainer').hide();
+
+
+                                // Add change event handler for room selection
+                                roomSelect.off('change').on('change', async function () {
+                                    const selectedRoom = $(this).val();
+                                    const selectedOption = $(this).find(':selected');
+                                    const allowsRecurring = selectedOption.data('recurring') === 'YES';
+                                    const imgContainer = $('#roomImageContainer');
+                                    const roomImg = $('#selectedRoomImage');
+                                    const amenitiesContainer = $('#amenitiesContainer');
+                                    const amenityIcons = $('#amenityIcons');
+                                    const descriptionContainer = $('#descriptionContainer');
+
+
+                                    // Handle recurring option
+                                    if (allowsRecurring) {
+                                        $('#recurringDetailsContainer').slideDown();
+                                    } else {
+                                        $('#recurringDetailsContainer').slideUp();
+                                        $('#recurringDetails').val(''); // Reset recurring selection
+                                    }
+
+                                    if (selectedRoom) {
+                                        //fetch room amenities from database
+                                        $.ajax({
+                                            url: 'assets/cfc/amenity.cfc',
+                                            type: 'GET',
+                                            dataType: 'json',
+                                            data: {
+                                                method: 'getRoomAmenities',
+                                                roomId: selectedRoom
+                                            },
+                                            success: function (response) {
+                                                if (response) {
+                                                    var html = '';
+                                                    for (let i = 0; i < response.length; i++) {
+                                                        html += "<i class='fas " + response[i].icon + " fa-2x me-2' data-amenity-id='" + response[i].id + "' data-bs-toggle='tooltip' data-bs-placement='bottom' title='" + response[i].name + "'></i>";
+                                                    }
+                                                    $(".amentiesContainer").html(html);
+                                                    // Initialize tooltips
+                                                    $('[data-bs-toggle="tooltip"]').tooltip();
+                                                } else {
+                                                    $('#amentiesContainer').html('');
+                                                }
+
+                                            },
+                                            error: function (xhr, status, error) {
+                                                console.error('Error loading room amenities:', error);
+                                            }
+                                        });
+                                        // fetch room description from database
+                                        $.ajax({
+                                            url: 'cfcs/dashboard-data.cfc',
+                                            type: 'GET',
+                                            dataType: 'json',
+                                            data: {
+                                                method: 'getRoomDescription',
+                                                roomId: selectedRoom
+                                            },
+                                            success: function (response) {
+                                                if (response.DESCRIPTION) {
+                                                    $('#descriptionContainer').html(response.DESCRIPTION);
+                                                    $('#capacityContainer').html(response.CAPACITY);
+                                                    $('#locationContainer').html(response.BUILDING + '.' + response.ROOM_NUMBER);
+
+
+                                                    $('#roomMapContainer').on('click', function () {
+                                                        Swal.fire({
+                                                            imageUrl: "assets/images/maps/" + response.ROOM_NUMBER + ".png",
+                                                            imageAlt: "Office Map"
+                                                        });
+                                                    });
+                                                } else {
+                                                    $('#descriptionContainer').html('');
+                                                    $('#capacityContainer').html('');
+                                                    $('#locationContainer').html('');
+                                                    $('#roomMapContainer').off('click');
+                                                }
+                                            },
+                                            error: function (xhr, status, error) {
+                                                console.error('Error loading room description:', error);
+                                            }
+                                        });
+                                        // Fetch room image from database
+                                        $.ajax({
+                                            url: 'cfcs/dashboard-data.cfc',
+                                            type: 'GET',
+                                            dataType: 'json',
+                                            data: {
+                                                method: 'getRoomImage',
+                                                roomId: selectedRoom
+                                            },
+                                            beforeSend: function () {
+                                                $('#roomImageContainer').removeClass('d-none');
+                                                Swal.fire({
+                                                    html: '<div class="card p-1 d-flex align-items-center justify-content-center"data-aos="zoom-in" data-aos-anchor-placement="top-bottom"><span class="fs-1">Loading Image <div class="spinner-border text-danger" role="status"></div></span></div>',
+                                                    showConfirmButton: false,
+                                                    allowOutsideClick: false
+                                                });
+                                            },
+                                            success: function (response) {
+                                                if (response && response.IMAGE_DATA) {
+                                                    // Remove any duplicate base64 prefix
+                                                    let imageData = response.IMAGE_DATA;
+                                                    if (imageData.indexOf('data:image') !== imageData.lastIndexOf('data:image')) {
+                                                        imageData = imageData.substring(imageData.lastIndexOf('data:image'));
+                                                    }
+
+                                                    $('#selectedRoomImage')
+                                                        .attr('src', imageData)
+                                                        .on('load', function () {
+                                                            $(this).addClass('loaded');
+                                                        })
+                                                        .on('error', function () {
+                                                            $(this).attr('src', 'assets/images/officePlaceholder.png');
+                                                        });
+                                                    $('#currentImage').val(imageData);
+                                                } else {
+                                                    $('#selectedRoomImage').attr('src', 'assets/images/officePlaceholder.png');
+                                                    $('#currentImage').val('');
+                                                }
+                                                Swal.close();
+                                            },
+                                            error: function (xhr, status, error) {
+                                                console.error('Error loading room image:', error);
+                                                $('#selectedRoomImage').attr('src', 'assets/images/officePlaceholder.png');
+                                                $('#currentImage').val('');
+                                                showAlert('Failed to load room image', 'error');
+                                            }
+                                        });
+                                    } else {
+                                        imgContainer.addClass('d-none');
+                                        roomImg.attr('src', 'assets/images/officePlaceholder.png');
+                                        $('#currentImage').val('');
+                                    }
+                                });
+
+                                // Show the modal
+                                bookingModal.show();
+                            },
+                            error: function () {
+                                showAlert('Error loading rooms. Please try again.', 'error');
+                            }
+                        });
+                    });
+
+
+                    // Handle modal hidden event to reset form
+                    $('#bookingModal').on('hidden.bs.modal', function () {
+                        $('#bookingForm')[0].reset();
+                    });
+
+                    // Handle recurring details visibility
+                    $('#recurringDetails').on('change', function () {
+                        const selectedValue = $(this).val();
+                        if (selectedValue !== '') {
+                            $('#recurringDetailsContainer').show();
+                        } else {
+                            $('#recurringDetailsContainer').hide();
+                        }
+                    });
+                }
+            };
+
+            bookingManager.init();
+        });
+        // Alert function using SweetAlert2
+        function showAlert(message, type = 'info') {
+            Swal.fire({
+                text: message,
+                icon: type,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 1500,
+                timerProgressBar: true
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            let calendar;
+            let selectedRoomId = '';
+
+            // Load top navigation based on user role
+            if (sessionStorage.getItem('ROLE') === 'Admin' || sessionStorage.getItem('ROLE') === 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html', function () {
+                    checkPendingApprovals();
+                });
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+
+            // Function to populate room filter dropdown
+            function populateRoomFilter() {
+                $.ajax({
+                    url: 'cfcs/dashboard-data.cfc',
+                    method: 'GET',
+                    data: {
+                        method: 'getRooms'
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response && Array.isArray(response)) {
+                            const $roomFilter = $('#roomFilter');
+                            response.forEach(room => {
+                                if (room.maintenance === 'YES') {
+                                    $roomFilter.append(`<option value="${room.id}" disabled>${room.roomName}</option>`);
+                                } else {
+                                    $roomFilter.append(`<option value="${room.id}">${room.roomName}</option>`);
+                                }
+                            });
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching rooms:', error);
+                    }
+                });
+            }
+
+            // Handle room filter change
+            $('#roomFilter').on('change', function () {
+                selectedRoomId = $(this).val();
+                calendar.refetchEvents();
+            });
+
+            // Initialize FullCalendar
+            var calendarEl = document.getElementById('upcomingBookings');
+            if (calendarEl) {
+                calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    },
+                    height: 'auto',
+                    nowIndicator: true,
+                    navLinks: true,
+                    editable: false,
+                    dayMaxEvents: true,
+                    events: function (fetchInfo, successCallback, failureCallback) {
+                        $.ajax({
+                            url: 'cfcs/dashboard-data.cfc',
+                            method: 'GET',
+                            data: {
+                                method: 'getAllBookings'
+                            },
+                            dataType: 'json',
+                            success: function (response) {
+                                if (response.status === 'success' && Array.isArray(response.BOOKINGS)) {
+                                    var events = response.BOOKINGS
+                                        .filter(booking => !selectedRoomId || parseInt(booking.ROOM_ID) === parseInt(selectedRoomId))
+                                        .map(function (booking) {
+                                            // Parse start time components
+                                            var startParts = booking.STARTTIME.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                                            if (!startParts) {
+                                                console.error('Invalid start time format:', booking.STARTTIME);
+                                                return null;
+                                            }
+                                            var startHours = parseInt(startParts[1]);
+                                            var startMinutes = parseInt(startParts[2]);
+                                            if (startParts[3].toUpperCase() === 'PM' && startHours < 12) startHours += 12;
+                                            if (startParts[3].toUpperCase() === 'AM' && startHours === 12) startHours = 0;
+
+                                            // Parse end time components
+                                            var endParts = booking.ENDTIME.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                                            if (!endParts) {
+                                                console.error('Invalid end time format:', booking.ENDTIME);
+                                                return null;
+                                            }
+                                            var endHours = parseInt(endParts[1]);
+                                            var endMinutes = parseInt(endParts[2]);
+                                            if (endParts[3].toUpperCase() === 'PM' && endHours < 12) endHours += 12;
+                                            if (endParts[3].toUpperCase() === 'AM' && endHours === 12) endHours = 0;
+
+                                            var startDate = new Date(booking.STARTDATE + 'T' +
+                                                startHours.toString().padStart(2, '0') + ':' +
+                                                startMinutes.toString().padStart(2, '0') + ':00');
+
+                                            var endDate = new Date(booking.ENDDATE + 'T' +
+                                                endHours.toString().padStart(2, '0') + ':' +
+                                                endMinutes.toString().padStart(2, '0') + ':00');
+
+                                            return {
+                                                id: booking.ID,
+                                                title: booking.FIRSTNAME.charAt(0).toUpperCase() + '. ' + booking.LASTNAME + ' (' + booking.NAME + ')',
+                                                start: startDate.toISOString(),
+                                                end: endDate.toISOString(),
+                                                extendedProps: {
+                                                    roomId: booking.ROOM_ID,
+                                                    roomName: booking.NAME,
+                                                    description: booking.DESCRIPTION || 'No description available',
+                                                    status: booking.STATUS || 'Pending',
+                                                    userId: booking.USERID
+                                                },
+                                                className: [
+                                                    `room-${(booking.ID % 10) + 1}`,
+                                                    `booking-status-${(booking.STATUS || 'pending').toLowerCase()}`
+                                                ]
+                                            };
+                                        }).filter(Boolean);
+                                    successCallback(events);
+                                } else {
+                                    failureCallback('Invalid response format');
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                failureCallback(error);
+                            }
+                        });
+                    },
+                    eventContent: function (info) {
+                        const roomClass = info.event.classNames.find(className => className.startsWith('room-'));
+                        return {
+                            html: `
+                                <div class="fc-event-main ${roomClass}">
+                                    <div class="fc-event-time">${info.timeText}</div>
+                                    <div class="fc-event-title">
+                                        <span class="status-dot status-dot-${info.event.extendedProps.status.toLowerCase()}"></span>
+                                        ${info.event.title}
+                                    </div>
+                                </div>
+                            `
+                        };
+                    },
+                    eventDidMount: function (info) {
+                        // change Format dates to not include seconds in format and date format to mm/dd/yyyy 
+                        const startStr = new Date(info.event.start).toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                        const endStr = new Date(info.event.end).toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+                        // Add tooltip
+                        $(info.el).tooltip({
+                            title: `${info.event.title}<br>From: ${startStr}<br>Until: ${endStr}`,
+                            placement: 'top',
+                            container: 'body',
+                            html: true
+                        });
+                    },
+                    eventClick: function (info) {
+                        // Format dates
+                        const startStr = info.event.start ? new Date(info.event.start).toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not specified';
+                        const endStr = info.event.end ? new Date(info.event.end).toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not specified';
+
+                        // Check if current user is the creator or an admin
+                        const currentUserId = getCurrentUserId();
+                        const userRole = sessionStorage.getItem('ROLE');
+                        const isCreator = info.event.extendedProps.userId == currentUserId;
+                        const isAdmin = userRole === 'Admin' || userRole === 'Site Admin';
+
+
+                        Swal.fire({
+                            title: `Booking Details (ID: ${info.event.id})`,
+                            html: `
+                                <div class="booking-details text-start">
+                                    <p><strong>Room:</strong> ${info.event.extendedProps.roomName || 'Not specified'}</p>
+                                    <p><strong>Description:</strong> ${info.event.extendedProps.description || 'No description'}</p>
+                                    <p><strong>Starting On:</strong> ${startStr}</p>
+                                    <p><strong>Ending On:</strong> ${endStr}</p>
+                                    <p class="text-capitalize"><strong>Status:</strong> ${info.event.extendedProps.status}</p>
+                                </div>
+                            `,
+                            showCancelButton: true,
+                            showConfirmButton: isCreator || isAdmin,
+                            confirmButtonText: 'Cancel Booking',
+                            cancelButtonText: 'Close',
+                            showLoaderOnConfirm: true,
+                            preConfirm: () => {
+                                return new Promise((resolve, reject) => {
+                                    if (!info.event.id) {
+                                        reject('No booking ID found');
+                                        return;
+                                    }
+                                    if (!isCreator && !isAdmin) {
+                                        reject('You do not have permission to cancel this booking');
+                                        return;
+                                    }
+                                    cancelBooking(info.event.id)
+                                        .then(resolve)
+                                        .catch(reject);
+                                });
+                            }
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                calendar.refetchEvents();
+                                checkPendingApprovals();
+                                Swal.fire('Cancelled!', 'The booking has been cancelled.', 'success');
+                            }
+                        }).catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire('Error', error || 'Failed to cancel booking. Please try again.', 'error');
+                        });
+                    }
+                });
+                calendar.render();
+                populateRoomFilter(); // Populate room filter after calendar initialization
+            }
+
+            // Handle save booking button click
+            $('#saveBooking').on('click', function () {
+                const roomId = $('#roomSelect').val();
+                const startTime = $('#startTime').val();
+                const endTime = $('#endTime').val();
+                const recurringDetails = $('#recurringDetails').val();
+                const userId = getCurrentUserId();
+
+                if (!roomId || !startTime || !endTime || !userId) {
+                    showAlert('Please fill in all required fields', 'warning');
+                    return;
+                }
+
+                // Create booking
+                $.ajax({
+                    url: 'cfcs/dashboard-data.cfc',
+                    method: 'POST',
+                    data: {
+                        method: 'createBooking',
+                        employee_id: sessionStorage.getItem('EMPLID'),
+                        user_id: sessionStorage.getItem('USER_ID'),
+                        room_id: $('#roomSelect').val(),
+                        start_time: startTime,
+                        end_time: endTime,
+                        recurring_details: $('#recurringDetails').val()
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        //(response);
+                        if (response.status === 'success') {
+
+                            showAlert(response.data.message, 'success');
+                            $('#bookingModal').modal('hide');
+
+                            calendar.refetchEvents();
+                            //reload calendar
+                            // reloadCalendar();
+                        } else {
+                            showAlert(response.data.message, 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        showAlert('Error creating booking: ' + error, 'error');
+                    }
+                });
+            });
+
+            // Cancel booking function
+            function cancelBooking(bookingId) {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: 'cfcs/dashboard-data.cfc?method=cancelBooking',
+                        method: 'POST',
+                        dataType: 'json',
+                        data: {
+                            bookingId: bookingId,
+                            userId: sessionStorage.getItem('USER_ID'),
+                        },
+                        success: function (response) {
+                            if (response.status === 'SUCCESS') {
+                                // reload approval count on dashboard
+                                getTotalBookings();
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success',
+                                    text: 'Booking cancelled successfully'
+                                });
+                                resolve(response);
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: response.MESSAGE || 'Failed to cancel booking'
+                                });
+                                reject(response);
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error cancelling booking:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Failed to cancel booking'
+                            });
+                            reject(error);
+                        }
+                    });
+                });
+            }
+
+            // Logout function
+            function handleLogout() {
+                window.location.href = 'logout.html';
+            }
+
+            // Function to get total rooms
+            function getTotalRooms() {
+                $.ajax({
+                    url: 'cfcs/dashboard-data.cfc?method=availableRooms',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (response) {
+                        $('#availableRooms').text(response.data.totalAvailableRooms || '0');
+                    },
+                    error: function (error) {
+                        console.error('Error getting total rooms:', error);
+                        $('#availableRooms').text('0');
+                    }
+                });
+            }
+
+            // Function to get total History
+            function getTotalMeetings() {
+                $.ajax({
+                    url: 'cfcs/dashboard-data.cfc?method=totalMeetings',
+                    method: 'GET',
+                    dataType: 'json',
+                    data: {
+                        userId: sessionStorage.getItem('USER_ID')
+                    },
+                    success: function (response) {
+                        //console.log(response.data.TOTAL);
+                        $('#myHistory').text(response.data.TOTAL || '00');
+                    },
+                    error: function (error) {
+                        console.error('Error getting total meetings:', error);
+                        $('#myHistory').text('0');
+                    }
+                });
+            }
+
+            // Function to get total bookings
+            function getTotalBookings() {
+                $.ajax({
+                    url: 'cfcs/dashboard-data.cfc?method=todayBookings',
+                    method: 'GET',
+                    dataType: 'json',
+                    data: {
+                        userId: sessionStorage.getItem('USER_ID')
+                    },
+                    success: function (response) {
+                        $('#myBookings').text(response.data.TOTAL || '0');
+                    },
+                    error: function (error) {
+                        console.error('Error getting total bookings:', error);
+                        $('#myBookings').text('0');
+                    }
+                });
+            }
+
+            function loadAvailableRooms() {
+                $.ajax({
+                    url: 'cfcs/dashboard-data.cfc?method=availableRooms',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            const rooms = response.data;
+                            const roomSelect = $('#roomSelect');
+                            roomSelect.empty();
+                            rooms.forEach(room => {
+                                roomSelect.append($('<option>', {
+                                    value: room.ID,
+                                    text: room.NAME
+                                }));
+                            });
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching available rooms:', error);
+                    }
+                });
+            }
+
+            function checkPendingApprovals() {
+                $.ajax({
+                    url: './assets/cfc/approvals.cfc',
+                    type: 'GET',
+                    data: {
+                        method: 'getPendingApprovalsCount'
+                    },
+                    success: function (response) {
+                        const count = parseInt(response);
+                        const badge = $('#pendingApprovalsBadge');
+                        if (count > 0) {
+                            badge.text(count).removeClass('d-none');
+                        } else {
+                            badge.addClass('d-none');
+                        }
+                    }
+                });
+            }
+        });
+        // Helper function to get current user ID
+        function getCurrentUserId() {
+            return sessionStorage.getItem('USER_ID');
+        }
+
+        // Function to check user role
+        function checkUserRole() {
+            $.ajax({
+                url: 'assets/cfc/user.cfc',
+                type: 'GET',
+                data: {
+                    method: 'getUserRole',
+                    returnformat: 'json'
+                },
+                success: function (response) {
+                    if (response.STATUS === 'SUCCESS' && response.ROLE === 'ADMIN') {
+                        $('.admin-only').show();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error checking user role:', error);
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

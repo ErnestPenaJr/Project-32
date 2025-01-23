@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Logs - MD Anderson Room Reservation</title>
+
+    <!-- CSS Dependencies -->
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="node_modules/daterangepicker/daterangepicker.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+    <!-- Navigation -->
+    <div id="topNav"></div>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">System Logs</h1>
+            <div class="d-flex gap-2">
+                <input type="text" class="form-control" id="dateRange" placeholder="Select date range">
+                <select class="form-select" id="actionTypeFilter">
+                    <option value="">All Actions</option>
+                    <option value="CREATE">Create</option>
+                    <option value="UPDATE">Update</option>
+                    <option value="DELETE">Delete</option>
+                </select>
+                <select class="form-select" id="tableFilter">
+                    <option value="">All Tables</option>
+                    <option value="ROOMS">Rooms</option>
+                    <option value="AMENITIES">Amenities</option>
+                    <option value="ROOM_AMENITIES">Room Amenities</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Table</th>
+                                <th>Record ID</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsList">
+                            <!-- Logs will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="text-muted">
+                        Showing <span id="currentRange">0-0</span> of <span id="totalRecords">0</span> records
+                    </div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination mb-0" id="pagination">
+                            <!-- Pagination will be populated here -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/moment/min/moment.min.js"></script>
+    <script src="node_modules/daterangepicker/daterangepicker.js"></script>
+    <script>
+        // Check admin access
+        $(document).ready(function () {
+            // Load top navigation
+            if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html');
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+            checkAdminAccess();
+            initializeDateRangePicker();
+            loadLogs(1);
+
+            // Set up filters
+            $('#actionTypeFilter, #tableFilter').change(function () {
+                loadLogs(1);
+            });
+        });
+
+        function checkAdminAccess() {
+            var isAdmin = sessionStorage.getItem('ISADMIN');
+            if (isAdmin != '1') {
+                window.location.href = 'index.html';
+            }
+        }
+
+        function initializeDateRangePicker() {
+            $('#dateRange').daterangepicker({
+                autoUpdateInput: false,
+                locale: {
+                    cancelLabel: 'Clear'
+                }
+            });
+
+            $('#dateRange').on('apply.daterangepicker', function (ev, picker) {
+                $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+                loadLogs(1);
+            });
+
+            $('#dateRange').on('cancel.daterangepicker', function (ev, picker) {
+                $(this).val('');
+                loadLogs(1);
+            });
+        }
+
+        function loadLogs(page) {
+            const dateRange = $('#dateRange').val().split(' - ');
+            const params = {
+                method: 'getSystemLogs',
+                page: page,
+                pageSize: 10,
+                filterType: $('#actionTypeFilter').val(),
+                filterTable: $('#tableFilter').val(),
+                startDate: dateRange[0] || '',
+                endDate: dateRange[1] || ''
+            };
+
+            $.ajax({
+                url: 'assets/cfc/system-logger.cfc',
+                type: 'GET',
+                data: params,
+                success: function (response) {
+                    populateLogsTable(response.logs);
+                    updatePagination(response);
+                    updateRecordCount(response);
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error loading logs:', error);
+                }
+            });
+        }
+
+        function populateLogsTable(logs) {
+            const logsList = $('#logsList');
+            logsList.empty();
+
+            logs.forEach(log => {
+                const details = JSON.parse(log.changeDetails);
+                logsList.append(`
+                    <tr>
+                        <td>${moment(log.timestamp).format('YYYY-MM-DD HH:mm:ss')}</td>
+                        <td>${log.userFullName}</td>
+                        <td><span class="badge ${getBadgeClass(log.actionType)}">${log.actionType}</span></td>
+                        <td>${log.tableName}</td>
+                        <td>${log.recordId}</td>
+                        <td>
+                            <button class="btn btn-sm btn-link" onclick='showDetails(${JSON.stringify(details)})'>
+                                View Details
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        function getBadgeClass(actionType) {
+            switch (actionType) {
+                case 'CREATE':
+                    return 'bg-success';
+                case 'UPDATE':
+                    return 'bg-warning';
+                case 'DELETE':
+                    return 'bg-danger';
+                default:
+                    return 'bg-secondary';
+            }
+        }
+
+        function showDetails(details) {
+            const detailsHtml = Object.entries(details)
+                .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                .join('<br>');
+
+            const modal = $(`
+                <div class="modal fade" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Change Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${detailsHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+
+            modal.modal('show');
+            modal.on('hidden.bs.modal', function () {
+                modal.remove();
+            });
+        }
+
+        function updatePagination(response) {
+            const pagination = $('#pagination');
+            pagination.empty();
+
+            // Previous button
+            pagination.append(`
+                <li class="page-item ${response.currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadLogs(${response.currentPage - 1})">&laquo;</a>
+                </li>
+            `);
+
+            // Page numbers
+            for (let i = 1; i <= response.totalPages; i++) {
+                pagination.append(`
+                    <li class="page-item ${response.currentPage === i ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadLogs(${i})">${i}</a>
+                    </li>
+                `);
+            }
+
+            // Next button
+            pagination.append(`
+                <li class="page-item ${response.currentPage === response.totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadLogs(${response.currentPage + 1})">&raquo;</a>
+                </li>
+            `);
+        }
+
+        function updateRecordCount(response) {
+            const start = ((response.currentPage - 1) * 10) + 1;
+            const end = Math.min(start + 9, response.totalCount);
+            $('#currentRange').text(`${start}-${end}`);
+            $('#totalRecords').text(response.totalCount);
+        }
+
+        function handleLogout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+
+</html>

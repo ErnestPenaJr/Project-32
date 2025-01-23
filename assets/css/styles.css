@@ -1,0 +1,752 @@
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --color-dark-blue: rgb(34, 47, 62);
+    /* Approximate wall color */
+    --color-light-blue: rgb(69, 90, 105);
+    /* Highlighted shades */
+    --color-white: rgb(255, 255, 255);
+    /* Background or text */
+    --color-green: rgb(86, 125, 70);
+    /* Plant tones */
+    --color-light-green: rgb(140, 129, 175);
+    /* Plant highlights */
+    --color-wood-brown: rgb(107, 55, 55);
+    /* Floor shade */
+
+    /* Additional room colors with suggested text colors */
+    --room-color-1: #FFFFF0;
+    /* Green */
+    --room-color-1-text: #556B2F;
+    /* White text for readability */
+    --room-color-2: #F0F0F0;
+    /* Blue */
+    --room-color-2-text: #333333;
+    /* White text for readability */
+    --room-color-3: #FFF9DB;
+    /* Brown */
+    --room-color-3-text: #4E342E;
+    /* White text for readability */
+    --room-color-4: #DFF7FF;
+    /* Orange */
+    --room-color-4-text: #0D47A1;
+    /* White text for readability */
+
+    --room-color-5: #DFFFE0;
+    /* Red */
+    --room-color-5-text: #2E7D32;
+    /* White text for readability */
+
+    --room-color-6: #FFF4E6;
+    /* Green */
+    --room-color-6-text: #8B4513;
+    /* White text for readability */
+
+    --room-color-7: #FFE4E1;
+    /* Yellow */
+    --room-color-7-text: #C2185B;
+    /* Black text for readability */
+
+    --room-color-8: #E6E6FA;
+    /* Turquoise */
+    --room-color-8-text: #6A1B9A;
+    /* White text for readability */
+
+    --room-color-9: #FFEDCC;
+    /* Navy */
+    --room-color-9-text: #FF6F00;
+    /* White text for readability */
+    /* Dark Backgrounds and Complementary Text Colors */
+    --room-color-10: #000000;
+    /* Dark Purple */
+    --room-color-10-text: #FFFFFF;
+    /* White text for readability */
+
+    --room-color-11: #333333;
+    /* Orange */
+    --room-color-11-text: #FFF59D;
+    /* Black text for readability */
+
+    --room-color-12: #001F3F;
+    /* Purple */
+    --room-color-12-text: #B0BEC5;
+    /* White text for readability */
+
+    --room-color-13: #0F4C1A;
+    /* Orange */
+    --room-color-13-text: #A5D6A7;
+    /* White text for readability */
+
+    --room-color-14: #4A001F;
+    /* Red */
+    --room-color-14-text: #F8BBD0;
+    /* White text for readability */
+
+    --room-color-15: #3D0075;
+    /* Green */
+    --room-color-15-text: #E1BEE7;
+    /* White text for readability */
+
+    --room-color-16: #191970;
+    /* Yellow */
+    --room-color-16-text: #E3F2FD;
+    /* Black text for readability */
+
+    --room-color-17: #37474F;
+    /* Turquoise */
+    --room-color-17-text: #ECEFF1;
+    /* White text for readability */
+    /* Bright Backgrounds and Complementary Text Colors */
+    --room-color-18: #FFFF00;
+    /* Navy */
+    --room-color-18-text: #001F3F;
+    /* White text for readability */
+
+    --room-color-19: #39FF14;
+    /* Dark Purple */
+    --room-color-19-text: #333333;
+    /* White text for readability */
+
+    --room-color-20: #FFA500;
+    /* Orange */
+    --room-color-20-text: #3E2723;
+    /* Black text for readability */
+    --room-color-21: #FF69B4;
+    /* Hot pink */
+    --room-color-21-text: #001F3F;
+    /* White text for readability */
+    --room-color-22: #87CEEB;
+    /* Sky blue */
+    --room-color-22-text: #0D47A1;
+    /* Dark blue */
+    --room-color-23: #FF0000;
+    /* Red */
+    --room-color-23-text: #FFFFFF;
+    /* White text for readability */
+    --room-color-24: #BF00FF;
+    /* Magenta */
+    --room-color-24-text: #D6D6D6;
+    /* Light gray */
+    --room-color-25: #DAA520;
+    /* Yellow */
+    --room-color-25-text: #800000;
+    /* Dark red */
+}
+
+body {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--color-dark-blue);
+    color: var(--color-white);
+    position: relative;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('../images/officewall.jpeg') center/cover no-repeat;
+    filter: blur(5px);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Content Styling */
+.content {
+    position: relative;
+    z-index: 1;
+    padding: 2rem;
+    color: var(--color-white);
+    text-align: center;
+}
+
+/* Headers */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--color-light-blue);
+    margin-bottom: 1rem;
+}
+
+/* Links */
+a {
+    color: #274c77;
+    /* Muted navy */
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #14213d;
+    /* Darker navy on hover */
+}
+
+/* Buttons */
+button {
+    background-color: var(--color-green);
+    color: var(--color-white);
+    border: none;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: var(--color-light-green);
+}
+
+/* Form Elements */
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 1rem;
+    border: 1px solid #dbe2ef;
+    border-radius: 5px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--color-dark-blue);
+    outline: none;
+}
+
+/* Section Backgrounds */
+.section-light {
+    background-color: #f5f7fa;
+    color: var(--color-dark-blue);
+    padding: 2rem;
+}
+
+.section-dark {
+    background-color: var(--color-dark-blue);
+    color: #f5f7fa;
+    padding: 2rem;
+}
+
+/* Cards */
+.card {
+    background-color: var(--color-white);
+    border: 1px solid #dbe2ef;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    margin: 1rem 0;
+}
+
+/* Calendar Container */
+.upcoming-bookings {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+}
+
+#upcomingBookings {
+    min-height: 400px;
+    margin: 1em 0;
+    padding: 0;
+    width: 100%;
+    position: relative;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.fc {
+    height: 100% !important;
+}
+
+.fc-view-harness {
+    height: 100% !important;
+}
+
+/* Calendar event styling */
+.fc-event {
+    cursor: pointer !important;
+    border-radius: 4px !important;
+    padding: 4px 6px !important;
+    margin: 1px 0 !important;
+    border: none !important;
+    transition: all 0.3s ease !important;
+    color: white !important;
+    min-height: 45px !important;
+}
+
+/* Room-specific calendar event colors - using higher specificity */
+.fc-event.room-1 {
+    background: var(--room-color-1) !important;
+}
+
+.fc-event-main.room-1 .fc-event-time,
+.fc-event-main.room-1 .fc-event-title {
+    color: var(--room-color-1-text) !important;
+}
+
+.fc-event.room-2 {
+    background: var(--room-color-2) !important;
+}
+
+.fc-event-main.room-2 .fc-event-time,
+.fc-event-main.room-2 .fc-event-title {
+    color: var(--room-color-2-text) !important;
+}
+
+.fc-event.room-3 {
+    background: var(--room-color-3) !important;
+}
+
+.fc-event-main.room-3 .fc-event-time,
+.fc-event-main.room-3 .fc-event-title {
+    color: var(--room-color-3-text) !important;
+}
+
+.fc-event.room-4 {
+    background: var(--room-color-4) !important;
+}
+
+.fc-event-main.room-4 .fc-event-time,
+.fc-event-main.room-4 .fc-event-title {
+    color: var(--room-color-4-text) !important;
+}
+
+.fc-event.room-5 {
+    background: var(--room-color-5) !important;
+}
+
+.fc-event-main.room-5 .fc-event-time,
+.fc-event-main.room-5 .fc-event-title {
+    color: var(--room-color-5-text) !important;
+}
+
+.fc-event.room-6 {
+    background: var(--room-color-6) !important;
+}
+
+.fc-event-main.room-6 .fc-event-time,
+.fc-event-main.room-6 .fc-event-title {
+    color: var(--room-color-6-text) !important;
+}
+
+.fc-event.room-7 {
+    background: var(--room-color-7) !important;
+}
+
+.fc-event-main.room-7 .fc-event-time,
+.fc-event-main.room-7 .fc-event-title {
+    color: var(--room-color-7-text) !important;
+}
+
+.fc-event.room-8 {
+    background: var(--room-color-8) !important;
+}
+
+.fc-event-main.room-8 .fc-event-time,
+.fc-event-main.room-8 .fc-event-title {
+    color: var(--room-color-8-text) !important;
+}
+
+.fc-event.room-9 {
+    background: var(--room-color-9) !important;
+}
+
+.fc-event-main.room-9 .fc-event-time,
+.fc-event-main.room-9 .fc-event-title {
+    color: var(--room-color-9-text) !important;
+}
+
+.fc-event.room-10 {
+    background: var(--room-color-10) !important;
+}
+
+.fc-event-main.room-10 .fc-event-time,
+.fc-event-main.room-10 .fc-event-title {
+    color: var(--room-color-10-text) !important;
+}
+
+.fc-event.room-11 {
+    background: var(--room-color-11) !important;
+}
+
+.fc-event-main.room-11 .fc-event-time,
+.fc-event-main.room-11 .fc-event-title {
+    color: var(--room-color-11-text) !important;
+}
+
+.fc-event.room-12 {
+    background: var(--room-color-12) !important;
+}
+
+.fc-event-main.room-12 .fc-event-time,
+.fc-event-main.room-12 .fc-event-title {
+    color: var(--room-color-12-text) !important;
+}
+
+.fc-event.room-13 {
+    background: var(--room-color-13) !important;
+}
+
+.fc-event-main.room-13 .fc-event-time,
+.fc-event-main.room-13 .fc-event-title {
+    color: var(--room-color-13-text) !important;
+}
+
+.fc-event.room-14 {
+    background: var(--room-color-14) !important;
+}
+
+.fc-event-main.room-14 .fc-event-time,
+.fc-event-main.room-14 .fc-event-title {
+    color: var(--room-color-14-text) !important;
+}
+
+.fc-event.room-15 {
+    background: var(--room-color-15) !important;
+}
+
+.fc-event-main.room-15 .fc-event-time,
+.fc-event-main.room-15 .fc-event-title {
+    color: var(--room-color-15-text) !important;
+}
+
+.fc-event.room-16 {
+    background: var(--room-color-16) !important;
+}
+
+.fc-event-main.room-16 .fc-event-time,
+.fc-event-main.room-16 .fc-event-title {
+    color: var(--room-color-16-text) !important;
+}
+
+.fc-event.room-17 {
+    background: var(--room-color-17) !important;
+}
+
+.fc-event-main.room-17 .fc-event-time,
+.fc-event-main.room-17 .fc-event-title {
+    color: var(--room-color-17-text) !important;
+}
+
+.fc-event.room-18 {
+    background: var(--room-color-18) !important;
+}
+
+.fc-event-main.room-18 .fc-event-time,
+.fc-event-main.room-18 .fc-event-title {
+    color: var(--room-color-18-text) !important;
+}
+
+.fc-event.room-19 {
+    background: var(--room-color-19) !important;
+}
+
+.fc-event-main.room-19 .fc-event-time,
+.fc-event-main.room-19 .fc-event-title {
+    color: var(--room-color-19-text) !important;
+}
+
+.fc-event.room-20 {
+    background: var(--room-color-20) !important;
+}
+
+.fc-event-main.room-20 .fc-event-time,
+.fc-event-main.room-20 .fc-event-title {
+    color: var(--room-color-20-text) !important;
+}
+
+.fc-event.room-21 {
+    background: var(--room-color-21) !important;
+}
+
+.fc-event-main.room-21 .fc-event-time,
+.fc-event-main.room-21 .fc-event-title {
+    color: var(--room-color-21-text) !important;
+}
+
+.fc-event.room-22 {
+    background: var(--room-color-22) !important;
+}
+
+.fc-event-main.room-22 .fc-event-time,
+.fc-event-main.room-22 .fc-event-title {
+    color: var(--room-color-22-text) !important;
+}
+
+.fc-event.room-23 {
+    background: var(--room-color-23) !important;
+}
+
+.fc-event-main.room-23 .fc-event-time,
+.fc-event-main.room-23 .fc-event-title {
+    color: var(--room-color-23-text) !important;
+}
+
+.fc-event.room-24 {
+    background: var(--room-color-24) !important;
+}
+
+.fc-event-main.room-24 .fc-event-time,
+.fc-event-main.room-24 .fc-event-title {
+    color: var(--room-color-24-text) !important;
+}
+
+.fc-event.room-25 {
+    background: var(--room-color-25) !important;
+}
+
+.fc-event-main.room-25 .fc-event-time,
+.fc-event-main.room-25 .fc-event-title {
+    color: var(--room-color-25-text) !important;
+}
+
+/* Status modifiers - no background colors, only opacity and borders */
+.fc-event.booking-status-pending {
+    opacity: 0.7;
+    border-left: 4px solid #FFC107 !important;
+}
+
+.fc-event.booking-status-approved {
+    opacity: 1;
+    border-left: 4px solid #4CAF50 !important;
+}
+
+.fc-event.booking-status-rejected {
+    opacity: 0.5;
+    text-decoration: line-through;
+    border-left: 4px solid #F44336 !important;
+}
+
+/* Status dot indicators */
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.status-dot-pending {
+    background-color: #FFC107;
+}
+
+.status-dot-approved {
+    background-color: #4CAF50;
+}
+
+.status-dot-rejected {
+    background-color: #F44336;
+}
+
+/* SweetAlert2 Modal Customization */
+.swal2-modal-custom {
+    z-index: 9999;
+    position: fixed;
+}
+
+.swal2-popup-custom {
+    position: relative;
+    background: #fff;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.swal2-header-custom {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1rem;
+}
+
+.swal2-content-custom {
+    padding: 1rem 0;
+}
+
+.swal2-actions-custom {
+    border-top: 1px solid #dee2e6;
+    padding-top: 1rem;
+}
+
+/* Ensure modal backdrop covers the entire screen */
+.swal2-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 9998 !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+/* Footer */
+footer {
+    background-color: var(--color-wood-brown);
+    color: var(--color-white);
+    text-align: center;
+    padding: 1rem 0;
+}
+
+/* Icon Grid Styles */
+.icons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    width: 100%;
+}
+
+.amenities-container {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    width: 100%;
+}
+
+/* Icon Management Styles */
+.icon-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    margin: 5px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.icon-item:hover {
+    background-color: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.icon-item.selected {
+    background-color: #0d6efd;
+    color: white;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.25);
+}
+
+.icons-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1rem;
+    background-color: #ffffff;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 90px;
+    width: 100%;
+    position: relative;
+}
+
+.icon-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: #f8f9fa;
+    border-color: #0d6efd;
+}
+
+.icon-item i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #14213d;
+}
+
+.icon-name {
+    font-size: 0.875rem;
+    color: #14213d;
+    word-break: break-word;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* Amenity Selection Styles */
+.icon-item.selected {
+    background-color: #e7f1ff;
+    border: 2px solid #0d6efd;
+}
+
+.icon-item.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    color: #0d6efd;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 1;
+}
+
+.icon-item.selected i,
+.icon-item.selected .icon-name {
+    color: #0d6efd;
+}
+
+.btn-user-topNav {
+    border: 1px solid #4F46E5;
+    color: #4F46E5;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+}
+
+.btn-user-topNav:hover {
+    background: #4338CA;
+    color: white;
+    border-color: white;
+
+}
+
+.btn-admin-topNav {
+    border: 1px solid #ffffff;
+    color: #ffffff;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    text-decoration: none;
+}
+
+.btn-admin-topNav:hover {
+    background: #bbbabe;
+    color: rgb(0, 0, 0);
+    border-color: #2d2b3b;
+}

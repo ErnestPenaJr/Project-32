@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Standard - MD Anderson Room Reservation</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <style>
+        .amenity-icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 10px 0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .icon-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-item i {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #1976d2;
+        }
+
+        .icon-item span {
+            font-size: 0.8rem;
+            text-align: center;
+            color: #666;
+            word-break: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="topNav"></div>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h4 class="card-title">Icon Standards</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="amenity-icon-grid">
+                            <!-- Icons will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+
+</html>
+<script src="node_modules/jquery/dist/jquery.min.js"></script>
+<script src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+<script src="assets/fontawesome-pro-5.15.4/js/all.js"></script>
+<script src="assets/DataTables-2.1.8/datatables.js"></script>
+<script src="node_modules/aos/dist/aos.js"></script>
+<script>
+    // Initialize AOS
+    AOS.init({
+        once: true,
+        mirror: false
+    });
+    $(document).ready(function () {
+        AOS.init();
+        loadAllIcons()
+        // Load top navigation
+        if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+            $('#topNav').load('topNav-Admin.html');
+        } else {
+            $('#topNav').load('topNav-User.html');
+        }
+    });
+    function loadAllIcons() {
+        $.ajax({
+            url: 'assets/cfc/icons.cfc?method=getAllIcons',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                var iconHtml = '';
+                $.each(data.icons, function (index, icon) {
+                    iconHtml += '<div class="icon-item" data-aos="fade-up" data-aos-delay="' + (index * 50) + '">';
+                    iconHtml += '<i class="fas ' + icon.ICON_CLASS + ' fa-2x"></i>';
+                    iconHtml += '<span class="icon-name text-dark">' + icon.ICON_NAME + '</span>';
+                    iconHtml += '</div>';
+                });
+                $('.amenity-icon-grid').html(iconHtml);
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.log('Error fetching icons: ' + textStatus);
+            }
+        });
+    }
+
+    function addOfficeIcons() {
+        const icons = [
+            { class: 'fa-projector', name: 'Projector' },
+            { class: 'fa-tv', name: 'TV/Monitor' },
+            { class: 'fa-video', name: 'Video Conference' },
+            { class: 'fa-microphone-alt', name: 'Microphone' },
+            { class: 'fa-wifi', name: 'WiFi' },
+            { class: 'fa-network-wired', name: 'Network Connection' },
+            { class: 'fa-temperature-low', name: 'Air Conditioning' },
+            { class: 'fa-print', name: 'Printer' },
+            { class: 'fa-scanner-touchscreen', name: 'Scanner' },
+            { class: 'fa-chair', name: 'Office Chair' },
+            { class: 'fa-desktop', name: 'Workstation' },
+            { class: 'fa-chalkboard', name: 'Whiteboard' },
+            { class: 'fa-phone', name: 'Phone' },
+            { class: 'fa-mug-hot', name: 'Coffee Machine' },
+            { class: 'fa-bottle-water', name: 'Water Dispenser' },
+            { class: 'fa-plug', name: 'Power Outlet' },
+            { class: 'fa-lightbulb', name: 'Lighting' },
+            { class: 'fa-window-maximize', name: 'Window' },
+            { class: 'fa-door-open', name: 'Door' },
+            { class: 'fa-clock', name: 'Clock' },
+            { class: 'fa-calendar-alt', name: 'Calendar' },
+            { class: 'fa-network-wired', name: 'Network' },
+            { class: 'fa-laptop', name: 'Laptop Support' },
+            { class: 'fa-tablet-alt', name: 'Tablet Support' },
+            { class: 'fa-camera', name: 'Webcam' },
+            { class: 'fa-volume-up', name: 'Speakers' },
+            { class: 'fa-phone-volume', name: 'Conference Phone' },
+            { class: 'fa-border-all', name: 'Conference Table' },
+            { class: 'fa-person-booth', name: 'Podium' },
+            { class: 'fa-archive', name: 'Filing Cabinet' }
+        ];
+
+        let addedCount = 0;
+        icons.forEach(icon => {
+            $.ajax({
+                url: 'assets/cfc/icons.cfc?method=addIcon',
+                type: 'POST',
+                data: {
+                    iconClass: icon.class,
+                    iconName: icon.name
+                },
+                success: function(response) {
+                    addedCount++;
+                    if (addedCount === icons.length) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Icons Added',
+                            text: 'Successfully added office equipment icons',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                        loadAllIcons(); // Refresh the icons display
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error adding icon:', icon.name, error);
+                }
+            });
+        });
+    }
+
+    // Add button to UI for adding office icons
+    $(document).ready(function() {
+        $('.card-header').append(
+            $('<button>', {
+                class: 'btn btn-primary float-end',
+                text: 'Add Office Icons',
+                click: addOfficeIcons
+            })
+        );
+    });
+</script>

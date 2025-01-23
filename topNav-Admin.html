@@ -1,0 +1,111 @@
+<!-- 
+Developer Notes:
+- Main navigation component for regular users
+- Uses Bootstrap 5.x for responsive navigation
+- Implements notification system with badge counter
+- Uses Font Awesome for icons
+- Contains conditional admin-only menu items (hidden by default)
+- Dropdown menu uses Bootstrap's dropdown component
+- Logo and branding follow MD Anderson guidelines
+- Requires:
+  * Bootstrap CSS/JS
+  * Font Awesome
+  * jQuery for dynamic notifications
+  * app.js for user menu functionality
+-->
+<style>
+    .btn-admin-topNav {
+        border: 1px solid #ffffff;
+        color: #ffffff;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        text-decoration: none;
+    }
+
+    .btn-admin-topNav:hover {
+        background: #bbbabe;
+        color: rgb(0, 0, 0);
+        border-color: #2d2b3b;
+    }
+</style>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark stick-top">
+    <div class="container">
+        <a class="navbar-brand me-auto text-uppercase" href="index.html">Admin Portal</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item d-flex align-items-center justify-content-end">
+                    <span id="welcomeMessage" class="text-align-center ms-5 me-5 text-info"></span>
+                </li>
+            </ul>
+            <!-- add logout to flat at end of navbar -->
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link btn-admin-topNav text-uppercase" href="index.html">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link btn-admin-topNav text-uppercase mx-2" href="user-management.html">
+                        Users
+                        <span id="newUserBadge" class="badge bg-danger rounded-pill d-none">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link btn-admin-topNav text-uppercase" href="room-management.html">Rooms</a>
+                </li>
+                <li id="amenityLink" class="nav-item" style="display: none;">
+                    <a class="nav-link btn-admin-topNav text-uppercase mx-2"
+                        href="amenity-management.html">Amenities</a>
+                </li>
+                <!--  
+                <li class="nav-item">
+                    <a class="nav-link btn-admin-topNav text-uppercase mx-2" href="history.html">My History</a>
+                </li>-->
+
+                <li id="bookingApprovalsLink" class="nav-item" style="display: none;">
+                    <a class="nav-link btn-admin-topNav text-uppercase mx-2" href="booking_approvals.html">
+                        Approvals
+                        <span id="pendingApprovalsBadge" class="badge bg-danger rounded-pill d-none">0</span>
+                    </a>
+                </li>
+                <li class="nav-item d-flex align-items-center justify-content-end">
+                    <button class="btn btn-outline-danger logout-btn">Logout</button>
+                </li>
+                <!--- Offcanvas--->
+                <li class="nav-item d-flex align-items-center justify-content-end mx-2">
+                    <button class="btn btn-outline-info" data-bs-toggle="offcanvas" data-bs-target="#offcanvasExample"
+                        aria-controls="offcanvasExample" aria-expanded="false" aria-label="Toggle offcanvas">
+                        <i class="fas fa-info-circle fa-lg"></i>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <div class="col-12 d-flex justify-content-center align-items-center">
+            <h1 class="mt-2 mb-2 text-light" data-aos="fade-right" data-aos-delay="100">DoCM Office Space Reservation <i
+                    class="far fa-calendar-alt"></i></h1>
+        </div>
+    </div>
+</div>
+
+<script src="node_modules/@curiosityx/bootstrap-session-timeout/index.js"></script>
+<script src="assets/js/topNav.js"></script>
+
+<script>
+    $('document').ready(function () {
+        console.log(sessionStorage);
+        if (sessionStorage.getItem('ROLE') === 'Site Admin' || sessionStorage.getItem('ROLE') === 'Admin') {
+            $('#bookingApprovalsLink, #amenityLink').show();
+        }
+
+        var userName = sessionStorage.getItem('NAME');
+        if (userName) {
+            $('#welcomeMessage').text('Welcome, ' + userName);
+        }
+    });
+</script>
