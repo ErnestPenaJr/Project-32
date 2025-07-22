@@ -5,9 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DoCM Office Space Reservation Calendar</title>
+    <!---add favicon-->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.png">
 
     <!-- CSS Dependencies -->
-
     <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
     <!-- AOS CSS -->
@@ -15,11 +16,11 @@
     <link href="assets/css/styles.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/site_tutorial.css">
     <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="node_modules/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="node_modules/flatpickr/dist/themes/material_blue.css">
-    <link rel="stylesheet" href="node_modules/flatpickr/dist/plugins/confirmDate/confirmDate.css">
-    <script src="node_modules/flatpickr/dist/flatpickr.min.js"></script>
-    <script src="node_modules/flatpickr/dist/plugins/confirmDate/confirmDate.js"></script>
+    <!-- Datetime picker styles removed -->
+    <link rel="stylesheet" href="assets/fontawesome-pro-5.15.4/css/all.css">
+    <!-- Datetime picker scripts removed -->
+    <link rel="stylesheet" href="assets/css/datetime-picker.css">
+    <!-- Note: booking_datetime.js is no longer used - datetime picker functionality is now directly in this file -->
 
     <style>
         /* .navbar {
@@ -163,6 +164,10 @@
             border-radius: 50%;
             padding: 0.25rem 0.5rem;
             font-size: 0.75rem;
+        }
+
+        .booking-time {
+            min-width: 200px;
         }
 
         .calendar-container {
@@ -320,7 +325,8 @@
             background: linear-gradient(45deg, #9b59b6, #8e44ad) !important;
         }
 
-        .fc-event[data-room="Meeting Room"] {
+        .fc-event[data-room="Meeting Room"],
+        .fc-event[data-room*="Meeting"] {
             background: linear-gradient(45deg, #2ecc71, #27ae60) !important;
         }
 
@@ -328,8 +334,33 @@
             background: linear-gradient(45deg, #9b59b6, #8e44ad) !important;
         }
 
-        .fc-event[data-room="Conference Room"] {
+        .fc-event[data-room*="Conference"],
+        .fc-event[data-room*="Conference Room"] {
             background: linear-gradient(45deg, #e74c3c, #c0392b) !important;
+        }
+
+        /* Improved form controls */
+        .form-control:focus {
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.25);
+        }
+
+        /* Better spacing for form elements */
+        .form-label {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Ensure proper spacing in the amenities section */
+        .amenities-section {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Make sure the image container maintains aspect ratio */
+        .object-fit-cover {
+            object-fit: cover;
+            object-position: center;
         }
 
 
@@ -494,13 +525,15 @@
 
         <div class="offcanvas-body">
             <div class="mb-3 mt-0">
-                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download User Guide</button>
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase"><i
+                        class="fal fa-file-download"></i> COMPLETE User Guide</button>
             </div>
             <div class="mb-3">
                 <h4>TABLE OF CONTENTS</h4>
                 <ul>
                     <li><a href="#welcome">Welcome Message</a></li>
                     <li><a href="#overview">Overview</a></li>
+                    <li><a href="#it-assistance">IT Assistance</a></li>
                     <li><a href="#bookings">Making a Booking</a></li>
                     <li><a href="#booking-history">Viewing Booking History</a></li>
                     <li><a href="#calendar">Using the Calendar</a></li>
@@ -516,6 +549,13 @@
                 <h5>Overview</h5>
                 <p>This page allows you to view available office spaces, reserve rooms, and manage your bookings using a
                     calendar interface.</p>
+            </div>
+            <div id="it-assistance">
+                <h5>IT Assistance</h5>
+                <p>The Division of Cancer Medicine maintains the DoCM Reservation System. If you have any questions or
+                    concerns regarding
+                    DoCM Reservation System, Contact information: 4-INFO Call Center at ext. 713-794-4636 or email
+                    4info@mdanderson.org</p>
             </div>
             <div id="bookings">
                 <h5>Making a Booking</h5>
@@ -599,6 +639,7 @@
 
             </div>
         </div>
+
         <!-- Office Map Modal -->
         <div class="modal fade" id="officeMapModal" tabindex="-1" aria-labelledby="officeMapModalLabel"
             aria-hidden="true">
@@ -688,27 +729,19 @@
                                     <div class="card border-0 shadow-sm p-0">
                                         <div class="card-body">
 
-                                            <div class="row g-2">
-                                                <h6 class="card-title">
-                                                    <i class="fas fa-clock me-1"></i>Booking Time
-                                                </h6>
-                                                <div class="col-md-12">
-                                                    <label for="startTime" class="form-label mb-1">Starting
-                                                        On:</label>
-                                                    <input type="text"
-                                                        class="form-control flatpickr-datetime booking-time"
-                                                        id="startTime" data-time-type="start"
-                                                        placeholder="Select date & time (AM/PM)" required>
+                                            <h6 class="card-title mb-3">
+                                                <i class="fas fa-clock me-1"></i>Booking Time
+                                            </h6>
+                                            <div class="row g-3">
+                                                <div class="col-md">
+                                                    <div id="start-picker"></div>
+                                                    <input type="hidden" id="startTime" name="startTime">
                                                 </div>
                                             </div>
-
-                                            <div class="row g-2">
-                                                <div class="col-md-12">
-                                                    <label for="endTime" class="form-label mb-1">Ending On</label>
-                                                    <input type="text"
-                                                        class="form-control flatpickr-datetime booking-time"
-                                                        id="endTime" data-time-type="end"
-                                                        placeholder="Select date & time (AM/PM)" required>
+                                            <div class="row g-3">
+                                                <div class="col-md">
+                                                    <div id="end-picker"></div>
+                                                    <input type="hidden" id="endTime" name="endTime">
                                                 </div>
                                             </div>
 
@@ -729,22 +762,46 @@
 
                                         </div>
                                     </div>
-                                    <div class="card h-25 border-0 shadow-sm p-0">
-                                        <div class="card-body">
+                                    <!-- Room Amenities Card -->
+                                    <div class="card border-0 shadow-sm mb-3 p-0">
+                                        <div class="card-body p-3">
                                             <div class="amenities-section">
-                                                <h6 class="card-title"><i class="fas fa-building"></i> Room
-                                                    Amenities</h6>
-                                                <div class="amentiesContainer d-flex flex-wrap gap-1"></div>
+                                                <h6 class="card-title mb-3">
+                                                    <i class="fas fa-building me-2"></i>Room Amenities
+                                                </h6>
+                                                <div class="amentiesContainer d-flex flex-wrap gap-2"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Meeting Title Card (Hidden by default) -->
+                                    <div id="titleContainer" class="card border-0 shadow-sm d-none p-0">
+                                        <div class="card-body p-3">
+                                            <h6 class="card-title mb-3">
+                                                <i class="fas fa-heading me-2"></i>Meeting Details
+                                            </h6>
+                                            <div class="mb-3">
+                                                <label for="bookingTitle" class="form-label fw-medium">
+                                                    Title / Purpose
+                                                </label>
+                                                <textarea class="form-control" id="bookingTitle" rows="2"
+                                                    placeholder="Enter meeting title or purpose"
+                                                    style="min-height: 80px;"></textarea>
+                                                <div class="form-text text-muted small mt-1">
+                                                    Required for non-focus room bookings
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6 align-items-center justify-content-center">
-                                    <div id="roomImageContainer">
-                                        <img id="selectedRoomImage" class="img-fluid rounded-2 "
-                                            style="max-height: 500px;" src="assets/images/officePlaceholder.png"
-                                            alt="Room Image"><span id="descriptionContainer"
-                                            class="text-dark small h-100"></span>
+                                <div class="col-md-6">
+                                    <div id="roomImageContainer" class="h-100 d-flex flex-column">
+                                        <div class="flex-grow-1 overflow-hidden rounded-2 mb-2"
+                                            style="min-height: 300px; max-height: 400px;">
+                                            <img id="selectedRoomImage" class="img-fluid w-100 h-100 object-fit-cover"
+                                                src="assets/images/officePlaceholder.png" alt="Room Image">
+                                        </div>
+                                        <div id="descriptionContainer" class="text-muted small mt-2"></div>
                                         <input type="hidden" id="currentImage" value="">
                                     </div>
                                 </div>
@@ -764,6 +821,8 @@
             </div>
         </div>
 
+
+
     </div>
 
     <!-- JavaScript Dependencies -->
@@ -775,12 +834,41 @@
     <script src='assets/js/session-timeout.js'></script>
     <!-- AOS JS -->
     <script src="node_modules/aos/dist/aos.js"></script>
-    <script src="assets/js/booking_datetime.js"></script>
+    <!-- Custom DateTime Picker -->
+    <script src="assets/js/datetime_picker.js"></script>
+
     <script>
+        // Function to format date for ColdFusion - placed in global scope for accessibility
+        function formatDateForColdFusion(isoString) {
+            if (!isoString) return '';
+
+            const date = new Date(isoString);
+
+            // Format as YYYY-MM-DD HH:mm AM/PM (exact format required by server)
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // Convert 0 to 12
+
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+
+            return `${year}-${month}-${day} ${hours}:${minutes} ${ampm}`;
+        }
+
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
         const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
         AOS.init();
         $(document).ready(function () {
+            // Initialize tooltips
+            $('[data-bs-toggle="tooltip"]').tooltip();
+
+            var emplid = sessionStorage.getItem('EMPLID');
+            $('#help_emplid').val(emplid)
+
             $('#officeMap').on('click', function () {
                 $('#officeMapModal').modal('show');
             });
@@ -789,11 +877,13 @@
             // Load top navigation
             if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
                 $('#topNav').load('topNav-Admin.html');
+                $('.fa-bug').attr('data-bs-title', 'Staging');
                 $('#downloadUserGuide').click(function () {
                     window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
                 });
             } else {
                 $('#topNav').load('topNav-User.html');
+                $('.fa-bug').attr('data-bs-title', 'Staging');
                 $('#downloadUserGuide').click(function () {
                     window.open('DoCM_User_Reservation_Help_Guide.pdf', '_blank');
                 });
@@ -848,106 +938,138 @@
                 }
             };
 
-            $('.booking-time').on('change', function () {
-                timeValidation.validateTimeRange($(this));
-            });
-
-            // Function to round time to nearest 15 minutes
-            function roundToNearest15(date) {
-                const minutes = date.getMinutes();
-                const roundedMinutes = Math.ceil(minutes / 15) * 15;
-                date.setMinutes(roundedMinutes);
-                date.setSeconds(0);
-                date.setMilliseconds(0);
-                return date;
-            }
-
-            // Set default values and validate time selections
-            const now = roundToNearest15(new Date());
-
-            $('#startTime, #endTime').on('change', function () {
-                const startTime = new Date($('#startTime').val());
-                const endTime = new Date($('#endTime').val());
-                const currentTime = new Date();
-
-                // Validate start time is not in past
-                if (startTime < currentTime) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Time',
-                        text: 'Start time cannot be in the past'
-                    });
-                    $(this).val('');
-                    return;
-                }
-
-                // Validate end time is after start time
-                if (this.id === 'endTime' && startTime && endTime <= startTime) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Time Range',
-                        text: 'End time must be after start time'
-                    });
-                    $(this).val('');
-                }
-            });
-
-            flatpickr("#startTime", {
-                enableTime: true,
-                dateFormat: "m/d/Y h:i K",
-                time_24hr: false,
-                minuteIncrement: 15,
-                minDate: "today",
-                defaultDate: now,
-                altFormat: "m/d/Y h:i K", // Show a readable format with AM/PM
-                altInput: true,
-                plugins: [new confirmDatePlugin({})],
-                onChange: function (selectedDates, dateStr, instance) {
-                    const selectedTime = new Date(dateStr);
-                    const currentTime = new Date();
-                    if (selectedTime < currentTime) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Invalid Time',
-                            text: 'Selected time cannot be in the past'
-                        });
-                        instance.clear();
-                    }
-                }
-            });
-
-            flatpickr("#endTime", {
-                enableTime: true,
-                dateFormat: "m/d/Y h:i K",
-                time_24hr: false,
-                minuteIncrement: 15,
-                minDate: "today",
-                defaultDate: (() => {
-                    const date = new Date();
-                    date.setHours(date.getHours() + 8);
-                    return roundToNearest15(date);
-                })(),
-                altFormat: "m/d/Y h:i K", // Show a readable format with AM/PM
-                altInput: true,
-                plugins: [new confirmDatePlugin({})],
-                onChange: function (selectedDates, dateStr, instance) {
-                    const selectedTime = new Date(dateStr);
-                    const currentTime = new Date();
-                    if (selectedTime < currentTime) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Invalid Time',
-                            text: 'Selected time cannot be in the past'
-                        });
-                        instance.clear();
-                    }
-                }
-            });
-
+            // Initialize the datetime pickers when the booking modal is shown
             $('#bookingModal').on('show.bs.modal', function () {
-                $(this).removeAttr('aria-hidden');
-            }).on('hidden.bs.modal', function () {
-                $(this).attr('aria-hidden', 'true');
+                // Initialize start time picker
+                startTimePicker = $('#start-picker').dateTimePicker({
+                    label: 'Starting On',
+                    dateFormat: 'MM/DD/YYYY, h:mm A',
+                    defaultDate: new Date(),
+                    minuteInterval: 5,
+                    onChange: function (date) {
+                        $('#startTime').val(date.toISOString());
+                        // Update end picker min date/time
+                        if (endTimePicker && typeof endTimePicker.setMinDate === 'function') {
+                            endTimePicker.setMinDate(date);
+                        } else if ($('#end-picker').data('DateTimePicker')) {
+                            $('#end-picker').data('DateTimePicker').minDate(date);
+                        }
+                        // If current end < new start, reset end picker
+                        var endVal = $('#endTime').val();
+                        if (endVal && new Date(endVal) <= date) {
+                            $('#endTime').val('');
+                            if (endTimePicker && typeof endTimePicker.clear === 'function') {
+                                endTimePicker.clear();
+                            }
+                        }
+                    }
+                });
+
+                // Initialize end time picker with default 1 hour later
+                const defaultEndTime = new Date(new Date().getTime() + 60 * 60 * 1000);
+                endTimePicker = $('#end-picker').dateTimePicker({
+                    label: 'Ending On',
+                    dateFormat: 'MM/DD/YYYY, h:mm A',
+                    defaultDate: defaultEndTime,
+                    minuteInterval: 5,
+                    onChange: function (date) {
+                        var startVal = $('#startTime').val();
+                        if (startVal && new Date(date) <= new Date(startVal)) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Invalid Time Range',
+                                text: 'End time must be after start time.'
+                            });
+                            $('#endTime').val('');
+                            if (endTimePicker && typeof endTimePicker.clear === 'function') {
+                                endTimePicker.clear();
+                            }
+                            return;
+                        }
+                        $('#endTime').val(date.toISOString());
+                    }
+                });
+
+                // Set initial values
+                $('#startTime').val(new Date().toISOString());
+                $('#endTime').val(defaultEndTime.toISOString());
+            });
+
+            // The formatDateForColdFusion function has been moved to the global scope
+
+            // Handle form submission for validation
+            $('#bookingForm').on('submit', function (e) {
+                const startTimeISO = $('#startTime').val();
+                const endTimeISO = $('#endTime').val();
+                const roomId = $('#roomSelect').val();
+                const title = $('#bookingTitle').val();
+
+                if (!startTimeISO || !endTimeISO) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Missing Information',
+                        text: 'Please select both start and end times.'
+                    });
+                    return false;
+                }
+
+                // Validate that end time is after start time
+                if (startTimeISO && endTimeISO) {
+                    const startDate = new Date(startTimeISO);
+                    const endDate = new Date(endTimeISO);
+
+                    if (endDate <= startDate) {
+                        e.preventDefault();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Time Range',
+                            text: 'End time must be after start time.'
+                        });
+                        return false;
+                    }
+
+                    // Format dates for ColdFusion and update hidden fields
+                    const formattedStartTime = formatDateForColdFusion(startTimeISO);
+                    const formattedEndTime = formatDateForColdFusion(endTimeISO);
+
+                    // Replace ISO format with formatted dates
+                    $('#startTime').val(formattedStartTime);
+                    $('#endTime').val(formattedEndTime);
+                }
+
+                if (!roomId || roomId === '') {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Missing Information',
+                        text: 'Please select a room.'
+                    });
+                    return false;
+                }
+
+                // Only validate title for non-focus rooms
+                const selectedRoomText = $('#roomSelect option:selected').text();
+                const isFocusRoom = selectedRoomText.includes('Focus Room');
+                
+                if (!isFocusRoom && (!title || title.trim() === '')) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Missing Information',
+                        text: 'Please enter a title for your booking.'
+                    });
+                    return false;
+                }
+            });
+
+            // Reset form when modal is hidden
+            $('#bookingModal').on('hidden.bs.modal', function () {
+                $('#bookingForm')[0].reset();
+                $('#startTime').val('');
+                $('#endTime').val('');
+                $('#titleContainer').addClass('d-none');
+                $('#bookingTitle').prop('required', false);
             });
 
             const bookingManager = {
@@ -988,38 +1110,60 @@
                         },
                         dataType: 'json',
                         success: function (response) {
-                            if (response && response.success) {
+                            // Check if response exists
+                            if (!response) {
+                                console.error('Empty response received');
+                                $('#userBookings').html('<div class="alert alert-danger">Error loading bookings</div>');
+                                return;
+                            }
+
+                            // Handle success response with data property
+                            if (response.status === 'success' || response.success) {
                                 // Update the bookings display
                                 const bookings = response.data || [];
                                 $('#userBookings').empty();
 
-                                if (bookings.length === 0) {
+                                // Handle empty bookings array
+                                if (!bookings || bookings.length === 0) {
                                     $('#userBookings').append('<div class="alert alert-info">No upcoming bookings</div>');
                                     return;
                                 }
 
-                                const bookingsHtml = bookings.map(booking => `
-                                    <div class="booking-item card mb-2" data-booking-id="${booking.ID}">
-                                        <div class="card-body">
-                                            <h5 class="card-title">${booking.TITLE}</h5>
-                                            <div class="card-text">
-                                                <div class="booking-time">
-                                                    <i class="fas fa-clock"></i> 
-                                                    ${new Date(booking.START_TIME).toLocaleString()} - 
-                                                    ${new Date(booking.END_TIME).toLocaleString()}
-                                                </div>
-                                                <div class="booking-status">
-                                                    <span class="badge bg-${booking.STATUS === 'CONFIRMED' ? 'success' : 'warning'}">
-                                                        ${booking.STATUS}
-                                                    </span>
+                                try {
+                                    const bookingsHtml = bookings.map(booking => {
+                                        // Safely handle potentially missing properties
+                                        const id = booking.ID || booking.id || '';
+                                        const title = booking.TITLE || booking.title || 'Untitled Booking';
+                                        const startTime = booking.START_TIME || booking.start_time || new Date().toISOString();
+                                        const endTime = booking.END_TIME || booking.end_time || new Date().toISOString();
+                                        const status = booking.STATUS || booking.status || 'PENDING';
+
+                                        return `
+                                            <div class="booking-item card mb-2" data-booking-id="${id}">
+                                                <div class="card-body">
+                                                    <h5 class="card-title">${title}</h5>
+                                                    <div class="card-text">
+                                                        <div class="booking-time">
+                                                            <i class="fas fa-clock"></i> 
+                                                            ${new Date(startTime).toLocaleString()} - 
+                                                            ${new Date(endTime).toLocaleString()}
+                                                        </div>
+                                                        <div class="booking-status">
+                                                            <span class="badge bg-${status === 'CONFIRMED' ? 'success' : 'warning'}">
+                                                                ${status}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                `).join('');
+                                        `;
+                                    }).join('');
 
-                                $('#userBookings').html(bookingsHtml);
-
+                                    $('#userBookings').html(bookingsHtml);
+                                } catch (err) {
+                                    console.error('Error processing bookings data:', err);
+                                    $('#userBookings').html('<div class="alert alert-warning">Error processing booking data</div>');
+                                }
                             } else {
                                 console.error('Error loading bookings:', response);
                                 $('#userBookings').html('<div class="alert alert-danger">Error loading bookings</div>');
@@ -1096,6 +1240,22 @@
                                     } else {
                                         $('#recurringDetailsContainer').slideUp();
                                         $('#recurringDetails').val(''); // Reset recurring selection
+                                    }
+
+                                    // Show/hide title card for non-focus rooms with smooth transition
+                                    const isFocusRoom = selectedOption.text().includes('Focus Room');
+                                    const titleContainer = $('#titleContainer');
+
+                                    if (!isFocusRoom) {
+                                        titleContainer.slideDown(200, function () {
+                                            $(this).removeClass('d-none');
+                                            $('#bookingTitle').prop('required', true);
+                                        });
+                                    } else {
+                                        titleContainer.slideUp(200, function () {
+                                            $(this).addClass('d-none');
+                                            $('#bookingTitle').prop('required', false);
+                                        });
                                     }
 
                                     if (selectedRoom) {
@@ -1223,6 +1383,33 @@
                     });
 
 
+                    // Handle modal shown event to set default values
+                    $('#bookingModal').on('show.bs.modal', function () {
+                        // Set default values for datetime inputs
+                        const now = new Date();
+
+                        // Round to nearest 15 minutes
+                        const minutes = Math.ceil(now.getMinutes() / 15) * 15;
+                        now.setMinutes(minutes, 0, 0);
+
+                        // Create default end time (1 hour later)
+                        const endTime = new Date(now);
+                        endTime.setHours(endTime.getHours() + 1);
+
+                        // Format for datetime-local input (YYYY-MM-DDThh:mm)
+                        const formatDatetimeLocal = (date) => {
+                            return date.getFullYear() + '-' +
+                                String(date.getMonth() + 1).padStart(2, '0') + '-' +
+                                String(date.getDate()).padStart(2, '0') + 'T' +
+                                String(date.getHours()).padStart(2, '0') + ':' +
+                                String(date.getMinutes()).padStart(2, '0');
+                        };
+
+                        // Set the values
+                        $('#startTime').val(formatDatetimeLocal(now));
+                        $('#endTime').val(formatDatetimeLocal(endTime));
+                    });
+
                     // Handle modal hidden event to reset form
                     $('#bookingModal').on('hidden.bs.modal', function () {
                         $('#bookingForm')[0].reset();
@@ -1254,14 +1441,19 @@
             });
         };
 
+        // Make calendar and datetime picker variables globally accessible
+        let globalCalendar;
+        let startTimePicker = null;
+        let endTimePicker = null;
+
         document.addEventListener('DOMContentLoaded', function () {
-            let calendar;
             let selectedRoomId = '';
 
             // Load top navigation based on user role
             if (sessionStorage.getItem('ROLE') === 'Admin' || sessionStorage.getItem('ROLE') === 'Site Admin') {
                 $('#topNav').load('topNav-Admin.html', function () {
                     checkPendingApprovals();
+                    checkNewUsers();
                 });
             } else {
                 $('#topNav').load('topNav-User.html');
@@ -1297,13 +1489,13 @@
             // Handle room filter change
             $('#roomFilter').on('change', function () {
                 selectedRoomId = $(this).val();
-                calendar.refetchEvents();
+                globalCalendar.refetchEvents();
             });
 
             // Initialize FullCalendar
             var calendarEl = document.getElementById('upcomingBookings');
             if (calendarEl) {
-                calendar = new FullCalendar.Calendar(calendarEl, {
+                globalCalendar = new FullCalendar.Calendar(calendarEl, {
                     initialView: 'dayGridMonth',
                     headerToolbar: {
                         left: 'prev,next today',
@@ -1316,14 +1508,18 @@
                     editable: false,
                     dayMaxEvents: true,
                     events: function (fetchInfo, successCallback, failureCallback) {
+                        console.log('Fetching calendar events...');
                         $.ajax({
                             url: 'cfcs/dashboard-data.cfc',
                             method: 'GET',
                             data: {
-                                method: 'getAllBookings'
+                                method: 'getAllBookings',
+                                timestamp: new Date().getTime() // Add timestamp to prevent caching
                             },
                             dataType: 'json',
+                            cache: false, // Prevent caching of results
                             success: function (response) {
+                                console.log('Calendar events response:', response);
                                 if (response.status === 'success' && Array.isArray(response.BOOKINGS)) {
                                     var events = response.BOOKINGS
                                         .filter(booking => !selectedRoomId || parseInt(booking.ROOM_ID) === parseInt(selectedRoomId))
@@ -1458,32 +1654,74 @@
                             }
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                calendar.refetchEvents();
+                                globalCalendar.refetchEvents();
                                 checkPendingApprovals();
                                 Swal.fire('Cancelled!', 'The booking has been cancelled.', 'success');
                             }
                         }).catch(error => {
                             console.error('Error:', error);
-                            Swal.fire('Error', error || 'Failed to cancel booking. Please try again.', 'error');
+                            // Convert error object to string if needed
+                            const errorMessage = (typeof error === 'object') ? 'Failed to cancel booking. Please try again.' : error || 'Failed to cancel booking. Please try again.';
+                            Swal.fire('Error', errorMessage, 'error');
                         });
                     }
                 });
-                calendar.render();
+                globalCalendar.render();
                 populateRoomFilter(); // Populate room filter after calendar initialization
             }
 
             // Handle save booking button click
             $('#saveBooking').on('click', function () {
                 const roomId = $('#roomSelect').val();
-                const startTime = $('#startTime').val();
-                const endTime = $('#endTime').val();
+                const startTimeInput = $('#startTime').val();
+                const endTimeInput = $('#endTime').val();
                 const recurringDetails = $('#recurringDetails').val();
                 const userId = getCurrentUserId();
 
-                if (!roomId || !startTime || !endTime || !userId) {
+                // Get the date values directly from the datetime-local inputs
+                const startTimeRaw = $('#startTime').val();
+                const endTimeRaw = $('#endTime').val();
+
+                if (!roomId || !startTimeRaw || !endTimeRaw || !userId) {
                     showAlert('Please fill in all required fields', 'warning');
                     return;
                 }
+
+                // Format dates for ColdFusion
+                const startTime = formatDateForColdFusion(startTimeRaw);
+                const endTime = formatDateForColdFusion(endTimeRaw);
+
+                // For date calculations, use the original date objects
+                const startDate = new Date(startTimeRaw);
+                const endDate = new Date(endTimeRaw);
+                const isMultiDay = startDate.getDate() !== endDate.getDate() ||
+                    startDate.getMonth() !== endDate.getMonth() ||
+                    startDate.getFullYear() !== endDate.getFullYear();
+
+                // Validate booking duration (max 7 days)
+                const durationMs = endDate - startDate;
+                const durationDays = durationMs / (1000 * 60 * 60 * 24);
+
+                if (durationDays > 7) {
+                    showAlert('Maximum booking duration is 7 days', 'warning');
+                    return;
+                }
+
+                // Get meeting title if it's a non-focus room
+                const selectedRoom = $('#roomSelect option:selected').text();
+                const isFocusRoom = selectedRoom.includes('Focus Room');
+                const meetingTitle = !isFocusRoom ? $('#bookingTitle').val().trim() : '';
+                
+                // Show loading indicator
+                Swal.fire({
+                    title: 'Creating Booking...',
+                    text: 'Please wait while we process your request.',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
 
                 // Create booking
                 $.ajax({
@@ -1496,25 +1734,76 @@
                         room_id: $('#roomSelect').val(),
                         start_time: startTime,
                         end_time: endTime,
-                        recurring_details: $('#recurringDetails').val()
+                        is_multi_day: isMultiDay ? 1 : 0,
+                        recurring_details: $('#recurringDetails').val(),
+                        comments: meetingTitle || ''
                     },
                     dataType: 'json',
+                    timeout: 30000, // 30 second timeout
                     success: function (response) {
-                        //(response);
+                        Swal.close(); // Close loading indicator
+                        
                         if (response.status === 'success') {
-
-                            showAlert(response.data.message, 'success');
+                            checkPendingApprovals()
+                            // First hide the modal
                             $('#bookingModal').modal('hide');
+                            
+                            // Reset the form inputs
+                            $('#bookingForm')[0].reset();
+                            
+                            // Reset title field and hide the container
+                            $('#bookingTitle').val('');
+                            $('#titleContainer').addClass('d-none');
 
-                            calendar.refetchEvents();
-                            //reload calendar
-                            // reloadCalendar();
+                            // Re-initialize the pickers on next modal open
+                            $('#start-picker, #end-picker').empty();
+                            $('#roomSelect').val('');
+                            $('#recurringDetails').val('');
+
+                            // Show success message
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Booking Created Successfully!',
+                                text: response.data.message || 'Your booking has been created and is pending approval.',
+                                timer: 3000,
+                                timerProgressBar: true,
+                                showConfirmButton: true
+                            });
+
+                            // Refresh calendar and bookings list with a delay to ensure server has processed the booking
+                            setTimeout(function () {
+                                globalCalendar.refetchEvents();
+                                bookingManager.loadUserBookings();
+                                checkPendingApprovals();
+                            }, 1000);
                         } else {
-                            showAlert(response.data.message, 'error');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Booking Failed',
+                                text: response.data.message || response.message || 'Error creating booking. Please try again.',
+                                showConfirmButton: true
+                            });
                         }
                     },
                     error: function (xhr, status, error) {
-                        showAlert('Error creating booking: ' + error, 'error');
+                        Swal.close(); // Close loading indicator
+                        
+                        let errorMessage = 'Error creating booking. Please try again.';
+                        
+                        if (status === 'timeout') {
+                            errorMessage = 'The request timed out. Please check your connection and try again.';
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (error) {
+                            errorMessage = 'Error: ' + error;
+                        }
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Booking Failed',
+                            text: errorMessage,
+                            showConfirmButton: true
+                        });
                     }
                 });
             });

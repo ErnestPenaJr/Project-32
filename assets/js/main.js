@@ -162,55 +162,6 @@ const dateRangeConfig = {
     }
 };
 
-// Room list functionality
-const loadRooms = () => {
-    $.ajax({
-        url: 'assets/cfc/functions.cfc',
-        type: 'GET',
-        dataType: 'json',
-        data: {
-            method: 'getRooms',
-            returnformat: 'json'
-        },
-        success: (response) => {
-            const $roomList = $('#roomList');
-            $roomList.empty();
-            
-            response.DATA.forEach((room) => {
-                $roomList.append(`
-                    <div class="list-group-item list-group-item-action" data-aos="fade-up">
-                        <div class="d-flex w-100 justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">
-                                    <i class="fas fa-map-marker-alt text-primary me-2"></i>${room.LOCATION}
-                                </h6>
-                                <small class="text-muted">
-                                    <i class="fas fa-users me-1"></i>Capacity: ${room.CAPACITY}
-                                </small>
-                            </div>
-                            <span class="badge ${room.STATUS === 'Available' ? 'bg-success' : 'bg-danger'} rounded-pill">
-                                ${room.STATUS}
-                            </span>
-                        </div>
-                    </div>
-                `);
-            });
-
-            // Initialize AOS animations
-            AOS.refresh();
-        },
-        error: (xhr, status, error) => {
-            console.error('Error loading rooms:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to load rooms. Please try again.',
-                confirmButtonClass: 'btn btn-primary'
-            });
-        }
-    });
-};
-
 // Initialize components when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize date pickers
@@ -264,13 +215,6 @@ document.addEventListener('DOMContentLoaded', function() {
             input.addEventListener('change', () => previewImage(input, previewElement));
         }
     });
-});
-
-// Initialize room list
-$(document).ready(() => {
-    loadRooms();
-    // Refresh rooms every 60 seconds
-    setInterval(loadRooms, 60000);
 });
 
 // Export functions for use in other scripts

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MD Anderson Room Reservation</title>
+
+    <link href="assets/css/styles.css" rel="stylesheet" type="text/css" />
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+
+    <style>
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #718096;
+            z-index: 10;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle:hover {
+            color: #4A5568;
+        }
+
+        .password-field-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-with-icon {
+            padding-right: 2.5rem !important;
+            width: 100%;
+        }
+
+        /* Add styles for centering the card */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .row {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md mx-auto">
+                <div class="card mb-0" data-aos="fade-down" data-aos-duration="1000"
+                    style="max-width: 400px; margin: 0 auto;">
+                    <div class=" card-body">
+                        <h2 class="card-title text-center"><img src="assets/images/logo.png" height="75"
+                                alt="MD Anderson Logo" class="mx-auto"></h2>
+                        <h2 class="card-title font-bold text-mdacc-blue d-flex justify-content-center">Room Reservation
+                        </h2>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <label for="username">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="form-group mt-4">
+                                <label for="password">Password</label>
+                                <div class="password-field-container">
+                                    <input type="password" class="form-control input-with-icon" id="password"
+                                        name="password" required>
+                                    <i class="fas fa-eye password-toggle"></i>
+                                </div>
+                            </div>
+                            <!-- add forgot password -->
+                            <div class=" mt-4 justify-content-center">
+                                <button type="submit" class="btn btn-primary">Sign in</button>
+                                <a href="#" class="font-medium text-blue-600 hover:text-blue-500 float-end">Forgot your
+                                    password?</a>
+                            </div>
+
+                            <div class="mt-4" style="font-size: 9px;">
+                                <span style="font-weight: bold; color: red;">UNAUTHORIZED ACCESS TO THIS NETWORK DEVICE
+                                    IS PROHIBITED.</span>
+                                <br>Use of this application is for authorized University of Texas M. D. Anderson Cancer
+                                Center (UTMDACC) users only. This computer system is the property of UTMDACC. It may be
+                                used only as authorized by UTMDACC. Individuals accessing or using this computer system
+                                have no expectation of privacy with respect to such access or usage except as may
+                                otherwise be provided by applicable privacy laws. Pursuant to Texas Administrative Code
+                                Section 202.7, usage is subject to security testing and monitoring as appropriate, and
+                                misuse is subject to criminal prosecution. Report any suspected unauthorized activity to
+                                the Information Security Department at 713-745-9000.
+                            </div>
+                        </form>
+                        <div class="mt-3 p-0" style="font-size: 10px;">
+                            <p><b>DoCM Reservation System</b> works best with the following web
+                                browsers.<br><i class="fab fa-chrome"></i> Chrome <b>or</b> <i
+                                    class="fab fa-firefox"></i>
+                                Firefox <b>or</b> <i class="fab fa-safari"></i> Safari.</p>
+                            <p style="font-style: italic">If you experience difficulty using <i
+                                    class="fab fa-internet-explorer"></i> Internet
+                                Explorer , please try using one of the browsers listed above.</p>
+                            <p><i class="fad fa-spa"></i> The Division of Cancer Medicine maintains the Web Schedule
+                                application. If you have any questions or concerns regarding Web Schedule, please
+                                contact
+                                the Cancer Medicine Resolution center @ 3-3500, or email: cmsc@mdanderson.org. </p>
+                        </div>
+                    </div>
+                </div>
+                <!-- <div class="card text-center mt-2 p-0" data-aos="fade-up" data-aos-duration="1000"
+                    style="max-width: 400px; margin: 0 auto; font-size: 9px;">
+                    <div class="card-body">
+                        <p><i class="fad fa-spa"></i> The Division of Cancer Medicine maintains the Web Schedule
+                            application. If you have any questions or concerns regarding Web Schedule, please contact
+                            the Cancer Medicine Resolution center @ 3-3500, or email: cmsc@mdanderson.org. </p>
+                    </div>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Dependencies -->
+
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="assets/js/jquery.session-timeout.min.js"></script>
+
+    <script>
+        AOS.init();
+
+        $(document).ready(function () {
+            // Check session status
+            function checkSession() {
+                $.ajax({
+                    url: 'cfcs/Authenticate.cfc',
+                    method: 'POST',
+                    data: {
+                        method: 'checkSession',
+                        returnformat: 'json'
+                    },
+                    success: function (response) {
+                        if (response.valid) {
+                            window.location.href = 'index.html';
+                        }
+                    }
+                });
+            }
+
+            // Check session on page load
+            checkSession();
+
+            // Toggle password visibility
+            $('.password-toggle').on('click', function () {
+                const input = $(this).prev();
+                const type = input.attr('type') === 'password' ? 'text' : 'password';
+                input.attr('type', type);
+                $(this).toggleClass('fa-eye fa-eye-slash');
+            });
+
+            // Handle form submission
+            $('#loginForm').on('submit', function (e) {
+                e.preventDefault();
+
+                // Show loading state
+                Swal.fire({
+                    title: 'Signing in...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                const username = $('#username').val();
+                const password = $('#password').val();
+
+                $.ajax({
+                    url: 'cfcs/Authenticate.cfc',
+                    method: 'POST',
+                    data: {
+                        method: 'remote_LDAP',
+                        UserID: username,
+                        UserPassword: password,
+                        returnformat: 'json'
+                    },
+                    success: function (response) {
+                        try {
+                            const data = typeof response === 'string' ? JSON.parse(response) : response;
+
+                            if (data.LDAP.AUTHORIZED_USER === true) {
+                                // Store session info
+                                sessionStorage.setItem('ISLOGGINEDIN', data.LDAP.ISLOGGINEDIN);
+                                sessionStorage.setItem('ADMESSAGE', data.LDAP.ADMESSAGE);
+                                sessionStorage.setItem('AUTHORIZED_USER', data.LDAP.AUTHORIZED_USER);
+                                sessionStorage.setItem('DEPTID', data.LDAP.DEPTID);
+                                sessionStorage.setItem('DIVISIONID', data.LDAP.DIVISIONID);
+                                sessionStorage.setItem('EMAIL', data.LDAP.EMAIL);
+                                sessionStorage.setItem('EMPLID', data.LDAP.EMPLID);
+                                sessionStorage.setItem('ISADMIN', data.LDAP.ISADMIN);
+                                sessionStorage.setItem('JOBCODE', data.LDAP.JOBCODE);
+                                sessionStorage.setItem('JOBTITLE', data.LDAP.JOBTITLE);
+                                sessionStorage.setItem('LASTLOGGEDIN', data.LDAP.LASTLOGGEDIN);
+                                sessionStorage.setItem('NAME', data.LDAP.NAME);
+                                sessionStorage.setItem('OFFICE', data.LDAP.OFFICE);
+                                sessionStorage.setItem('ROLE', data.LDAP.ROLE);
+                                sessionStorage.setItem('ROLEID', data.LDAP.ROLEID);
+                                sessionStorage.setItem('USERNAME', data.LDAP.USERNAME);
+                                sessionStorage.setItem('USER_ID', data.LDAP.USER_ID);
+                                sessionStorage.setItem('WORKPHONE', data.LDAP.WORKPHONE);
+
+                                // Redirect to dashboard
+                                window.location.href = 'index.html';
+                            } else {
+                                Swal.fire({
+                                    icon: 'info',
+                                    title: 'Application Authentication Failed',
+                                    html: data.LDAP.ADMESSAGE || 'Invalid username or password'
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error parsing response:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                html: 'An error occurred during authentication'
+                            });
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('AJAX Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            html: 'An error occurred during authentication'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

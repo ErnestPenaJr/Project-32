@@ -1,10 +1,11 @@
 // Session timeout handler
-(function ($) { // Add the plugin to jQuery
-    $.sessionTimeout = function (options) {
+(function($) {
+    // Add the plugin to jQuery
+    $.sessionTimeout = function(options) {
         var defaults = {
             keepAliveUrl: 'keep-alive',
-            logoutUrl: '../logout.html',
-            redirUrl: '../login.html',
+            logoutUrl: 'logout',
+            redirUrl: 'login',
             warnAfter: 900000, // 15 minutes
             redirAfter: 1200000, // 20 minutes
             keepAliveInterval: 300000, // 5 minutes
@@ -13,12 +14,14 @@
         };
 
         var opt = $.extend(defaults, options);
-        var timer,
-            keepAliveTimer;
+        var timer, keepAliveTimer;
         var warning = false;
 
         function keepAlive() {
-            $.ajax({type: 'POST', url: opt.keepAliveUrl});
+            $.ajax({
+                type: 'POST',
+                url: opt.keepAliveUrl
+            });
         }
 
         function startKeepAlive() {
@@ -38,7 +41,7 @@
         }
 
         function start() {
-            if (! warning) {
+            if (!warning) {
                 warning = true;
                 if (opt.onWarn && typeof opt.onWarn === 'function') {
                     opt.onWarn();

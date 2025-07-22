@@ -1,5 +1,20 @@
 <cfcomponent output="false">
-    
+    <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
+        <cfset this.DBSERVER = "inside2_docmp" />
+        <cfset this.DBUSER = "CONFROOM_USER" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
+         <cfset this.DBSCHEMA = "CONFROOM" />
+    <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
+        <cfset this.DBSERVER = "inside2_docms" />
+        <cfset this.DBUSER = "CONFROOM" />
+        <cfset this.DBPASS = "1DOCMOA4CNFRM3" />
+        <cfset this.DBSCHEMA = "CONFROOM" />
+    <cfelse>
+        <cfset this.DBSERVER = "inside2_docmd" />
+        <cfset this.DBUSER = "CONFROOM" />
+        <cfset this.DBPASS = "1DOCMOA4CNFRM3" />
+        <cfset this.DBSCHEMA = "CONFROOM" />
+    </cfif>
     <!--- Get Dashboard Data --->
     <cffunction name="getDashboardData" access="remote" returntype="struct" returnformat="JSON">
         <cfargument name="period" type="string" required="true">

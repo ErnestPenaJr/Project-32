@@ -2,7 +2,7 @@
     <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
         <cfset this.DBSERVER = "inside2_docmp" />
         <cfset this.DBUSER = "CONFROOM_USER" />
-        <cfset this.DBPASS = "1docmD4OU6D88" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
          <cfset this.DBSCHEMA = "CONFROOM" />
     <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
         <cfset this.DBSERVER = "inside2_docms" />
@@ -559,12 +559,39 @@
                 </p>
             </cfoutput>
         ">
-
-        <cfmail to="#qryGetBooking.EMAIL#" from="#qryGetBooking.EMAIL#" subject="Cancellation Confirmation - Room ""#qryGetBooking.ROOM_NAME#""" type="html" bcc="erniep@mdanderson.org, tlouie@mdanderson.org, cpender@mdanderson.org, tglover@mdanderson.org">
-            <cfmailpart type="text/html">
-                <cfoutput>#emailBody#</cfoutput>
-            </cfmailpart>
-        </cfmail>
+            <!--- Check if user should receive booking cancellation email --->
+            <cfset notificationService = createObject("component", "assets.cfc.notifications") />
+            <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CANCELLATION") />
+            
+            <!--- Only send email if user has email notifications enabled for booking cancellations --->
+            <cfif userPreferences.email>
+                <!--- Get admins who should receive this notification --->
+                <cfset qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CANCELLATION", "email") />
+                
+                <!--- Build list of admin emails --->
+                <cfset adminEmails = "">
+                <cfloop query="qryAdminsToNotify">
+                    <cfset adminEmails = ListAppend(adminEmails, qryAdminsToNotify.EMAIL)>
+                </cfloop>
+                
+                <!--- Send email to requester and CC admins who want notifications --->
+                <cfif len(trim(adminEmails))>
+                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
+                            subject="Cancellation Confirmation - Room ""#qryGetBooking.ROOM_NAME#""" type="html" cc="#adminEmails#">
+                        <cfmailpart type="text/html">
+                            <cfoutput>#emailBody#</cfoutput>
+                        </cfmailpart>
+                    </cfmail>
+                <cfelse>
+                    <!--- If no admins to CC, just send to requester --->
+                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
+                            subject="Cancellation Confirmation - Room ""#qryGetBooking.ROOM_NAME#""" type="html">
+                        <cfmailpart type="text/html">
+                            <cfoutput>#emailBody#</cfoutput>
+                        </cfmailpart>
+                    </cfmail>
+                </cfif>
+            </cfif>
 
     <cfset response = {
         "status": "SUCCESS",
@@ -577,6 +604,63 @@
 
 
 
+    <cffunction name="calculateRecurringDates" access="private" returntype="array" output="false">
+        <cfargument name="startDate" required="true" type="date">
+        <cfargument name="endDate" required="true" type="date">
+        <cfargument name="recurringType" required="true" type="string">
+        <cfargument name="maxOccurrences" required="false" type="numeric" default="52">
+        
+        <cfset var dates = [] />
+        <cfset var currentDate = arguments.startDate />
+        <cfset var currentEndDate = arguments.endDate />
+        <cfset var occurrenceCount = 0 />
+        <cfset var maxEndDate = DateAdd("yyyy", 1, arguments.startDate) />
+        
+        <cfloop condition="occurrenceCount LT arguments.maxOccurrences AND currentDate LTE maxEndDate">
+            <cfset arrayAppend(dates, {
+                "startDate": currentDate,
+                "endDate": currentEndDate
+            }) />
+            <cfset occurrenceCount = occurrenceCount + 1 />
+            
+            <cfswitch expression="#UCase(arguments.recurringType)#">
+                <cfcase value="DAILY">
+                    <cfset currentDate = DateAdd("d", 1, currentDate) />
+                    <cfset currentEndDate = DateAdd("d", 1, currentEndDate) />
+                </cfcase>
+                <cfcase value="WEEKLY">
+                    <cfset currentDate = DateAdd("ww", 1, currentDate) />
+                    <cfset currentEndDate = DateAdd("ww", 1, currentEndDate) />
+                </cfcase>
+                <cfcase value="BI-WEEKLY">
+                    <cfset currentDate = DateAdd("ww", 2, currentDate) />
+                    <cfset currentEndDate = DateAdd("ww", 2, currentEndDate) />
+                </cfcase>
+                <cfcase value="MONTHLY">
+                    <cfset currentDate = DateAdd("m", 1, currentDate) />
+                    <cfset currentEndDate = DateAdd("m", 1, currentEndDate) />
+                </cfcase>
+                <cfcase value="QUARTERLY">
+                    <cfset currentDate = DateAdd("q", 1, currentDate) />
+                    <cfset currentEndDate = DateAdd("q", 1, currentEndDate) />
+                </cfcase>
+                <cfcase value="SEMI-ANNUAL">
+                    <cfset currentDate = DateAdd("m", 6, currentDate) />
+                    <cfset currentEndDate = DateAdd("m", 6, currentEndDate) />
+                </cfcase>
+                <cfcase value="YEARLY">
+                    <cfset currentDate = DateAdd("yyyy", 1, currentDate) />
+                    <cfset currentEndDate = DateAdd("yyyy", 1, currentEndDate) />
+                </cfcase>
+                <cfdefaultcase>
+                    <cfbreak />
+                </cfdefaultcase>
+            </cfswitch>
+        </cfloop>
+        
+        <cfreturn dates />
+    </cffunction>
+
     <cffunction name="createBooking" access="remote" returntype="any" returnformat="JSON" output="false">
         <cfargument name="employee_id" required="true" type="numeric">
         <cfargument name="user_id" required="true" type="numeric">
@@ -585,8 +669,10 @@
         <cfargument name="end_time" required="true" type="string">
         <cfargument name="recurring" required="false" type="string" default="NO">
         <cfargument name="recurring_type" required="false" type="string" default="DAILY">
+        <cfargument name="comments" required="false" type="string" default="">
         
         <cfset var retVal = {} />
+        <cfset var bookingIds = [] />
         
         <cftry>
             <!-- Parse date and time while considering AM/PM -->
@@ -603,53 +689,94 @@
         </cfcatch>
         </cftry>
 
-            <!--- Check if time slot is available --->
-            <cfquery name="qryCheckAvailability" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT COUNT(*) as conflict_count
-                FROM #this.DBSCHEMA#.BOOKINGS
-                WHERE ROOM_ID = <cfqueryparam value="#arguments.room_id#" cfsqltype="cf_sql_numeric">
-                AND LOWER(STATUS) IN('approved', 'pending')
-                AND (
-                    (START_TIME BETWEEN 
-                        TO_DATE(<cfqueryparam value="#DateFormat(local.parsedStartTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedStartTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI')
-                        AND TO_DATE(<cfqueryparam value="#DateFormat(local.parsedEndTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedEndTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'))
-                    OR (END_TIME BETWEEN 
-                        TO_DATE(<cfqueryparam value="#DateFormat(local.parsedStartTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedStartTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI')
-                        AND TO_DATE(<cfqueryparam value="#DateFormat(local.parsedEndTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedEndTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'))
-                    OR (START_TIME <= TO_DATE(<cfqueryparam value="#DateFormat(local.parsedStartTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedStartTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI')
-                        AND END_TIME >= TO_DATE(<cfqueryparam value="#DateFormat(local.parsedEndTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedEndTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'))
-                )
-            </cfquery>
-
-            <cfif qryCheckAvailability.conflict_count GT 0>
-                <cfset retVal["status"] = "error">
-                <cfset retVal["data"] = {"message": "Selected time slot is not available"}>
-                <cfreturn retVal>
+            <!--- Determine if this is a recurring booking --->
+            <cfset var isRecurring = (UCase(arguments.recurring) EQ "YES" OR UCase(arguments.recurring) EQ "TRUE") />
+            <cfset var recurringDetails = "" />
+            <cfset var bookingDates = [] />
+            
+            <!--- Calculate booking dates (single or recurring) --->
+            <cfif isRecurring>
+                <cfset bookingDates = calculateRecurringDates(local.parsedStartTime, local.parsedEndTime, arguments.recurring_type) />
+                <cfset recurringDetails = "Type: #arguments.recurring_type#, Created: #DateFormat(Now(), 'yyyy-mm-dd')#" />
+            <cfelse>
+                <cfset arrayAppend(bookingDates, {
+                    "startDate": local.parsedStartTime,
+                    "endDate": local.parsedEndTime
+                }) />
             </cfif>
-
-            <!--- Create the booking --->
-            <cfquery name="qryCreateBooking" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                INSERT INTO #this.DBSCHEMA#.BOOKINGS (
-                    USER_ID, ROOM_ID, START_TIME, END_TIME, 
-                    RECURRING_DETAILS, STATUS, CREATED_AT, UPDATED_AT
-                )
-                VALUES (
-                <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">,
-                <cfqueryparam value="#arguments.room_id#" cfsqltype="cf_sql_numeric">,
-                TO_DATE(<cfqueryparam value="#DateFormat(local.parsedStartTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedStartTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'),
-                TO_DATE(<cfqueryparam value="#DateFormat(local.parsedEndTime, 'yyyy-mm-dd')# #TimeFormat(local.parsedEndTime, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'),
-                NULL,
-                'approved',
-                CURRENT_TIMESTAMP,
-                CURRENT_TIMESTAMP
-                )
-            </cfquery>
-
+            
+            <!--- Check availability for all dates before creating any bookings --->
+            <cfset var conflictDates = [] />
+            <cfloop array="#bookingDates#" index="dateSlot">
+                <cfquery name="qryCheckAvailability" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT COUNT(*) as conflict_count
+                    FROM #this.DBSCHEMA#.BOOKINGS
+                    WHERE ROOM_ID = <cfqueryparam value="#arguments.room_id#" cfsqltype="cf_sql_numeric">
+                    AND LOWER(STATUS) IN('approved', 'pending')
+                    AND (
+                        (START_TIME BETWEEN 
+                            TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.startDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.startDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI')
+                            AND TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.endDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.endDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'))
+                        OR (END_TIME BETWEEN 
+                            TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.startDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.startDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI')
+                            AND TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.endDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.endDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'))
+                        OR (START_TIME <= TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.startDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.startDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI')
+                            AND END_TIME >= TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.endDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.endDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'))
+                    )
+                </cfquery>
+                
+                <cfif qryCheckAvailability.conflict_count GT 0>
+                    <cfset arrayAppend(conflictDates, DateFormat(dateSlot.startDate, 'yyyy-mm-dd')) />
+                </cfif>
+            </cfloop>
+            
+            <!--- If any conflicts found, return error --->
+            <cfif arrayLen(conflictDates) GT 0>
+                <cfset retVal["status"] = "error" />
+                <cfif arrayLen(conflictDates) EQ 1>
+                    <cfset retVal["data"] = {"message": "Time slot not available on #conflictDates[1]#"} />
+                <cfelse>
+                    <cfset retVal["data"] = {"message": "Time slots not available on the following dates: #arrayToList(conflictDates, ', ')#"} />
+                </cfif>
+                <cfreturn retVal />
+            </cfif>
+            
+            <!--- Create all bookings --->
+            <cfloop array="#bookingDates#" index="dateSlot">
+                <cfquery name="qryCreateBooking" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    INSERT INTO #this.DBSCHEMA#.BOOKINGS (
+                        USER_ID, ROOM_ID, START_TIME, END_TIME, 
+                        RECURRING_DETAILS, STATUS, COMMENTS, CREATED_AT, UPDATED_AT
+                    )
+                    VALUES (
+                    <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">,
+                    <cfqueryparam value="#arguments.room_id#" cfsqltype="cf_sql_numeric">,
+                    TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.startDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.startDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'),
+                    TO_DATE(<cfqueryparam value="#DateFormat(dateSlot.endDate, 'yyyy-mm-dd')# #TimeFormat(dateSlot.endDate, 'HH:mm')#" cfsqltype="cf_sql_varchar">, 'YYYY-MM-DD HH24:MI'),
+                    <cfqueryparam value="#recurringDetails#" cfsqltype="cf_sql_varchar" null="#!len(trim(recurringDetails))#">,
+                    'pending',
+                    <cfqueryparam value="#arguments.comments#" cfsqltype="cf_sql_varchar" null="#!len(trim(arguments.comments))#">,
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP
+                    )
+                </cfquery>
+                
+                <cfquery name="qryGetBookingID" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT MAX(BOOKING_ID) AS booking_id
+                    FROM #this.DBSCHEMA#.BOOKINGS
+                </cfquery>
+                
+                <cfset arrayAppend(bookingIds, qryGetBookingID.booking_id) />
+            </cfloop>
+            
+            <!--- Get the first booking for email notification --->
             <cfquery name="qryGetBookingID" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT MAX(BOOKING_ID) AS booking_id
+                SELECT BOOKING_ID as booking_id
                 FROM #this.DBSCHEMA#.BOOKINGS
+                WHERE BOOKING_ID = <cfqueryparam value="#bookingIds[1]#" cfsqltype="cf_sql_numeric">
             </cfquery>
 
+            
             <cfquery name="qryGetBooking" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT 
                     b.BOOKING_ID,
@@ -698,21 +825,24 @@
 
             <!--- Write the ICS file --->
             <cffile action="write" file="#icsFilePath#" output="#finalContent#" charset="utf-8">
-            
+            <!--- <p>Thank you for your reservation! We're happy to confirm that your office space (#qryGetBooking.ROOM_NAME#) is successfully booked.</p>--->
 
             <cfset var emailBody = "
                 <cfoutput>
-                     <h2>BOOKING CONFIRMATION</h2>
+                     <h2>BOOKING CONFIRMATION - PENDING APPROVAL</h2>
 
                     <p>Greetings, #qryGetBooking.FIRST_NAME#,</p>
 
-                    <p>Thank you for your reservation! We're happy to confirm that your office space (#qryGetBooking.ROOM_NAME#) is successfully booked.</p>
+                    <p>Thank you for making a reservation! Your request for office space (#qryGetBooking.ROOM_NAME#) has been received and is pending approval.</p>
                     <p>Below are the details of your reservation:</p>
                     
                     <h3>Reservation Details:</h3>
                     <ul>
                         <li><strong>Location:</strong> #qryGetBooking.LOCATION#</li>
                         <li><strong>Room:</strong> #qryGetBooking.ROOM_NAME#</li>
+                        <cfif len(trim(qryGetBooking.COMMENTS))>
+                            <li><strong>Meeting Title:</strong> #HTMLEditFormat(qryGetBooking.COMMENTS)#</li>
+                        </cfif>
                         <li><strong>Starting On:</strong> #DateFormat(startTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(startTime, "h:mm tt")# </li>
                         <li><strong>Ending On:</strong> #DateFormat(endTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(endTime, "h:mm tt")# </li>
                         <li><strong>Booking ID:</strong> #qryGetBooking.BOOKING_ID#</li>
@@ -736,16 +866,57 @@
                 </cfoutput>
             ">
 
-            <cfmail to="#qryGetBooking.EMAIL#" from="#qryGetBooking.EMAIL#" subject="Office Space Reservation Confirmation" type="html" bcc="erniep@mdanderson.org, tlouie@mdanderson.org, cpender@mdanderson.org, tglover@mdanderson.org">
-                <cfmailpart type="text/html">
-                    <cfoutput>#emailBody#</cfoutput>
-                </cfmailpart>
-            </cfmail>
+            <!--- Check if user should receive booking confirmation email --->
+            <cfset notificationService = createObject("component", "assets.cfc.notifications") />
+            <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CONFIRMATION") />
+            
+            <!--- Only send email if user has email notifications enabled for booking confirmations --->
+            <cfif userPreferences.email>
+                <!--- Get admins who should receive this notification --->
+                <cfset qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CONFIRMATION", "email") />
+                
+                <!--- Build list of admin emails --->
+                <cfset adminEmails = "">
+                <cfloop query="qryAdminsToNotify">
+                    <cfset adminEmails = ListAppend(adminEmails, qryAdminsToNotify.EMAIL)>
+                </cfloop>
+                
+                <!--- Send email to requester and CC admins who want notifications --->
+                <cfif len(trim(adminEmails))>
+                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
+                            subject="Office Space Reservation - Pending Approval" type="html" cc="#adminEmails#">
+                        <cfmailpart type="text/html">
+                            <cfoutput>#emailBody#</cfoutput>
+                        </cfmailpart>
+                    </cfmail>
+                <cfelse>
+                    <!--- If no admins to CC, just send to requester --->
+                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
+                            subject="Office Space Reservation - Pending Approval" type="html">
+                        <cfmailpart type="text/html">
+                            <cfoutput>#emailBody#</cfoutput>
+                        </cfmailpart>
+                    </cfmail>
+                </cfif>
+            </cfif>
 
 
 
             <cfset retVal["status"] = "success">
-            <cfset retVal["data"] = {"message": "Booking created successfully, please check your email for confirmation"}>
+            <cfif isRecurring>
+                <cfset retVal["data"] = {
+                    "message": "Recurring booking created successfully! #arrayLen(bookingIds)# bookings were created. Please check your email for confirmation.",
+                    "bookingCount": arrayLen(bookingIds),
+                    "bookingIds": bookingIds,
+                    "recurringType": arguments.recurring_type
+                }>
+            <cfelse>
+                <cfset retVal["data"] = {
+                    "message": "Booking created successfully, please check your email for confirmation",
+                    "bookingCount": 1,
+                    "bookingIds": bookingIds
+                }>
+            </cfif>
   
         <cfreturn retVal>
     </cffunction>

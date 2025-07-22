@@ -2,7 +2,7 @@
     <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
         <cfset this.DBSERVER = "inside2_docmp" />
         <cfset this.DBUSER = "CONFROOM_USER" />
-        <cfset this.DBPASS = "1docmD4OU6D88" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
          <cfset this.DBSCHEMA = "CONFROOM" />
     <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
         <cfset this.DBSERVER = "inside2_docms" />
@@ -209,51 +209,71 @@
         </cftry>
     </cffunction>
 
-   <cffunction name="addRoom" access="remote" returntype="any" returnformat="JSON">
+   <cffunction name="addRoom" access="remote" returntype="struct" returnformat="JSON">
     <cfargument name="roomName" type="string" required="true">
     <cfargument name="building" type="string" required="true">
     <cfargument name="roomNumber" type="string" required="true">
     <cfargument name="capacity" type="numeric" required="true">
     <cfargument name="description" type="string" required="true">
     <cfargument name="recurring" type="string" required="true" default="NO">
-    <cfargument name="maintenanceStatus" type="string" required="true" default="NO">
+    <cfargument name="maintenance" type="string" required="false" default="NO">
     <cfargument name="image" type="string" required="false" default="">
-    <cfargument name="userId" type="string" required="false" default="sessionStorage.getItem('EMPLID')">
+    
+    <cftry>
+        <cfquery name="qAddRoom" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#" result="result">
+            INSERT INTO #this.DBSCHEMA#.ROOMS (
+                ROOM_NAME,
+                BUILDING,
+                ROOM_NUMBER,
+                CAPACITY,
+                DESCRIPTION,
+                RECURRING,
+                MAINTENANCE_STATUS,
+                ROOM_IMAGE,
+                STATUS
+            ) VALUES (
+                <cfqueryparam value="#arguments.roomName#" cfsqltype="cf_sql_varchar">,
+                <cfqueryparam value="#arguments.building#" cfsqltype="cf_sql_varchar">,
+                <cfqueryparam value="#arguments.roomNumber#" cfsqltype="cf_sql_varchar">,
+                <cfqueryparam value="#arguments.capacity#" cfsqltype="cf_sql_numeric">,
+                <cfqueryparam value="#arguments.description#" cfsqltype="cf_sql_varchar">,
+                <cfqueryparam value="#arguments.recurring#" cfsqltype="cf_sql_varchar">,
+                <cfqueryparam value="#arguments.maintenance#" cfsqltype="cf_sql_varchar">,
+                <cfif len(trim(arguments.image))>
+                    <cfqueryparam value="#arguments.image#" cfsqltype="cf_sql_clob">,
+                <cfelse>
+                    NULL,
+                </cfif>
+                'Active'
+            )
+        </cfquery>
 
-    <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-    INSERT INTO #this.DBSCHEMA#.ROOMS (
-        ROOM_NAME,
-        BUILDING,
-        ROOM_NUMBER,
-        CAPACITY,
-        DESCRIPTION,
-        RECURRING,
-        MAINTENANCE_STATUS,
-        ROOM_IMAGE
-    )
-    VALUES (
-        <cfqueryparam value="#arguments.roomName#" cfsqltype="cf_sql_varchar">,
-        <cfqueryparam value="#arguments.building#" cfsqltype="cf_sql_varchar">,
-        <cfqueryparam value="#arguments.roomNumber#" cfsqltype="cf_sql_varchar">,
-        <cfqueryparam value="#arguments.capacity#" cfsqltype="cf_sql_numeric">,
-        <cfqueryparam value="#arguments.description#" cfsqltype="cf_sql_varchar">,
-        <cfqueryparam value="#arguments.recurring#" cfsqltype="cf_sql_varchar">,
-        <cfqueryparam value="#arguments.maintenanceStatus#" cfsqltype="cf_sql_varchar">,
-        <cfqueryparam value="#arguments.image#" cfsqltype="cf_sql_clob">
-    )
-    </cfquery>
-
-    <cfquery name="getRoomId" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-    SELECT MAX(ROOM_ID) AS ROOM_ID
-    FROM #this.DBSCHEMA#.ROOMS
-    WHERE ROOM_NAME = <cfqueryparam value="#arguments.roomName#" cfsqltype="cf_sql_varchar">
-      AND BUILDING = <cfqueryparam value="#arguments.building#" cfsqltype="cf_sql_varchar">
-      AND ROOM_NUMBER = <cfqueryparam value="#arguments.roomNumber#" cfsqltype="cf_sql_varchar">
-    </cfquery>
-
-    <cfset result = {
-        "success": true,
-        "roomId": getRoomId.ROOM_ID
+        <!--- Get the ID of the newly inserted room --->
+        <cfset var newRoomId = "">
+        <cfquery name="qGetRoomId" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+            SELECT MAX(ROOM_ID) AS ROOM_ID
+            FROM #this.DBSCHEMA#.ROOMS
+            WHERE ROOM_NAME = <cfqueryparam value="#arguments.roomName#" cfsqltype="cf_sql_varchar">
+            AND BUILDING = <cfqueryparam value="#arguments.building#" cfsqltype="cf_sql_varchar">
+            AND ROOM_NUMBER = <cfqueryparam value="#arguments.roomNumber#" cfsqltype="cf_sql_varchar">
+        </cfquery>
+        
+        <cfset newRoomId = qGetRoomId.ROOM_ID>
+        
+        <cfreturn {
+            "success": true,
+            "message": "Room added successfully",
+            "roomId": newRoomId
+        }>
+        
+        <cfcatch type="any">
+            <cflog file="roomManagement" text="Error in addRoom: #cfcatch.message#. Details: #cfcatch.detail#">
+            <cfreturn {
+                "success": false,
+                "message": "Error adding room: #cfcatch.message#"
+            }>
+        </cfcatch>
+    </cftry>
     }>
     <cfreturn result>
 </cffunction>
@@ -408,6 +428,7 @@
     </cfcatch>
     </cftry>
 </cffunction>
+
     <cffunction name="addRoomAmenities" access="remote" returntype="struct" returnformat="JSON">
         <cfargument name="roomId" type="numeric" required="true">
         <cfargument name="amenityIds" type="string" required="true">

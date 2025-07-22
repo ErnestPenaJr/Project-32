@@ -2,7 +2,7 @@
         <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
         <cfset this.DBSERVER = "inside2_docmp" />
         <cfset this.DBUSER = "CONFROOM_USER" />
-        <cfset this.DBPASS = "1docmD4OU6D88" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
          <cfset this.DBSCHEMA = "CONFROOM" />
     <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
         <cfset this.DBSERVER = "inside2_docms" />
@@ -17,29 +17,28 @@
     </cfif>
     <!--- Get Rooms --->
     <cffunction name="getRooms" access="remote" returntype="query" returnformat="json">
-        <cfquery name="qRooms" datasource="project_32">
+        <cfquery name="qRooms" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#" >
             SELECT 
                 location,
                 capacity,
                 CASE 
                     WHEN EXISTS (
                         SELECT 1 
-                        FROM bookings b 
+                        FROM #this.DBSCHEMA#.BOOKINGS b 
                         WHERE b.room_id = r.room_id 
                         AND CURRENT_TIMESTAMP BETWEEN b.start_time AND b.end_time
                     ) THEN 'Occupied'
                     ELSE 'Available'
                 END as status
-            FROM rooms r
+            FROM #this.DBSCHEMA#.ROOMS r
             ORDER BY location ASC
         </cfquery>
         <cfreturn qRooms>
     </cffunction>
 
     <cffunction name="getBookingHistory"access="remote" returntype="struct" returnformat="json">
-        <cfargument name="userId" type="numeric" required="false" default="#session.userId#">
-        
- <cfargument name="date" type="string" required="false" default="">
+        <cfargument name="userId" type="any" required="false" default="">
+        <cfargument name="date" type="string" required="false" default="">
         <cfargument name="status" type="string" required="false" default="">
         <cfargument name="search" type="string" required="false" default="">
         
@@ -63,7 +62,9 @@
                 FROM #this.DBSCHEMA#.BOOKINGS b
                 JOIN #this.DBSCHEMA#.USERS u ON b.USER_ID = u.USER_ID
                 JOIN #this.DBSCHEMA#.ROOMS r ON b.ROOM_ID = r.ROOM_ID
+                <cfif isDefined('#arguments.userId#') AND LEN(TRIM(#ARGUMENTS.userId#)) NEQ 0>
                 WHERE b.USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_numeric">
+                </cfif>
                 ORDER BY b.START_TIME DESC
             </cfquery>
             
@@ -100,4 +101,31 @@
             </cfcatch>
         </cftry>
     </cffunction>
+
+    <cffunction name="getServerType" access="remote" returntype="struct" returnformat="json">
+        <cfset serverName = #GetPageContext().GetRequest().GetServerName().ToString()# />
+        <cfset var serverType = "">
+
+        <cfif findNoCase("s-cmapps.mdanderson.org", serverName) or findNoCase("s-cmapps-a.mdanderson.org", serverName) or findNoCase("s-cmapps-b.mdanderson.org", serverName)>
+            <cfset serverType = "STAGING">
+            <cfset severId = 2>
+        <cfelseif findNoCase("cmapps.mdanderson.org", serverName) or  findNoCase("cmapps-a.mdanderson.org", serverName) or  findNoCase("cmapps-b.mdanderson.org", serverName)>
+            <cfset serverType = "PROD">
+            <cfset severId = 1>
+        <cfelse>
+            <cfset serverType = "TESTING">
+            <cfset severId = 3>
+        </cfif>
+           <cfset result = {
+            "success": true,
+            "serverType": serverType,
+            "serverId": severId
+        } />
+
+        <cfreturn result>
+
+    </cffunction>
+
+
+
 </cfcomponent>

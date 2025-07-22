@@ -2,7 +2,7 @@
     <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
         <cfset this.DBSERVER = "inside2_docmp" />
         <cfset this.DBUSER = "CONFROOM_USER" />
-        <cfset this.DBPASS = "1docmD4OU6D88" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
         <cfset this.DBSCHEMA = "CONFROOM" />
     <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
         <cfset this.DBSERVER = "inside2_docms" />
@@ -15,6 +15,7 @@
         <cfset this.DBPASS = "1DOCMOA4CNFRM3" />
         <cfset this.DBSCHEMA = "CONFROOM" />
     </cfif>
+    
 <cffunction name="search4Employees" access="remote" returntype="any" returnformat="JSON" produces="JSON" >
 		<cfargument name="query" type="string" required="true" >
 		<cfargument name="scope" type="string" required="false" default="everyone" hint="The scope to search within for matching employee names.  Valid argument values are 'Everyone' (default), 'WebSchedule' (only registered users), 'Department', and 'Division'." >
@@ -36,7 +37,7 @@
                 ps.LEV4_DEPTID AS DIVISIONID,
                 PS.LEV4_DEPTNAME AS DIVISIONNAME,
 				PS.OFFICE_LOC AS LOCATION
-			FROM CONFROOM.ACTIVE_PEOPLESOFT PS
+			FROM #this.DBSCHEMA#.ACTIVE_PEOPLESOFT PS
 			WHERE PS.HR_STATUS = 'A'
 				<cfloop list="#lcase(arguments.query)#" delimiters=" ," index="i">
                     <cfif isNumeric(i)>
@@ -107,8 +108,9 @@
         <cftry>
             <cfquery name="qGetUsers" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT u.USER_ID, u.FIRST_NAME, u.LAST_NAME,u.EMAIL,u.ROLE_ID, u.EMPLID, u.LASTLOGGEDON, u.STATUS, r.ROLE_NAME, u.FIRST_NAME || ' ' || u.LAST_NAME as FULL_NAME 
-                FROM USERS u, ROLES r 
-                WHERE u.ROLE_ID = r.ROLE_ID 
+                FROM #this.DBSCHEMA#.USERS u, #this.DBSCHEMA#.ROLES r 
+                WHERE u.ROLE_ID = r.ROLE_ID
+                AND u.STATUS in ('Active', 'Inactive','NEW')
                 ORDER BY u.LAST_NAME ASC
             </cfquery>
 
@@ -146,7 +148,7 @@
         <cftry>
             <cfquery name="qGetUser" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT u.USER_ID as ID, u.EMPLID, u.EMAIL, u.FIRST_NAME ||' '|| u.LAST_NAME AS FULL_NAME, r.ROLE_NAME, r.ROLE_ID, u.STATUS, ap.DEPARTMENTNAME, ap.JOBTITLE
-                FROM USERS u, ROLES r, ACTIVE_PEOPLESOFT ap
+                FROM #this.DBSCHEMA#.USERS u, #this.DBSCHEMA#.ROLES r, #this.DBSCHEMA#.ACTIVE_PEOPLESOFT ap
                 WHERE u.ROLE_ID = r.ROLE_ID 
                 AND u.EMPLID = ap.EMPLID
                 AND u.USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_varchar">
@@ -227,7 +229,7 @@
                 </cfquery>
                 <cfquery name="qGetRole" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                     SELECT ROLE_NAME
-                    FROM ROLES
+                    FROM #this.DBSCHEMA#.ROLES
                     WHERE ROLE_ID = <cfqueryparam value="#arguments.permissions#" cfsqltype="cf_sql_varchar">
                 </cfquery>
                 
@@ -262,14 +264,14 @@
             <!--- Check if username exists for other users --->
             <cfquery name="qGetUserDetails" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT u.USER_ID, u.EMPLID, u.FIRST_NAME, u.LAST_NAME, u.EMAIL, u.STATUS, u.ROLE_ID, r.ROLE_NAME
-                FROM #this.DBSCHEMA#.USERS u, ROLES r
+                FROM #this.DBSCHEMA#.USERS u, #this.DBSCHEMA#.ROLES r
                 WHERE u.ROLE_ID = r.ROLE_ID
                 AND USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_varchar">
             </cfquery>
 
             <cfquery name="qGetRole" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT ROLE_ID, ROLE_NAME
-                FROM ROLES
+                FROM #this.DBSCHEMA#.ROLES
                 WHERE ROLE_ID = <cfqueryparam value="#arguments.role#" cfsqltype="cf_sql_varchar">
             </cfquery>
 
@@ -344,7 +346,7 @@
         
         <cftry>
             <cfquery username="#this.DBUSER#" password="#this.DBPASS#" datasource="#this.DBSERVER#">
-                UPDATE CONFROOM.USERS
+                UPDATE #this.DBSCHEMA#.USERS
                 SET STATUS = <cfqueryparam cfsqltype="cf_sql_varchar" value="#arguments.status#">
                 WHERE USER_ID = <cfqueryparam cfsqltype="cf_sql_numeric" value="#arguments.userId#">
             </cfquery>
@@ -375,6 +377,7 @@
                 SELECT COUNT(*) as reservationCount
                 FROM #this.DBSCHEMA#.BOOKINGS
                 WHERE USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_varchar">
+                AND STATUS = 'Active'
             </cfquery>
             
             <cfif qCheckReservations.reservationCount GT 0>
@@ -382,13 +385,36 @@
                 <cfset response.MESSAGE = "User has active reservations and cannot be deleted, please cancel them first">
                 <cfreturn response>
             <cfelse>
-                <cfquery name="qDeleteUser" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                    DELETE FROM #this.DBSCHEMA#.USERS
-                    WHERE USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_varchar">
+            
+                <cfquery name="qGetUserFromPeoplesoft" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT ap.WORK_EMAIL, u.FIRST_NAME
+                    FROM #this.DBSCHEMA#.USERS u
+                    JOIN #this.DBSCHEMA#.ACTIVE_PEOPLESOFT ap ON u.EMPLID = ap.EMPLID
+                    WHERE u.USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_varchar">
                 </cfquery>
                 
+                <cfquery name="qDeleteUser" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    UPDATE #this.DBSCHEMA#.USERS
+                    SET STATUS = 'Deleted'
+                    WHERE USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_varchar">
+                </cfquery>
+            
                 <cfset response.SUCCESS = true>
                 <cfset response.MESSAGE = "User deleted successfully">
+                <!---Send user an email to let them know they have been removed--->
+                <cfmail 
+                    to="#qGetUserFromPeoplesoft.WORK_EMAIL#" 
+                    from="NO-REPLY@mdanderson.org" 
+                    subject="DoCM Reservation System - User Removed" 
+                    type="html">
+                    <cfoutput>
+                        Hi #qGetUserFromPeoplesoft.FIRST_NAME#,<br><br>
+                        You have been set to an 'Inactive' status from the DoCM Reservation System.<br><br>
+                        Best regards,<br>
+                        Room Reservation System
+                    </cfoutput>
+                </cfmail>
+
             </cfif>
         
         <cfreturn response>

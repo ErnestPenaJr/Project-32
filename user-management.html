@@ -24,7 +24,8 @@
         </div>
         <div class="offcanvas-body">
             <div class="mb-3 mt-0">
-                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download Complete User
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase"><i
+                        class="fal fa-file-download"></i> Complete User
                     Guide</button>
             </div>
             <div class="mb-3">
@@ -150,6 +151,7 @@
                                 <option selected>Permissions</option>
                                 <option value="2">Admin</option>
                                 <option value="3">User</option>
+
                             </select>
                             <label for="permissions">Choose One</label>
                         </div>
@@ -160,6 +162,14 @@
                                 <option value="Inactive">Inactive</option>
                             </select>
                             <label class="form-label">Status</label>
+                        </div>
+
+                        <div class="form-floating">
+                            <select class="form-select" name="notifications" required>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                            <label class="form-label">Notifications</label>
                         </div>
                     </div>
                 </div>
@@ -217,6 +227,15 @@
                                         <label for="editPermissions">Choose One</label>
                                     </div>
                                 </div>
+                                <div>
+                                    <div class="form-floating">
+                                        <select class="form-select" id="editNotifications" required>
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                        </select>
+                                        <label class="form-label">Notifications</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -252,11 +271,14 @@
 
         $(document).ready(function () {
             if (sessionStorage.getItem('ROLE') == 'Site Admin') {
-                $('#editPermissions').append('<option value="1">Site Admin</option>');
+                $('#editPermissions, #permissions').append('<option value="1">Site Admin</option>');
             }
             // Load top navigation
             if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
-                $('#topNav').load('topNav-Admin.html');
+                $('#topNav').load('topNav-Admin.html', function () {
+                    checkNewUsers();
+                    checkPendingApprovals();
+                });
                 $('#downloadUserGuide').click(function () {
                     window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
                 });
@@ -281,8 +303,9 @@
                     $('#addUser').removeClass('btn-warning').addClass('btn-secondary');
                 }
             });
-            // Initialize DataTable
+            // Initialize DataTable with the database endpoint
             userTable = $('#usersTable').DataTable({
+                processing: true,
                 ajax: {
                     url: 'assets/cfc/user.cfc?method=getUsers',
                     type: 'GET',
@@ -311,13 +334,13 @@
                     {
                         data: 'ROLE',
                         render: function (data) {
-                            return `<span class="badge bg-${getPermissionsBadgeClass(data)} d-flex justify-content-center">${data}</span>`;
+                            return `<span class="badge bg-${getPermissionsBadgeClass(data)} py-2 px-3">${data}</span>`;
                         }
                     },
                     {
                         data: 'STATUS',
                         render: function (data) {
-                            return `<span class="badge bg-${getStatusBadgeClass(data)} d-flex justify-content-center">${data}</span>`;
+                            return `<span class="badge bg-${getStatusBadgeClass(data)} py-2 px-3">${data}</span>`;
                         }
                     },
                     {
@@ -332,9 +355,15 @@
                 ]
             });
             // Initialize DataTable click events using event delegation
-            $('#usersTable').on('click', '.editUser', function () {
+            $(document).on('click', '.editUser', function () {
                 const userId = $(this).data('user-id');
+                console.log('Edit user clicked, userId:', userId);
                 editUser(userId);
+            });
+            
+            // Re-initialize event handlers after DataTable redraws
+            userTable.on('draw', function() {
+                console.log('DataTable redraw complete');
             });
             // Handle status toggle
             $('#usersTable').on('click', '.toggle-status', function () {
@@ -362,8 +391,9 @@
                             });
                             // Refresh table and check for new users if status changed from New
                             userTable.ajax.reload();
+                            updateNavCounts()
                             if (currentStatus.toLowerCase() === 'new') {
-                                checkNewUsers();
+                                updateNavCounts()
                             }
                         } else {
                             Swal.fire({
@@ -397,29 +427,55 @@
 
             loadUsers();
 
-            $('.addUser-btn').on('click', function () {
+            // Use document-level event delegation for the add user button
+            $(document).on('click', '.addUser-btn', function () {
+                console.log('Add user button clicked');
+                
                 // Validate required fields
                 if (!$('#emplSearch').attr('emplid')) {
-                    Swal.fire('Error', 'Please select a valid employee', 'error');
+                    console.log('Error: No employee selected');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Missing Information',
+                        text: 'Please select a valid employee'
+                    });
                     return;
                 }
-                if ($('#permissions').val() === 'Permissions') {
-                    Swal.fire('Error', 'Please select user permissions', 'error');
+                
+                if ($('#permissions').val() === 'Permissions' || !$('#permissions').val()) {
+                    console.log('Error: No permissions selected');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Missing Information',
+                        text: 'Please select user permissions'
+                    });
                     return;
                 }
-
-                const addUserForm = $('#addUserModal');
+                
+                // Get form data
                 const formData = {
                     method: 'addUser',
                     emplid: $('#emplSearch').attr('emplid'),
                     permissions: $('#permissions').val(),
-                    status: $('select[name="status"]').val() || 'active',
-                    eid: sessionStorage.getItem('EMPLID')
+                    status: $('select[name="status"]').val() || 'Active',
+                    eid: sessionStorage.getItem('EMPLID') || ''
                 };
-
+                
+                console.log('Submitting add user request with data:', formData);
+                
                 // Show loading state
                 const addButton = $(this);
                 addButton.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Adding...');
+                
+                // Show loading indicator
+                Swal.fire({
+                    title: 'Adding User',
+                    text: 'Please wait...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
 
                 $.ajax({
                     url: 'assets/cfc/user.cfc',
@@ -427,17 +483,31 @@
                     dataType: 'json',
                     data: formData,
                     success: function (response) {
-                        if (response.SUCCESS) {
-                            //refreash new user badge
-                            checkNewUsers();
+                        console.log('Add user response:', response);
+                        
+                        if (response && response.SUCCESS) {
+                            // Update navigation counts
+                            updateNavCounts();
+                            
                             // Hide modal first
-                            const modal = bootstrap.Modal.getInstance($('#addUserModal'));
-                            modal.hide();
+                            try {
+                                const modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
+                                if (modal) {
+                                    modal.hide();
+                                } else {
+                                    // Fallback to jQuery
+                                    $('#addUserModal').modal('hide');
+                                }
+                            } catch (e) {
+                                console.error('Error hiding modal:', e);
+                                // Fallback to jQuery
+                                $('#addUserModal').modal('hide');
+                            }
 
                             // Reset form fields
                             $('#emplSearch').val('').removeAttr('emplid');
                             $('#permissions').val('Permissions');
-                            $('select[name="status"]').val('active');
+                            $('select[name="status"]').val('Active');
                             $('#results').empty().hide();
 
                             // Refresh table
@@ -452,12 +522,23 @@
                                 timer: 1500
                             });
                         } else {
-                            Swal.fire('Error', (response && response.MESSAGE) || 'Failed to add user. Please try again.', 'error');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: (response && response.MESSAGE) || 'Failed to add user. Please try again.'
+                            });
                         }
                     },
                     error: function (xhr, status, error) {
-                        console.error('Add user error:', error);
-                        Swal.fire('Error', 'A network error occurred. Please try again.', 'error');
+                        console.error('Add user AJAX error:', error);
+                        console.error('Status:', status);
+                        console.error('Response:', xhr.responseText);
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'A network error occurred while adding the user. Please try again.'
+                        });
                     },
                     complete: function () {
                         // Reset button state
@@ -472,14 +553,39 @@
                 var userId = $('#editUserForm [name="userId"]').val();
                 var username = $('#editUserForm [name="username"]').val();
                 var modifiedbyid = sessionStorage.getItem('EMPLID');
+                
+                console.log('Submitting update for user:', {
+                    userId: userId,
+                    username: username,
+                    role: permissions,
+                    status: status,
+                    modifiedbyid: modifiedbyid
+                });
+                
+                // Show loading indicator
+                Swal.fire({
+                    title: 'Updating user...',
+                    text: 'Please wait',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
 
                 $.ajax({
                     url: 'assets/cfc/user.cfc?method=updateUser',
                     method: 'POST',
                     dataType: 'json',
-                    data: { userId: userId, role: permissions, status: status, username: username, modifiedbyid: modifiedbyid },
+                    data: { 
+                        userId: userId, 
+                        role: permissions, 
+                        status: status, 
+                        username: username, 
+                        modifiedbyid: modifiedbyid 
+                    },
                     success: function (response) {
-                        if (response.SUCCESS) {
+                        console.log('Update user response:', response);
+                        if (response && response.SUCCESS) {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Success',
@@ -489,9 +595,25 @@
                             });
                             $('#editUserModal').modal('hide');
                             userTable.ajax.reload(null, false);
+                            updateNavCounts();
                         } else {
-                            Swal.fire('Error', response.MESSAGE || 'Failed to update user', 'error');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.MESSAGE || 'Failed to update user'
+                            });
                         }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('AJAX error:', error);
+                        console.error('Status:', status);
+                        console.error('Response:', xhr.responseText);
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'An error occurred while updating the user. Please try again.'
+                        });
                     }
                 });
             });
@@ -517,24 +639,52 @@
 
 
         function editUser(userId) {
+            console.log('editUser function called with userId:', userId);
+            
+            // First try to open the modal directly
+            try {
+                var editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                editModal.show();
+            } catch (e) {
+                console.error('Error showing modal directly:', e);
+                // Fallback to jQuery method
+                $('#editUserModal').modal('show');
+            }
+            
+            // Then load the user data
             $.ajax({
                 url: 'assets/cfc/user.cfc?method=getUser',
                 method: 'GET',
                 dataType: 'json',
                 data: { userId: userId },
                 success: function (response) {
+                    console.log('User data received:', response);
                     if (response.SUCCESS) {
                         const user = response.DATA;
                         $('#editUserForm [name="userId"]').val(user.ID);
                         $('#editUserForm [name="username"]').val(user.EMPLID);
                         $('#editEmplid').html('EID: ' + user.EMPLID);
-                        $('#editFullName').html(`<h4 class="mb-0">${user.FULL_NAME}</h4><small >${user.JOBTITLE}</small>`);
+                        $('#editFullName').html(`<h4 class="mb-0">${user.FULL_NAME}</h4><small>${user.JOBTITLE || ''}</small>`);
                         $('#editPermissions').val(user.ROLE_ID);
-                        $('#editDepartment').html(user.DEPARTMENTNAME);
+                        $('#editDepartment').html(user.DEPARTMENTNAME || '');
                         $('#editEmail').html(`<a href="mailto:${user.EMAIL}">Send Email <i class="fas fa-paper-plane fa-lg"></i></a>`);
                         $('#editStatus').val(user.STATUS);
-                        $('#editUserModal').modal('show');
+                    } else {
+                        console.error('Error getting user data:', response);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Could not load user data. Please try again.'
+                        });
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error:', status, error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Could not load user data. Please try again.'
+                    });
                 }
             });
         }
@@ -657,6 +807,13 @@
                 }
             })
 
+        }
+        // Function to reload the top navigation and update approval counts
+        function updateNavCounts() {
+            $('#topNav').load('topNav-Admin.html', function () {
+                checkNewUsers(); // Ensure the new user count updates
+                checkPendingApprovals(); // Ensure pending approvals count updates
+            });
         }
     </script>
 </body>

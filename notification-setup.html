@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification System Setup</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <div id="topNav"></div>
+
+    <!-- Main Container -->
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <!-- Header -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h1 class="mb-0"><i class="fas fa-cog"></i> Notification System Setup</h1>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead">
+                            The notification preferences system requires additional database tables to be created. 
+                            Follow the steps below to complete the setup.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Database Setup Instructions -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3><i class="fas fa-database"></i> Database Setup Required</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Database Administrator Required:</strong> The following SQL script needs to be executed by a database administrator.
+                        </div>
+
+                        <h5>Step 1: Execute SQL Script</h5>
+                        <p>Run the SQL script located at:</p>
+                        <div class="alert alert-info">
+                            <code>/assets/sql/notification_preferences.sql</code>
+                        </div>
+
+                        <h5>Step 2: What the Script Creates</h5>
+                        <ul>
+                            <li><strong>NOTIFICATION_TYPES</strong> - Defines 14 notification categories</li>
+                            <li><strong>NOTIFICATION_PREFERENCES</strong> - Stores user-specific preferences</li>
+                            <li><strong>Sequences & Triggers</strong> - Auto-incrementing IDs</li>
+                            <li><strong>Default Data</strong> - Pre-populated notification types</li>
+                        </ul>
+
+                        <h5>Step 3: Verification</h5>
+                        <p>After running the script, verify the tables exist:</p>
+                        <div class="bg-light p-3 rounded">
+                            <code>
+                                SELECT COUNT(*) FROM CONFROOM.NOTIFICATION_TYPES;<br>
+                                SELECT COUNT(*) FROM CONFROOM.NOTIFICATION_PREFERENCES;
+                            </code>
+                        </div>
+                        <p class="text-muted small mt-2">Expected result: 14 notification types, 0 preferences (initially)</p>
+                    </div>
+                </div>
+
+                <!-- Feature Overview -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3><i class="fas fa-star"></i> Features After Setup</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-bell text-primary"></i> Granular Control</h5>
+                                <ul>
+                                    <li>14 distinct notification types</li>
+                                    <li>Email and in-app preferences</li>
+                                    <li>User-specific settings</li>
+                                    <li>Admin notification controls</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-users text-success"></i> Admin Features</h5>
+                                <ul>
+                                    <li>Configure preferences for any user</li>
+                                    <li>Bulk notification management</li>
+                                    <li>Opt-in/out of booking notifications</li>
+                                    <li>System-wide notification overview</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Categories -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3><i class="fas fa-list"></i> Notification Categories</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Booking Lifecycle</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Booking Confirmation</li>
+                                    <li><i class="fas fa-times text-danger"></i> Booking Cancellation</li>
+                                    <li><i class="fas fa-clock text-warning"></i> Booking Reminder</li>
+                                    <li><i class="fas fa-hourglass-end text-info"></i> Booking End Reminder</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-primary">User Management</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-user-plus text-success"></i> New User Created</li>
+                                    <li><i class="fas fa-user-edit text-info"></i> Account Updated</li>
+                                    <li><i class="fas fa-user-times text-danger"></i> Account Deactivated</li>
+                                    <li><i class="fas fa-user-shield text-warning"></i> Access Request (Admin)</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-primary">System & Admin</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-thumbs-up text-success"></i> Booking Approval</li>
+                                    <li><i class="fas fa-thumbs-down text-danger"></i> Booking Rejection</li>
+                                    <li><i class="fas fa-key text-info"></i> Password Reset</li>
+                                    <li><i class="fas fa-question-circle text-warning"></i> Help Request</li>
+                                    <li><i class="fas fa-bullhorn text-primary"></i> Bulk Notifications</li>
+                                    <li><i class="fas fa-wrench text-secondary"></i> System Maintenance</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Status -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3><i class="fas fa-info-circle"></i> Current Status</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>✅ Completed</h6>
+                                <ul>
+                                    <li>Backend notification functions</li>
+                                    <li>Admin management interface</li>
+                                    <li>User preference interface</li>
+                                    <li>Email integration updates</li>
+                                    <li>Fallback functionality</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>⏳ Pending</h6>
+                                <ul>
+                                    <li>Database table creation</li>
+                                    <li>Default notification type data</li>
+                                    <li>Admin preference setup</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h3><i class="fas fa-arrow-right"></i> Next Steps</h3>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li><strong>Run SQL Script:</strong> Execute <code>/assets/sql/notification_preferences.sql</code></li>
+                            <li><strong>Verify Tables:</strong> Confirm tables and data were created successfully</li>
+                            <li><strong>Access Management:</strong> Visit <a href="notification-management.html">notification-management.html</a></li>
+                            <li><strong>Configure Preferences:</strong> Visit <a href="notification-preferences.html">notification-preferences.html</a></li>
+                            <li><strong>Test System:</strong> Create a test booking to verify email preferences</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Support -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-life-ring"></i> Support</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>If you encounter any issues during setup:</p>
+                        <ul>
+                            <li>All functions include fallback behavior for missing tables</li>
+                            <li>Existing email functionality will continue to work</li>
+                            <li>Contact system administrator for database access</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="assets/js/jquery.session-timeout.min.js"></script>
+    <script src="assets/js/topNav.js"></script>
+</body>
+
+</html>

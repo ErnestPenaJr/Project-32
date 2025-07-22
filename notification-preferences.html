@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Preferences</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <div id="topNav"></div>
+    
+    <!-- Offcanvas Help Panel -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasExampleLabel">Notification Preferences</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-3">
+                <h4>ABOUT THIS PAGE</h4>
+                <p>This page allows administrators to configure notification preferences for all users in the system.</p>
+            </div>
+            <div class="mb-3">
+                <h4>NOTIFICATION TYPES</h4>
+                <ul>
+                    <li><strong>Booking Lifecycle:</strong> Confirmations, cancellations, and reminders</li>
+                    <li><strong>Approval Workflow:</strong> Approval confirmations and rejections</li>
+                    <li><strong>User Management:</strong> Account creation, updates, and access requests</li>
+                    <li><strong>System:</strong> Password resets and help requests</li>
+                    <li><strong>Administrative:</strong> Bulk notifications and maintenance notices</li>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <h4>DELIVERY METHODS</h4>
+                <ul>
+                    <li><strong>Email:</strong> Notifications sent via email</li>
+                    <li><strong>In-App:</strong> Notifications displayed within the application</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container-fluid mt-4">
+        <!-- Header Section -->
+        <div class="row">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="fas fa-bell"></i> Notification Preferences</h1>
+                    <div>
+                        <button class="btn btn-primary me-2" onclick="loadNotificationPreferences()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasExample">
+                            <i class="fal fa-question-circle"></i> Help
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Selection -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Select User</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="userSelect" class="form-label">User</label>
+                                <select class="form-select" id="userSelect">
+                                    <option value="">Select a user...</option>
+                                    <!-- Users loaded via JavaScript -->
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">&nbsp;</label>
+                                <div>
+                                    <button class="btn btn-primary" onclick="loadUserPreferences()">
+                                        <i class="fas fa-search"></i> Load Preferences
+                                    </button>
+                                    <button class="btn btn-outline-success" onclick="saveAllPreferences()">
+                                        <i class="fas fa-save"></i> Save All Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Preferences by Category -->
+        <div class="row">
+            <div class="col">
+                <div id="preferencesContainer">
+                    <!-- Preferences loaded via JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="row mt-4" id="bulkActionsRow" style="display: none;">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Bulk Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-primary w-100" onclick="enableAllEmail()">
+                                    <i class="fas fa-envelope"></i> Enable All Email
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-warning w-100" onclick="disableAllEmail()">
+                                    <i class="fas fa-envelope-open"></i> Disable All Email
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-success w-100" onclick="enableAllInApp()">
+                                    <i class="fas fa-bell"></i> Enable All In-App
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-danger w-100" onclick="disableAllInApp()">
+                                    <i class="fas fa-bell-slash"></i> Disable All In-App
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="assets/js/jquery.session-timeout.min.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <script src="assets/DataTables-2.1.8/datatables.js"></script>
+    <script src="assets/js/topNav.js"></script>
+
+    <script>
+        // Global variables
+        let allNotificationTypes = {};
+        let currentUserId = null;
+        let hasUnsavedChanges = false;
+
+        // Initialize when document is ready
+        $(document).ready(function() {
+            initializeNotificationPreferences();
+            AOS.init();
+        });
+
+        /**
+         * Initialize notification preferences management
+         */
+        function initializeNotificationPreferences() {
+            loadUsers();
+            loadNotificationTypes();
+        }
+
+        /**
+         * Load all users for selection
+         */
+        function loadUsers() {
+            $.ajax({
+                url: 'assets/cfc/notifications.cfc?method=getUsersForNotification',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    populateUserSelect(response.DATA || response);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading users:', error);
+                    showToast('Error loading users', 'error');
+                }
+            });
+        }
+
+        /**
+         * Populate user selection dropdown
+         */
+        function populateUserSelect(users) {
+            const userSelect = $('#userSelect');
+            userSelect.empty();
+            userSelect.append('<option value="">Select a user...</option>');
+            
+            if (Array.isArray(users)) {
+                users.forEach(function(user) {
+                    const optionText = `${user.FIRST_NAME} ${user.LAST_NAME} (${user.EMAIL}) - ${user.ROLE}`;
+                    userSelect.append(`<option value="${user.USER_ID}">${optionText}</option>`);
+                });
+            }
+        }
+
+        /**
+         * Load all notification types
+         */
+        function loadNotificationTypes() {
+            $.ajax({
+                url: 'assets/cfc/notifications.cfc?method=getAllNotificationTypes',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    allNotificationTypes = response.DATA || response;
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading notification types:', error);
+                    showToast('Error loading notification types', 'error');
+                }
+            });
+        }
+
+        /**
+         * Load user's notification preferences
+         */
+        function loadUserPreferences() {
+            const userId = $('#userSelect').val();
+            if (!userId) {
+                showToast('Please select a user first', 'warning');
+                return;
+            }
+
+            currentUserId = userId;
+            
+            $.ajax({
+                url: 'assets/cfc/notifications.cfc?method=getUserNotificationPreferences',
+                type: 'GET',
+                data: { user_id: userId },
+                dataType: 'json',
+                success: function(response) {
+                    displayUserPreferences(response.DATA || response);
+                    $('#bulkActionsRow').show();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading user preferences:', error);
+                    showToast('Error loading user preferences', 'error');
+                }
+            });
+        }
+
+        /**
+         * Display user's notification preferences
+         */
+        function displayUserPreferences(preferences) {
+            const container = $('#preferencesContainer');
+            container.empty();
+
+            // Group preferences by category
+            const categories = {};
+            
+            if (Array.isArray(allNotificationTypes)) {
+                allNotificationTypes.forEach(function(type) {
+                    if (!categories[type.CATEGORY]) {
+                        categories[type.CATEGORY] = [];
+                    }
+                    
+                    // Find user's preference for this type
+                    const userPref = preferences.find(p => p.NOTIFICATION_TYPE === type.TYPE_CODE);
+                    
+                    categories[type.CATEGORY].push({
+                        ...type,
+                        USER_EMAIL_ENABLED: userPref ? userPref.EMAIL_ENABLED : type.DEFAULT_EMAIL_ENABLED,
+                        USER_IN_APP_ENABLED: userPref ? userPref.IN_APP_ENABLED : type.DEFAULT_IN_APP_ENABLED
+                    });
+                });
+            }
+
+            // Create cards for each category
+            Object.keys(categories).forEach(function(category) {
+                const categoryCard = createCategoryCard(category, categories[category]);
+                container.append(categoryCard);
+            });
+
+            hasUnsavedChanges = false;
+        }
+
+        /**
+         * Create a category card with notification preferences
+         */
+        function createCategoryCard(category, notifications) {
+            let cardHtml = `
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">${category}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Notification Type</th>
+                                        <th>Description</th>
+                                        <th class="text-center">Email</th>
+                                        <th class="text-center">In-App</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+
+            notifications.forEach(function(notification) {
+                if (notification.ADMIN_ONLY && !isCurrentUserAdmin()) {
+                    return; // Skip admin-only notifications for non-admin users
+                }
+
+                const emailChecked = notification.USER_EMAIL_ENABLED ? 'checked' : '';
+                const inAppChecked = notification.USER_IN_APP_ENABLED ? 'checked' : '';
+
+                cardHtml += `
+                    <tr>
+                        <td><strong>${notification.DISPLAY_NAME}</strong></td>
+                        <td>${notification.DESCRIPTION || ''}</td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-flex justify-content-center">
+                                <input class="form-check-input" type="checkbox" ${emailChecked} 
+                                       data-type="${notification.TYPE_CODE}" data-method="email"
+                                       onchange="markUnsavedChanges()">
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-flex justify-content-center">
+                                <input class="form-check-input" type="checkbox" ${inAppChecked}
+                                       data-type="${notification.TYPE_CODE}" data-method="in_app"
+                                       onchange="markUnsavedChanges()">
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+
+            cardHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+
+            return cardHtml;
+        }
+
+        /**
+         * Check if current user is admin (placeholder - implement based on your auth system)
+         */
+        function isCurrentUserAdmin() {
+            // This should be implemented based on your authentication system
+            return true; // For now, assume admin access
+        }
+
+        /**
+         * Mark that there are unsaved changes
+         */
+        function markUnsavedChanges() {
+            hasUnsavedChanges = true;
+        }
+
+        /**
+         * Save all notification preferences
+         */
+        function saveAllPreferences() {
+            if (!currentUserId) {
+                showToast('No user selected', 'warning');
+                return;
+            }
+
+            const preferences = [];
+            
+            // Collect all preference settings
+            $('input[data-type]').each(function() {
+                const type = $(this).data('type');
+                const method = $(this).data('method');
+                const enabled = $(this).is(':checked');
+                
+                // Find or create preference object for this type
+                let pref = preferences.find(p => p.type === type);
+                if (!pref) {
+                    pref = { type: type, email: false, in_app: false };
+                    preferences.push(pref);
+                }
+                
+                pref[method] = enabled;
+            });
+
+            // Save each preference
+            let savedCount = 0;
+            const totalPrefs = preferences.length;
+
+            preferences.forEach(function(pref) {
+                $.ajax({
+                    url: 'assets/cfc/notifications.cfc?method=updateNotificationPreference',
+                    type: 'POST',
+                    data: {
+                        user_id: currentUserId,
+                        notification_type: pref.type,
+                        email_enabled: pref.email,
+                        in_app_enabled: pref.in_app
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        savedCount++;
+                        if (savedCount === totalPrefs) {
+                            showToast('All preferences saved successfully', 'success');
+                            hasUnsavedChanges = false;
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error saving preference:', error);
+                        showToast('Error saving some preferences', 'error');
+                    }
+                });
+            });
+        }
+
+        /**
+         * Bulk action: Enable all email notifications
+         */
+        function enableAllEmail() {
+            $('input[data-method="email"]').prop('checked', true);
+            markUnsavedChanges();
+            showToast('All email notifications enabled (remember to save)', 'info');
+        }
+
+        /**
+         * Bulk action: Disable all email notifications
+         */
+        function disableAllEmail() {
+            $('input[data-method="email"]').prop('checked', false);
+            markUnsavedChanges();
+            showToast('All email notifications disabled (remember to save)', 'info');
+        }
+
+        /**
+         * Bulk action: Enable all in-app notifications
+         */
+        function enableAllInApp() {
+            $('input[data-method="in_app"]').prop('checked', true);
+            markUnsavedChanges();
+            showToast('All in-app notifications enabled (remember to save)', 'info');
+        }
+
+        /**
+         * Bulk action: Disable all in-app notifications
+         */
+        function disableAllInApp() {
+            $('input[data-method="in_app"]').prop('checked', false);
+            markUnsavedChanges();
+            showToast('All in-app notifications disabled (remember to save)', 'info');
+        }
+
+        /**
+         * Reload notification preferences
+         */
+        function loadNotificationPreferences() {
+            if (currentUserId) {
+                loadUserPreferences();
+            } else {
+                showToast('Please select a user first', 'warning');
+            }
+        }
+
+        /**
+         * Show toast notification
+         */
+        function showToast(message, type = 'info') {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+
+            Toast.fire({
+                icon: type,
+                title: message
+            });
+        }
+
+        // Warn user about unsaved changes
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+
+</html>

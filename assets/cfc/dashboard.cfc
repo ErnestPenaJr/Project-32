@@ -2,7 +2,7 @@
     <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
         <cfset this.DBSERVER = "inside2_docmp" />
         <cfset this.DBUSER = "CONFROOM_USER" />
-        <cfset this.DBPASS = "1docmD4OU6D88" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
          <cfset this.DBSCHEMA = "CONFROOM" />
     <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
         <cfset this.DBSERVER = "inside2_docms" />

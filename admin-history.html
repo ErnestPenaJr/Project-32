@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking History</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <style>
+        .btn-user-topNav {
+            border: 1px solid #4F46E5;
+            color: #4F46E5;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+        .btn-user-topNav:hover {
+            background: #4338CA;
+            color: white;
+            border-color: white;
+
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <div id="topNav"></div>
+
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="mb-0 text-white">Booking History</h2>
+                </div>
+
+                <!-- Bookings Table -->
+                <div class="card" data-aos="fade-up" data-aos-duration="800" data-aos-delay="100">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped table-bordered table-sm" id="bookingsTable">
+                                <thead>
+                                    <tr class="table-dark">
+                                        <th class="text-start">Booking ID</th>
+                                        <th>Requested By</th>
+                                        <th>Room Name</th>
+                                        <th>Location</th>
+                                        <th>Booking Date</th>
+                                        <th>Start Time</th>
+                                        <th>Booking End Date</th>
+                                        <th>End Time</th>
+                                        <th>Status</th>
+                                    </tr>
+                                    <tr>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search ID"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search Name"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search Room"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search Location"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search Booking Date"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search Start Time"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search Booking End Date"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search End Time"></th>
+                                        <th><input type="text" class="form-control form-control-sm column-search"
+                                                placeholder="Search Status"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bookingsTableBody">
+                                    <!-- Bookings will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="noBookingsMessage" class="text-center p-4" style="display: none;" data-aos="fade-up"
+                            data-aos-duration="600">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="lead">No pending bookings found</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <template id="my-template">
+        <swal-title>
+            Save changes to "Untitled 1" before closing?
+        </swal-title>
+        <swal-icon type="warning" color="red"></swal-icon>
+        <swal-button type="confirm">
+            Save As
+        </swal-button>
+        <swal-button type="cancel">
+            Cancel
+        </swal-button>
+        <swal-button type="deny">
+            Close without Saving
+        </swal-button>
+        <swal-param name="allowEscapeKey" value="false" />
+        <swal-param name="customClass" value='{ "popup": "my-popup" }' />
+        <swal-function-param name="didOpen" value="popup => console.log(popup)" />
+    </template>
+    <!-- Scripts -->
+
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="assets/DataTables-2.1.8/datatables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+    <script>
+        // Initialize AOS
+        AOS.init({
+            once: true,
+            mirror: false
+        });
+
+        // Function to refresh AOS when adding new elements dynamically
+        function refreshAOS() {
+            AOS.refresh();
+        }
+        $('document').ready(function () {
+            console.log(sessionStorage);
+            // Load top navigation
+            if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
+                $('#topNav').load('topNav-Admin.html');
+            } else {
+                $('#topNav').load('topNav-User.html');
+            }
+            initializeBookingsTable();
+            $('#bookingsTable').on('click', '.rejectBtn', async function () {
+                const bookingId = $(this).closest('tr').data('booking-id');
+
+                // Prompt for rejection reason
+                const { value: comment } = await Swal.fire({
+                    title: "Reject Booking",
+                    text: "Provide a reason for rejection:",
+                    input: "text",
+                    icon: 'warning',
+                    inputAttributes: {
+                        autocapitalize: "off"
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: "Confirm Rejection",
+                    preConfirm: (value) => {
+                        if (!value) {
+                            Swal.showValidationMessage("You need to provide a reason for rejection!");
+                            return false; // Prevent closing
+                        }
+                        return value;
+                    }
+                });
+
+                // Proceed if a reason is provided
+                if (comment) {
+                    // Call the rejection function
+                    var userId = sessionStorage.getItem('USER_ID');
+                    rejectBooking(bookingId, userId, comment);
+                }
+            });
+
+            $('#bookingsTable').on('click', '.approveBtn', function () {
+                const bookingId = $(this).closest('tr').data('booking-id');
+                var userId = sessionStorage.getItem('USER_ID');
+
+                // First load the booking details
+                $.ajax({
+                    url: 'assets/cfc/approvals.cfc',
+                    method: 'GET',
+                    data: {
+                        method: 'getBookingDetails',
+                        bookingId: bookingId
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.SUCCESS) {
+                            const bookingDetails = response.BOOKING;
+                            const detailsHtml = `
+                                <div class="d-flex justify-content-start align-items-start flex-column">
+                                    <p><strong>Booking ID:</strong> ${bookingDetails.BOOKING_ID}</p>
+                                    <p><strong>Reserved By:</strong> ${bookingDetails.FULL_NAME}</p>
+                                    <p><strong>Room:</strong> ${bookingDetails.ROOM_NAME}</p>
+                                    <p><strong>Location:</strong> ${bookingDetails.LOCATION}</p>
+                                    <p><strong>Date Booked:</strong> ${bookingDetails.DATE}</p>
+                                    <p><strong>Time Span:</strong> ${bookingDetails.TIME}</p>
+                                    <p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(bookingDetails.STATUS)}">${bookingDetails.STATUS}</span></p>
+                                </div>`;
+
+                            const swalWithBootstrapButtons = Swal.mixin({
+                                customClass: {
+                                    confirmButton: 'btn btn-success',
+                                    cancelButton: 'btn btn-danger mx-2'
+                                },
+                                buttonsStyling: false
+                            });
+
+                            swalWithBootstrapButtons.fire({
+                                title: 'Approve Booking Request?',
+                                html: detailsHtml,
+                                icon: 'info',
+                                showCancelButton: true,
+                                confirmButtonText: 'Yes, approve it!',
+                                reverseButtons: true
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+
+                                    approveBooking(bookingId, userId);
+                                    //reload table
+                                    refreshBookingsTable();
+                                    swalWithBootstrapButtons.fire(
+                                        'Approved!',
+                                        'The booking has been approved.',
+                                        'success'
+                                    );
+                                    checkPendingApprovals();
+                                } else if (result.dismiss === Swal.DismissReason.cancel) {
+
+
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error',
+                                text: response.MESSAGE || 'Failed to load booking details',
+                                icon: 'error'
+                            });
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('AJAX Error:', error);
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Failed to load booking details. Please try again.',
+                            icon: 'error'
+                        });
+                    }
+                });
+            });
+        });
+        let bookingsTable;
+
+        function initializeBookingsTable() {
+            // Initialize DataTable
+            bookingsTable = $('#bookingsTable').DataTable({
+                dom: "<'row'<'col-sm-6'l><'col-sm-6 text-end'B>>" +
+                    "<'row'<'col-sm-12'tr>>" +
+                    "<'row'<'col-sm-6'i><'col-sm-6'p>>",
+                buttons: [
+                    {
+                        extend: 'excel',
+                        text: '<i class="fas fa-file-excel"></i> Export to Excel',
+                        className: 'btn btn-success btn-sm',
+                        title: 'Booking History - ' + new Date().toLocaleDateString(),
+                        exportOptions: {
+                            columns: ':visible:not(:last-child)'
+                        }
+                    }
+                ],
+                orderCellsTop: true,
+                fixedHeader: true,
+                initComplete: function () {
+                    var api = this.api();
+                    // For each column
+                    api.columns().eq(0).each(function (colIdx) {
+                        // Set the header cell to contain the input element
+                        var cell = $('.column-search').eq($(api.column(colIdx).header()).index());
+
+                        // On keyup in the input
+                        $(cell).off('keyup change').on('keyup change', function (e) {
+                            e.stopPropagation();
+                            // Get the search value
+                            $(this).attr('title', $(this).val());
+                            var regexr = '({search})'; //$(this).parents('th').find('select').val();
+
+                            api
+                                .column(colIdx)
+                                .search(
+                                    this.value != ''
+                                        ? regexr.replace('{search}', '(((' + this.value + ')))')
+                                        : '',
+                                    this.value != '',
+                                    this.value == ''
+                                )
+                                .draw();
+                        });
+                    });
+                },
+                order: [[4, 'desc']],
+                pageLength: 10,
+                responsive: true,
+                language: {
+                    emptyTable: "No bookings found"
+                },
+                ajax: {
+                    url: 'assets/cfc/functions.cfc?method=getBookingHistory',
+                    type: 'GET',
+                    dataType: 'json',
+                    dataSrc: 'DATA'
+                },
+                destroy: true,
+                columns: [
+                    {
+                        data: 'ID',
+                        render: function (data) {
+                            return `<span class="fw-bold d-flex justify-content-center">${data}</span>`;
+                        }
+                    },
+                    { data: 'USER_NAME' },
+                    { data: 'ROOM_NAME' },
+                    { data: 'LOCATION' },
+                    {
+                        data: 'BOOKING_DATE',
+                        render: function (data) {
+                            return moment(data).format('MM/DD/YYYY');
+                        }
+                    },
+                    { data: 'START_TIME' },
+                    {
+                        data: 'BOOKING_END_DATE',
+                        render: function (data) {
+                            return moment(data).format('MM/DD/YYYY');
+                        }
+                    },
+                    { data: 'END_TIME' },
+                    {
+                        data: 'STATUS',
+                        render: function (data) {
+                            return `<span class="fw-bold d-flex justify-content-center"><h4 class="badge float-end text-uppercase justify-content-center ${getStatusBadgeClass(data)}">${data}</h4></span>`;
+                        }
+                    }
+                ],
+                order: [[0, 'asc']], // Sort by first column (ID) in ascending order
+                columnDefs: [
+                    { orderable: true, targets: 0 } // Make ID column orderable
+                ]
+            });
+            //
+            // Add AOS attributes to newly created rows
+            bookingsTable.on('draw', function () {
+                $('tbody tr').each(function (index) {
+                    $(this).attr({
+                        'data-aos': 'fade-up',
+                        'data-aos-delay': index * 100,
+                        'data-aos-duration': '800',
+                        'data-booking-id': bookingsTable.row(this).data().ID
+                    });
+                });
+                refreshAOS();
+            });
+        }
+
+        // Refresh bookings table
+        function refreshBookingsTable() {
+            if (bookingsTable) {
+                bookingsTable.ajax.reload(null, false);  // null callback, false for reset paging
+                setTimeout(() => {
+                    refreshAOS();
+                }, 100);  // Small delay to ensure table is updated
+            }
+        }
+
+        function loadBookingDetails(bookingId) {
+            $.ajax({
+                url: 'assets/cfc/approvals.cfc',
+                method: 'GET',
+                data: {
+                    method: 'getBookingDetails',
+                    bookingId: bookingId
+                },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.SUCCESS) {
+                        // Update modal content
+                        const modalBody = $('#bookingDetailsModal .modal-body');
+                        modalBody.html(`
+                        <div class="text-start">
+                            <p><strong>Booking ID:</strong> ${response.DATA.ID}</p>
+                            <p><strong>Requestor:</strong> ${response.DATA.FULL_NAME}</p>
+                            <p><strong>Room:</strong> ${response.DATA.ROOM_NAME}</p>
+                            <p><strong>Location:</strong> ${response.DATA.LOCATION}</p>
+                            <p><strong>Capacity:</strong> ${response.DATA.CAPACITY}</p>
+                            <p><strong>Date Booked:</strong> ${response.DATA.DATE}</p>
+                            <p><strong>Time:</strong> ${response.DATA.TIME}</p>
+                            <p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(response.DATA.STATUS)}">${response.DATA.STATUS}</span></p>
+                            <p><strong>Photo:</strong> <img src="${response.DATA.ROOM_IMAGE}" alt="Room Photo" class="img-fluid"></p>
+                        </div>
+                    `);
+                    }
+                },
+            });
+        }
+        function approveBooking(bookingId, userId) {
+            $.ajax({
+                url: 'assets/cfc/approvals.cfc?method=approveBooking',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    bookingId: bookingId,
+                    userId: userId
+                },
+                success: function (response) {
+                    if (response.success) {
+                        // Close sweet alert
+                        Swal.close();
+                        refreshBookingsTable();
+                        // Update pending approvals badge
+                        checkPendingApprovals();
+                    }
+                }
+            });
+        }
+        function checkPendingApprovals() {
+            $.ajax({
+                url: './assets/cfc/approvals.cfc',
+                type: 'GET',
+                data: {
+                    method: 'getPendingApprovalsCount'
+                },
+                success: function (response) {
+                    const count = parseInt(response);
+                    const badge = $('#pendingApprovalsBadge');
+                    if (count > 0) {
+                        badge.text(count).removeClass('d-none');
+                    } else {
+                        badge.addClass('d-none');
+                    }
+                }
+            });
+        }
+        function rejectBooking(bookingId, userId, comment) {
+            $.ajax({
+                url: 'assets/cfc/approvals.cfc?method=rejectBooking',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    bookingId: bookingId,
+                    userId: userId,
+                    comment: comment
+                },
+                success: function (response) {
+                    console.log(response);
+                    if (response.SUCCESS) {
+                        refreshBookingsTable();
+                        // Update pending approvals badge
+                        checkPendingApprovals();
+                    }
+                }
+            });
+        }
+        // Logout handler
+        function handleLogout() {
+            window.location.href = 'logout.html';
+        }
+        function getStatusBadgeClass(status) {
+            switch (status.toLowerCase()) {
+                case 'approved': return 'bg-success';
+                case 'rejected': return 'bg-danger';
+                case 'pending': return 'bg-warning';
+                default: return 'bg-secondary';
+            }
+        }
+    </script>
+</body>
+
+</html>

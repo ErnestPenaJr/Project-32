@@ -2,7 +2,7 @@
     <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
         <cfset this.DBSERVER = "inside2_docmp" />
         <cfset this.DBUSER = "CONFROOM_USER" />
-        <cfset this.DBPASS = "1docmD4OU6D88" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
         <cfset this.DBSCHEMA = "CONFROOM" />
     <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
         <cfset this.DBSERVER = "inside2_docms" />
@@ -33,10 +33,10 @@
                     r.ROOM_NUMBER as ROOM_NUMBER,
                     TO_NUMBER(r.CAPACITY) as CAPACITY,
                     TO_CHAR(b.START_TIME, 'YYYY-MM-DD') as BOOKING_DATE,
-                    TO_CHAR(b.START_TIME, 'HH24:MI') as START_TIME,
-                    TO_CHAR(b.END_TIME, 'HH24:MI') as END_TIME,
-                    TO_CHAR(b.START_TIME, 'MM/DD/YYYY HH24:MI AM')as START_DATE,
-                    TO_CHAR(b.END_TIME, 'MM/DD/YYYY HH24:MI AM') as END_DATE,
+                    TO_CHAR(b.START_TIME, 'HH12:MI AM') as START_TIME,
+                    TO_CHAR(b.END_TIME, 'HH12:MI AM') as END_TIME,
+                    TO_CHAR(b.START_TIME, 'MM/DD/YYYY HH12:MI AM')as START_DATE,
+                    TO_CHAR(b.END_TIME, 'MM/DD/YYYY HH12:MI AM') as END_DATE,
                     b.STATUS as STATUSx
                 FROM #this.DBSCHEMA#.BOOKINGS b
                 JOIN #this.DBSCHEMA#.USERS u ON b.USER_ID = u.USER_ID
@@ -207,8 +207,19 @@
                         <p>Best regards,</p>
                     ">
                     
+                    <!--- Get admin users for CC --->
+                <cfquery name="qryGetAdminEmails" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT EMAIL
+                    FROM #this.DBSCHEMA#.USERS
+                    WHERE ROLE_ID = 2
+                </cfquery>
+                <cfset adminEmails = "">
+                <cfloop query="qryGetAdminEmails">
+                    <cfset adminEmails = ListAppend(adminEmails, qryGetAdminEmails.EMAIL)>
+                </cfloop>
+                    
                     <!--- Send email --->
-                    <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Office Space Reservation Confirmation" type="html" bcc="erniep@mdanderson.org, tlouie@mdanderson.org, cpender@mdanderson.org, tglover@mdanderson.org">
+                    <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Office Space Reservation Confirmation" type="html" bcc="#adminEmails#">
                         <cfmailpart type="text/html">
                             <cfoutput>#emailBody#</cfoutput>
                         </cfmailpart>
@@ -241,8 +252,19 @@
                             <p>Thank you for your understanding.</p>
                         ">
                         
+                        <!--- Get admin users for CC --->
+                        <cfquery name="qryGetAdminEmails" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                            SELECT EMAIL
+                            FROM #this.DBSCHEMA#.USERS
+                            WHERE ROLE_ID = 1
+                        </cfquery>
+                        <cfset adminEmails = "">
+                        <cfloop query="qryGetAdminEmails">
+                            <cfset adminEmails = ListAppend(adminEmails, qryGetAdminEmails.EMAIL)>
+                        </cfloop>
+                        
                         <!--- Send email logic here --->
-                        <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Booking Declined" type="html" bcc="erniep@mdanderson.org, tlouie@mdanderson.org, cpender@mdanderson.org, tglover@mdanderson.org">
+                        <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Booking Declined" type="html" bcc="#adminEmails#">
                             <cfmailpart type="text/html">
                                 <cfoutput>#emailBody#</cfoutput>
                             </cfmailpart>
@@ -336,6 +358,29 @@
         </cftry>
     </cffunction>
 
+    <!--- Helper function to get all admin users' emails --->
+    <cffunction name="getAdminEmails" access="private" returntype="string">
+        <cftry>
+            <cfquery name="getAdmins" datasource="#this.DATASOURCE#">
+                SELECT EMAIL
+                FROM #this.DBSCHEMA#.USERS
+                WHERE ROLE_ID = 2
+            </cfquery>
+            
+            <cfset var emailList = "">
+            <cfloop query="getAdmins">
+                <cfset emailList = listAppend(emailList, EMAIL)>
+            </cfloop>
+            
+            <cfreturn emailList>
+            
+        <cfcatch>
+            <!--- Return default admin emails if query fails --->
+            <cfreturn "erniep@mdanderson.org,tglover@mdanderson.org">
+        </cfcatch>
+        </cftry>
+    </cffunction>
+    
     <!--- Helper function to send approval email --->
     <cffunction name="sendApprovalEmail" access="private" returntype="void">
         <cfargument name="bookingId" type="numeric" required="true">
@@ -374,9 +419,18 @@
                     
                     <p>Best regards,</p>
                 ">
-                
+                <!--- Get admin emails --->
+                <cfquery name="qryGetAdminEmails" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT EMAIL
+                    FROM #this.DBSCHEMA#.USERS
+                    WHERE ROLE_ID = 1
+                </cfquery>
+                <cfset adminEmails = "">
+                <cfloop query="qryGetAdminEmails">
+                    <cfset adminEmails = ListAppend(adminEmails, qryGetAdminEmails.EMAIL)>
+                </cfloop>
                 <!--- Send email --->
-                <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Your Office Space Reservation Confirmation email" type="html" bcc="erniep@mdanderson.org, tlouie@mdanderson.org, cpender@mdanderson.org, tglover@mdanderson.org">
+                <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Your Office Space Reservation Booking Confirmed" type="html" bcc="#adminEmails#">
                     <cfmailpart type="text/html">
                         <cfoutput>#emailBody#</cfoutput>
                     </cfmailpart>
@@ -409,9 +463,17 @@
                     
                     Thank you for your understanding.
                 ">
-                
+                <cfquery name="qryGetAdminEmails" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT EMAIL
+                    FROM #this.DBSCHEMA#.USERS
+                    WHERE ROLE_ID = 1
+                </cfquery>
+                <cfset adminEmails = "">
+                <cfloop query="qryGetAdminEmails">
+                    <cfset adminEmails = ListAppend(adminEmails, qryGetAdminEmails.EMAIL)>
+                </cfloop>
                 <!--- Send email logic here --->
-                <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Booking Rejected" type="html" bcc="erniep@mdanderson.org,tlouis@mdanderson.org,cpender@mdanderson.org">
+                <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Booking Rejected" type="html" bcc="#adminEmails#">
                     #emailBody#
                 </cfmail>
             </cfif>
@@ -445,8 +507,19 @@
                     Best regards,
                 ">
                 
+                <!--- Get admin users for CC --->
+                <cfquery name="qryGetAdminEmails" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT EMAIL
+                    FROM #this.DBSCHEMA#.USERS
+                    WHERE ROLE_ID = 1
+                </cfquery>
+                <cfset adminEmails = "">
+                <cfloop query="qryGetAdminEmails">
+                    <cfset adminEmails = ListAppend(adminEmails, qryGetAdminEmails.EMAIL)>
+                </cfloop>
+                
                 <!--- Send email logic here --->
-                <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Booking Rejected" type="html" bcc="erniep@mdanderson.org,tlouis@mdanderson.org,cpender@mdanderson.org">
+                <cfmail to="#booking.USER_EMAIL#" from="NO-REPLY@mdanderson.org" subject="Booking Rejected" type="html" cc="#adminEmails#">
                     #emailBody#
                 </cfmail>
             </cfif>
@@ -471,13 +544,57 @@
         <cfreturn array>
     </cffunction>
 
+    <!--- Mark expired pending bookings as 'Expired' --->  
+    <cffunction name="markExpiredBookings" access="remote" returntype="struct" returnformat="json">
+        <cftry>
+            <cfset currentDateTime = Now()>
+            
+            <!--- First, get all expired pending bookings --->  
+            <cfquery name="qGetExpiredBookings" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT BOOKING_ID
+                FROM #this.DBSCHEMA#.BOOKINGS
+                WHERE LOWER(STATUS) = 'pending'
+                AND END_TIME <= <cfqueryparam value="#currentDateTime#" cfsqltype="CF_SQL_TIMESTAMP">
+            </cfquery>
+            
+            <cfset expiredCount = qGetExpiredBookings.RecordCount>
+            
+            <!--- Update status to 'Expired' for these bookings --->  
+            <cfif expiredCount GT 0>
+                <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    UPDATE #this.DBSCHEMA#.BOOKINGS
+                    SET STATUS = 'Expired'
+                    WHERE LOWER(STATUS) = 'pending'
+                    AND END_TIME <= <cfqueryparam value="#currentDateTime#" cfsqltype="CF_SQL_TIMESTAMP">
+                </cfquery>
+                
+                <cflog file="booking_approvals" text="Marked #expiredCount# expired bookings as 'Expired'">
+            </cfif>
+            
+            <cfreturn {"SUCCESS": true, "EXPIRED_COUNT": expiredCount}>
+            
+            <cfcatch type="any">
+                <cflog file="booking_approvals" text="Error marking expired bookings: #cfcatch.message#">
+                <cfreturn {"SUCCESS": false, "MESSAGE": cfcatch.message}>
+            </cfcatch>
+        </cftry>
+    </cffunction>
+    
     <cffunction name="getPendingApprovalsCount" access="remote" returntype="numeric" returnformat="plain">
         <cftry>
+            <!--- First mark any expired bookings --->  
+            <cfset markExpiredBookings()>
+            
+            <!--- Get current date/time --->  
+            <cfset currentDateTime = Now()>
+            
             <cfquery name="qGetPendingCount" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT COUNT(*) as PendingCount
                 FROM #this.DBSCHEMA#.BOOKINGS
                 WHERE LOWER(STATUS) = 'pending'
             </cfquery>
+            
+            <cflog file="booking_approvals" text="Pending approvals count: #qGetPendingCount.PendingCount#">
             
             <cfreturn qGetPendingCount.PendingCount>
             

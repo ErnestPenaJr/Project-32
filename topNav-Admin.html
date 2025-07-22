@@ -27,10 +27,39 @@ Developer Notes:
         color: rgb(0, 0, 0);
         border-color: #2d2b3b;
     }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        /* Adjust spacing between text and badge */
+    }
+
+    .badge.bg-danger.rounded-pill {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        font-size: 12px;
+        /* Adjust font size */
+        line-height: 1;
+        /* Ensure text height is balanced */
+        text-align: center;
+        vertical-align: middle;
+        font-weight: bold;
+        /* Make the number more readable */
+        border-radius: 50%;
+        /* Ensures a perfect circle */
+    }
 </style>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark stick-top">
-    <div class="container">
-        <a class="navbar-brand me-auto text-uppercase" href="index.html">Admin Portal</a>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark stick-top" style="width: 100%;">
+    <div class="container-fluid" style="margin-left: 3.5rem; margin-right: 3.5rem;">
+        <a class="navbar-brand me-auto text-uppercase" href="index.html"><span id="ServerType"
+                class="text-info"></span>Admin Portal <i class="fas fa-bug" style="color: red; display: none;"
+                data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title=""></i>
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -58,19 +87,23 @@ Developer Notes:
                     <a class="nav-link btn-admin-topNav text-uppercase mx-2"
                         href="amenity-management.html">Amenities</a>
                 </li>
-                <!--  
+
                 <li class="nav-item">
-                    <a class="nav-link btn-admin-topNav text-uppercase mx-2" href="history.html">My History</a>
-                </li>-->
+                    <a class="nav-link btn-admin-topNav text-uppercase mx-2" href="admin-history.html">History</a>
+                </li>
 
                 <li id="bookingApprovalsLink" class="nav-item" style="display: none;">
-                    <a class="nav-link btn-admin-topNav text-uppercase mx-2" href="booking_approvals.html">
+                    <a class="nav-link btn-admin-topNav text-uppercase" href="booking_approvals.html">
                         Approvals
                         <span id="pendingApprovalsBadge" class="badge bg-danger rounded-pill d-none">0</span>
                     </a>
-                </li>
-                <li class="nav-item d-flex align-items-center justify-content-end">
+                </li><!--  -->
+                <li class="nav-item d-flex align-items-center justify-content-end mx-2">
                     <button class="btn btn-outline-danger logout-btn">Logout</button>
+                </li>
+                <li id="helpRequest" class="nav-item d-flex align-items-center justify-content-end">
+                    <button class="btn btn-outline-warning help-btn"><i
+                            class="fas fa-question-circle fa-lg"></i></button>
                 </li>
                 <!--- Offcanvas--->
                 <li id="offcanvasTrigger" class="nav-item d-flex align-items-center justify-content-end mx-2">
@@ -84,7 +117,7 @@ Developer Notes:
     </div>
 </nav>
 
-<div class="container">
+<div class="container-fluid">
     <div class="row">
         <div class="col-12 d-flex justify-content-center align-items-center">
             <h1 class="mt-2 mb-2 text-light" data-aos="fade-right" data-aos-delay="100">DoCM Office Space Reservation <i
@@ -92,20 +125,200 @@ Developer Notes:
         </div>
     </div>
 </div>
+<!-- Help Modal -->
+<div id="helpForm" class="modal fade " tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-body ">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title"><i class="fas fa-user-headset"></i> Seeking IT Assistance?<button
+                                type="button" class="btn-close float-end fs-6" data-bs-dismiss="modal"
+                                aria-label="Close"></button></h3>
+                        <p class="-3" style="font-size:14px"> Our dedicated team is ready to support you. To
+                            ensure a
+                            swift and accurate response, please complete the form below, including detailed
+                            information
+                            about your issue. An expert from our team will follow up with you promptly. For
+                            urgent
+                            matters, don't hesitate to call INFO at 713-794-4636 and ask for immediate
+                            escalation. We're
+                            committed to being there for you every step of the way! Thank you for reaching out
+                            to us."
+                        </p>
 
+                        <div id="help_text_block" class="mb-3 ">
+                            <form id="helpForm" class="needs-validation" novalidate>
+                                <div class="row g-3">
+                                    <div class="col-sm-3">
+                                        <div class="form-floating mb-3">
+                                            <input type="text" class="form-control" id="help_emplid" name="emplid"
+                                                placeholder="Enter your MDA Employee ID" required pattern="\d{6}">
+                                            <label for="help_emplid">Employee ID</label>
+                                            <div class="invalid-tooltip">
+                                                Please enter a valid 6-digit Employee ID
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-9">
+                                        <div class="form-floating mb-3">
+                                            <select class="form-select" id="help_Priority" name="priority" required>
+                                                <option selected value="" disabled>Priority Level</option>
+                                                <option value="1"><span class="text-danger">CRITICAL</span>:
+                                                    Application is
+                                                    broken and User is unable to save data. Error message is
+                                                    displayed.
+                                                </option>
+                                                <option value="2"><span class="text-warning">HIGH</span>:
+                                                    Application is
+                                                    working and or data is saved but an error message is
+                                                    displayed.
+                                                </option>
+                                                <option value="3"><span class="text-secondary">MODERATE</span>:
+                                                    Application
+                                                    is working with no errors; this is purely a cosmetic issue.
+                                                </option>
+                                                <option value="4"><span class="text-success">LOW</span>:
+                                                    Application
+                                                    is
+                                                    working with no errors; this is a feature request.</option>
+                                            </select>
+                                            <label for="help_Priority">Please Select</label>
+                                            <div class="invalid-tooltip">
+                                                Please select a priority level
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <textarea class="form-control form-control-lg" placeholder="Leave a comment here"
+                                        id="helpDescription" name="description" style="height: 100px" required
+                                        minlength="10"></textarea>
+                                    <label for="helpDescription">Issue description</label>
+                                    <div class="invalid-tooltip">
+                                        Please provide at least 10 characters describing the issue
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> Include error messages, steps to
+                                        reproduce, and expected behavior
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div id="messageSubmitted" class="mb-3" style="display: none;">
+                            <div class="row">
+                                <div class="col-sm-8 text-center">
+                                    <h2 style="font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">HELP
+                                        REQUEST
+                                        HAS BEEN SENT!</h2>
+                                    <span class="text-muted">We will get back to you as soon as possible. <span
+                                            id="closeMessage"></span></span>
+                                </div>
+                                <div class="col-sm-4">
+                                    <i class="far fa-thumbs-up fa-7x"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="Submit_Help_Request" class="btn btn-primary float-end mt-3"><i
+                                class="far fa-paper-plane"></i> Submit Ticket</button>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
 <script src="node_modules/@curiosityx/bootstrap-session-timeout/index.js"></script>
 <script src="assets/js/topNav.js"></script>
 
 <script>
     $('document').ready(function () {
-
+        checkPendingApprovals()
+        getServerType()
         if (sessionStorage.getItem('ROLE') === 'Site Admin' || sessionStorage.getItem('ROLE') === 'Admin') {
             $('#bookingApprovalsLink, #amenityLink').show();
         }
-
         var userName = sessionStorage.getItem('NAME');
         if (userName) {
             $('#welcomeMessage').text('Welcome, ' + userName);
         }
     });
+
+    function getServerType() {
+        $.ajax({
+            url: 'assets/cfc/functions.cfc?method=getServerType',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.serverType == 'PROD') {
+                    //$('#ServerType').text(data.serverType + ' ');
+                } else if (data.serverType == 'STAGE') {
+                    $('#ServerType').text(data.serverType + ' ');
+                    $('#ServerType').css('color', 'yellow');
+                    $('.fa-bug').slideDown(500);
+                    $('.fa-bug').attr('data-bs-title', data.serverType);
+                } else {
+                    $('#ServerType').text(data.serverType + ' ');
+                    $('.fa-bug').slideDown(500);
+                    $('.fa-bug').attr('data-bs-title', data.serverType);
+                }
+
+            }
+        });
+    }
+
+    // Use window object to store the approval check timer to avoid duplicate declarations
+    
+    // Make the function globally accessible by attaching it to the window object
+    window.checkPendingApprovals = function() {
+        // Clear any existing timer
+        if (window.approvalCheckTimer) {
+            clearTimeout(window.approvalCheckTimer);
+        }
+        
+        $.ajax({
+            url: './assets/cfc/approvals.cfc',
+            type: 'GET',
+            data: {
+                method: 'getPendingApprovalsCount'
+            },
+            success: function (response) {
+                const count = parseInt(response) || 0; // Ensure count is a number
+                const badge = $('#pendingApprovalsBadge');
+                if (count > 0) {
+                    badge.text(count).removeClass('d-none').show();
+                } else {
+                    badge.addClass('d-none').hide();
+                }
+                
+                // Set a timer to check again in 1 minute
+                // This ensures the badge updates when bookings expire
+                window.approvalCheckTimer = setTimeout(checkPendingApprovals, 60000);
+            },
+            error: function() {
+                // Even on error, set the timer to try again
+                window.approvalCheckTimer = setTimeout(checkPendingApprovals, 60000);
+            }
+        });
+    }
+    // Notification handling functions
+    function checkNewUsers() {
+        $.ajax({
+            url: './assets/cfc/user.cfc',
+            type: 'GET',
+            data: {
+                method: 'getNewUsersCount'
+            },
+            success: function (response) {
+                const count = parseInt(response) || 0; // Ensure count is a number
+                const badge = $('#newUserBadge');
+                if (count > 0) {
+                    badge.text(count).removeClass('d-none').show();
+                } else {
+                    badge.addClass('d-none').hide();
+                }
+            }
+        });
+    }
 </script>

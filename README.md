@@ -1,15 +1,9 @@
 ## Authur
-
 - Ernest Pena Jr
 
-## Testers/Business Analysts
+## Hotel Management System
 
-- Colin Pender
-- Terence Louie
-
-## Office Space Reservation Management System
-
-A comprehensive office space reservation management system built with ColdFusion, JavaScript, and modern CSS frameworks.
+A comprehensive office reservation management system built with ColdFusion, JavaScript, and modern CSS frameworks.
 
 ## Features
 

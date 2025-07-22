@@ -24,17 +24,20 @@
 
     /* Additional room colors with suggested text colors */
     --room-color-1: #FFFFF0;
-    /* Green */
-    --room-color-1-text: #556B2F;
-    /* White text for readability */
-    --room-color-2: #F0F0F0;
     /* Blue */
+    --room-color-1-text: #556B2F;
+    /* Dark Blue text for readability */
+
+    --room-color-2: #F0F0F0;
+    /* Emerald */
     --room-color-2-text: #333333;
     /* White text for readability */
+
     --room-color-3: #FFF9DB;
-    /* Brown */
+    /* Purple */
     --room-color-3-text: #4E342E;
     /* White text for readability */
+
     --room-color-4: #DFF7FF;
     /* Orange */
     --room-color-4-text: #0D47A1;
@@ -479,51 +482,6 @@ select:focus {
     color: var(--room-color-20-text) !important;
 }
 
-.fc-event.room-21 {
-    background: var(--room-color-21) !important;
-}
-
-.fc-event-main.room-21 .fc-event-time,
-.fc-event-main.room-21 .fc-event-title {
-    color: var(--room-color-21-text) !important;
-}
-
-.fc-event.room-22 {
-    background: var(--room-color-22) !important;
-}
-
-.fc-event-main.room-22 .fc-event-time,
-.fc-event-main.room-22 .fc-event-title {
-    color: var(--room-color-22-text) !important;
-}
-
-.fc-event.room-23 {
-    background: var(--room-color-23) !important;
-}
-
-.fc-event-main.room-23 .fc-event-time,
-.fc-event-main.room-23 .fc-event-title {
-    color: var(--room-color-23-text) !important;
-}
-
-.fc-event.room-24 {
-    background: var(--room-color-24) !important;
-}
-
-.fc-event-main.room-24 .fc-event-time,
-.fc-event-main.room-24 .fc-event-title {
-    color: var(--room-color-24-text) !important;
-}
-
-.fc-event.room-25 {
-    background: var(--room-color-25) !important;
-}
-
-.fc-event-main.room-25 .fc-event-time,
-.fc-event-main.room-25 .fc-event-title {
-    color: var(--room-color-25-text) !important;
-}
-
 /* Status modifiers - no background colors, only opacity and borders */
 .fc-event.booking-status-pending {
     opacity: 0.7;
@@ -628,40 +586,6 @@ footer {
     width: 100%;
 }
 
-/* Icon Management Styles */
-.icon-item {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-    margin: 5px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background-color: #f8f9fa;
-}
-
-.icon-item:hover {
-    background-color: #e9ecef;
-    transform: translateY(-2px);
-}
-
-.icon-item.selected {
-    background-color: #0d6efd;
-    color: white;
-    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.25);
-}
-
-.icons-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 15px;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
 .icon-item {
     display: flex;
     flex-direction: column;
@@ -720,33 +644,4 @@ footer {
 .icon-item.selected i,
 .icon-item.selected .icon-name {
     color: #0d6efd;
-}
-
-.btn-user-topNav {
-    border: 1px solid #4F46E5;
-    color: #4F46E5;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    text-decoration: none;
-}
-
-.btn-user-topNav:hover {
-    background: #4338CA;
-    color: white;
-    border-color: white;
-
-}
-
-.btn-admin-topNav {
-    border: 1px solid #ffffff;
-    color: #ffffff;
-    padding: 0.5rem 1rem;
-    border-radius: 5px;
-    text-decoration: none;
-}
-
-.btn-admin-topNav:hover {
-    background: #bbbabe;
-    color: rgb(0, 0, 0);
-    border-color: #2d2b3b;
 }

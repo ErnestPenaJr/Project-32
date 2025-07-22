@@ -13,6 +13,46 @@
     <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
     <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
     <link href="assets/css/styles.css" rel="stylesheet">
+    <style>
+        .btn-admin-topNav {
+            border: 1px solid #ffffff;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+
+        .btn-admin-topNav:hover {
+            background: #bbbabe;
+            color: rgb(0, 0, 0);
+            border-color: #2d2b3b;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            /* Adjust spacing between text and badge */
+        }
+
+        .badge.bg-danger.rounded-pill {
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            font-size: 12px;
+            /* Adjust font size */
+            line-height: 1;
+            /* Ensure text height is balanced */
+            text-align: center;
+            vertical-align: middle;
+            font-weight: bold;
+            /* Make the number more readable */
+            border-radius: 50%;
+            /* Ensures a perfect circle */
+        }
+    </style>
 </head>
 
 <body>
@@ -89,7 +129,6 @@
     <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/DataTables-2.1.8/datatables.js"></script>
     <script src="node_modules/aos/dist/aos.js"></script>
-    <script src="node_modules/sweetalert2/dist/sweetalert2.min.js"></script>
 
     <script>
         // Initialize AOS
@@ -106,9 +145,37 @@
             //console.log(sessionStorage);
             // Load top navigation
             if (sessionStorage.getItem('ROLE') == 'Admin' || sessionStorage.getItem('ROLE') == 'Site Admin') {
-                $('#topNav').load('topNav-Admin.html');
+                $('#topNav').load('topNav-Admin.html', function () {
+                    checkNewUsers();
+                    // Force immediate check for expired bookings
+                    $.ajax({
+                        url: 'assets/cfc/approvals.cfc',
+                        type: 'GET',
+                        data: {
+                            method: 'getPendingApprovalsCount'
+                        },
+                        success: function(response) {
+                            const count = parseInt(response) || 0;
+                            const badge = $('#pendingApprovalsBadge');
+                            if (count > 0) {
+                                badge.text(count).removeClass('d-none').show();
+                            } else {
+                                badge.addClass('d-none').hide();
+                            }
+                        }
+                    });
+                });
+
+                $('.fa-bug').attr('data-bs-title', 'Staging');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
+                });
             } else {
                 $('#topNav').load('topNav-User.html');
+                $('.fa-bug').attr('data-bs-title', 'Staging');
+                $('#downloadUserGuide').click(function () {
+                    window.open('DoCM_User_Reservation_Help_Guide.pdf', '_blank');
+                });
             }
             initializeBookingsTable();
             $('#bookingsTable').on('click', '.rejectBtn', async function () {
@@ -222,17 +289,41 @@
         });
         let bookingsTable;
 
+        // Use window object to store the table refresh timer to avoid duplicate declarations
+        
         function initializeBookingsTable() {
+            // Clear any existing timer
+            if (window.tableRefreshTimer) {
+                clearTimeout(window.tableRefreshTimer);
+            }
+            
             bookingsTable = $('#bookingsTable').DataTable({
                 ajax: {
                     url: 'assets/cfc/approvals.cfc?method=getPendingBookings',
                     type: 'GET',
-                    dataSrc: 'DATA'
+                    dataSrc: function(json) {
+                        // Filter out bookings that have passed their end date
+                        const currentDate = new Date();
+                        const filteredData = json.DATA.filter(function(booking) {
+                            const endDate = new Date(booking.END_DATE);
+                            return endDate >= currentDate;
+                        });
+                        
+                        // Set a timer to refresh the table every minute to remove expired bookings
+                        window.tableRefreshTimer = setTimeout(checkForExpiredBookings, 60000);
+                        
+                        return filteredData;
+                    }
                 },
                 destroy: true,
                 responsive: true,
                 columns: [
-                    { data: 'ID' },
+                    {
+                        data: 'ID',
+                        render: function (data, type, row) {
+                            return `<span class="d-flex justify-content-center">${data}</span>`;
+                        }
+                    },
                     { data: 'USER_NAME' },
                     { data: 'ROOM_NAME' },
                     { data: 'LOCATION' },
@@ -241,14 +332,14 @@
                     {
                         data: 'STATUS',
                         render: function (data) {
-                            return `<h4 class="badge text-uppercase ${getStatusBadgeClass(data)}">${data}</h4>`;
+                            return `<h4 class="badge py-2 px-3 text-uppercase ${getStatusBadgeClass(data)}">${data}</h4>`;
                         }
                     },
                     {
                         data: null,
                         render: function (data) {
                             return `
-                                <button class="btn btn-sm btn-primary approveBtn"">
+                                <button class="btn btn-sm btn-primary approveBtn">
                                     <i class="fas fa-check"></i>
                                 </button>
                                 <button class="btn btn-sm btn-danger rejectBtn"">
@@ -263,11 +354,14 @@
             // Add AOS attributes to newly created rows
             bookingsTable.on('draw', function () {
                 $('tbody tr').each(function (index) {
+                    const rowData = bookingsTable.row(this).data();
+                    const bookingId = rowData ? rowData.ID : '';
+                    
                     $(this).attr({
                         'data-aos': 'fade-up',
                         'data-aos-delay': index * 100,
                         'data-aos-duration': '800',
-                        'data-booking-id': bookingsTable.row(this).data().ID
+                        'data-booking-id': bookingId
                     });
                 });
                 refreshAOS();
@@ -306,7 +400,7 @@
                             <p><strong>Capacity:</strong> ${response.DATA.CAPACITY}</p>
                             <p><strong>Date Booked:</strong> ${response.DATA.DATE}</p>
                             <p><strong>Time:</strong> ${response.DATA.TIME}</p>
-                            <p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(response.DATA.STATUS)}">${response.DATA.STATUS}</span></p>
+                            <p><strong>Status:</strong> <span class="badge py-2 px-3 ${getStatusBadgeClass(response.DATA.STATUS)}">${response.DATA.STATUS}</span></p>
                             <p><strong>Photo:</strong> <img src="${response.DATA.ROOM_IMAGE}" alt="Room Photo" class="img-fluid"></p>
                         </div>
                     `);
@@ -328,26 +422,7 @@
                         // Close sweet alert
                         Swal.close();
                         refreshBookingsTable();
-                        // Update pending approvals badge
-                        checkPendingApprovals();
-                    }
-                }
-            });
-        }
-        function checkPendingApprovals() {
-            $.ajax({
-                url: './assets/cfc/approvals.cfc',
-                type: 'GET',
-                data: {
-                    method: 'getPendingApprovalsCount'
-                },
-                success: function (response) {
-                    const count = parseInt(response);
-                    const badge = $('#pendingApprovalsBadge');
-                    if (count > 0) {
-                        badge.text(count).removeClass('d-none');
-                    } else {
-                        badge.addClass('d-none');
+                        updateNavCounts(); // Reloads top nav
                     }
                 }
             });
@@ -366,10 +441,16 @@
                     console.log(response);
                     if (response.SUCCESS) {
                         refreshBookingsTable();
-                        // Update pending approvals badge
-                        checkPendingApprovals();
+                        updateNavCounts();
                     }
                 }
+            });
+        }
+        // Function to reload the top navigation and update approval counts
+        function updateNavCounts() {
+            $('#topNav').load('topNav-Admin.html', function () {
+                checkNewUsers(); // Ensure the new user count updates
+                checkPendingApprovals(); // Ensure pending approvals count updates
             });
         }
         // Logout handler
@@ -382,6 +463,53 @@
                 case 'rejected': return 'bg-danger';
                 case 'pending': return 'bg-warning';
                 default: return 'bg-secondary';
+            }
+        }
+        function getBadgeClass(actionType) {
+            switch (actionType) {
+                case 'CREATE': return 'bg-success';
+                case 'UPDATE': return 'bg-warning';
+                case 'DELETE': return 'bg-danger';
+                default: return 'bg-secondary';
+            }
+        }
+        
+        // Function to check for expired bookings and update the table
+        function checkForExpiredBookings() {
+            // Clear any existing timer
+            if (window.tableRefreshTimer) {
+                clearTimeout(window.tableRefreshTimer);
+            }
+            
+            // Check if any visible bookings have expired
+            const currentDate = new Date();
+            let hasExpired = false;
+            
+            if (bookingsTable) {
+                // Check each row in the table
+                bookingsTable.rows().every(function() {
+                    const rowData = this.data();
+                    if (rowData) {
+                        const endDate = new Date(rowData.END_DATE);
+                        if (endDate < currentDate) {
+                            hasExpired = true;
+                            return false; // Break the loop if we found an expired booking
+                        }
+                    }
+                });
+                
+                // If we found expired bookings, refresh the table
+                if (hasExpired) {
+                    refreshBookingsTable();
+                    // Also update the badge count
+                    checkPendingApprovals();
+                } else {
+                    // Set the timer to check again in 1 minute
+                    window.tableRefreshTimer = setTimeout(checkForExpiredBookings, 60000);
+                }
+            } else {
+                // If table isn't initialized yet, check again in 1 minute
+                window.tableRefreshTimer = setTimeout(checkForExpiredBookings, 60000);
             }
         }
     </script>

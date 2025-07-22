@@ -192,7 +192,8 @@
         </div>
         <div class="offcanvas-body">
             <div class="mb-3 mt-0">
-                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase">Download Complete User
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase"><i
+                        class="fal fa-file-download"></i> Complete User
                     Guide</button>
             </div>
             <div class="mb-3">
@@ -582,14 +583,19 @@
         }
         // Function to initialize tooltips
         function initializeTooltips() {
-            $('[data-bs-toggle="tooltip"]').tooltip('dispose').tooltip({
-                trigger: 'hover',
-                placement: 'top',
-                container: 'body',
-                animation: true,
-                html: false
-            }).on('click', function () {
-                $(this).tooltip('hide');
+            $('[data-bs-toggle="tooltip"]').each(function () {
+                // Only initialize tooltip if title attribute exists and is not empty
+                if ($(this).attr('title')) {
+                    $(this).tooltip('dispose').tooltip({
+                        trigger: 'hover',
+                        placement: 'top',
+                        container: 'body',
+                        animation: true,
+                        html: false
+                    }).on('click', function () {
+                        $(this).tooltip('hide');
+                    });
+                }
             });
         }
 
@@ -1160,12 +1166,83 @@
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     imageBase64 = e.target.result;
-                    submitRoom(imageBase64);
+                    submitNewRoom(imageBase64);
                 };
                 reader.readAsDataURL(imageInput.files[0]);
             } else {
-                submitRoom('');
+                submitNewRoom('');
             }
+        }
+
+        // Submit new room
+        function submitNewRoom(imageBase64) {
+            var roomdata = {
+                roomName: $('#roomName').val(),
+                building: $('#building').val(),
+                roomNumber: $('#roomNumber').val(),
+                capacity: $('#capacity').val(),
+                description: $('#description').val(),
+                recurring: $('#recurring').prop('checked') ? 'YES' : 'NO',
+                maintenance: $('#maintenanceStatus').prop('checked') ? 'YES' : 'NO',
+                image: imageBase64
+            };
+
+            $.ajax({
+                url: 'assets/cfc/room.cfc?method=addRoom',
+                type: 'POST',
+                dataType: 'json',
+                data: roomdata,
+                success: function (response) {
+                    if (response.success) {
+                        // After room is added, save amenities
+                        const selectedAmenities = [];
+                        $('#amenityIcons .icon-item.selected').each(function () {
+                            selectedAmenities.push($(this).data('amenity-id'));
+                        });
+
+                        // Save each selected amenity
+                        for (let i = 0; i < selectedAmenities.length; i++) {
+                            saveAmenities(response.roomId, selectedAmenities[i]);
+                        }
+
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "success",
+                            title: response.message || "Room added successfully!",
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+
+                        $('#addRoomModal').modal('hide');
+                        refreshRoomsTable();
+                        // Reset form
+                        $('#addRoomForm')[0].reset();
+                        $('#addImagePreview').attr('src', 'assets/images/placeholder.png');
+                    } else {
+                        Swal.fire({
+                            position: "top-end",
+                            icon: "error",
+                            title: "Error",
+                            text: response.message || "Failed to add room",
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error adding room: ' + error,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
         }
 
 

@@ -9,44 +9,6 @@ $('.logout-btn').on('click', function () {
     window.location.href = 'logout.html';
 });
 
-// Notification handling functions
-function checkNewUsers() {
-    $.ajax({
-        url: './assets/cfc/user.cfc',
-        type: 'GET',
-        data: {
-            method: 'getNewUsersCount'
-        },
-        success: function (response) {
-            const count = parseInt(response);
-            const badge = $('#newUserBadge');
-            if (count > 0) {
-                badge.text(count).removeClass('d-none');
-            } else {
-                badge.addClass('d-none');
-            }
-        }
-    });
-}
-
-function checkPendingApprovals() {
-    $.ajax({
-        url: './assets/cfc/approvals.cfc',
-        type: 'GET',
-        data: {
-            method: 'getPendingApprovalsCount'
-        },
-        success: function (response) {
-            const count = parseInt(response);
-            const badge = $('#pendingApprovalsBadge');
-            if (count > 0) {
-                badge.text(count).removeClass('d-none');
-            } else {
-                badge.addClass('d-none');
-            }
-        }
-    });
-}
 
 // Initialize session timeout
 function initSessionTimeout() {
@@ -115,6 +77,18 @@ function getNotifications() {
     });
 }
 
+function myHelpRequest(data) {
+    $.ajax({
+        url: 'assets/cfc/helpRequests.cfc',
+        type: 'POST',
+        data: data,
+        success: function (data) {},
+        error: function (jqXHR, textStatus, errorThrown, FN) {
+            errorHandler(jqXHR, textStatus, errorThrown, FN)
+        }
+    });
+}
+
 // get users info on page load
 
 
@@ -124,7 +98,97 @@ $(document).ready(function () {
     checkPendingApprovals();
     initSessionTimeout();
     getNotifications();
-    // Set welcome message
 
+    // Set welcome message
+    $('#helpRequest').on('click', function () {
+        $('#helpForm').modal('show');
+    });
+
+    $('#help_emplid').on('keypress', function () {
+        if ($(this).val().length >= 5) {
+            $(this).removeClass('is-invalid');
+            $(this).addClass('is-valid');
+        } else {
+            $(this).removeClass('is-valid');
+            $(this).addClass('is-invalid');
+        }
+    });
+    $('#help_Priority').on('change', function () {
+        if ($(this).val() == '') {
+            $(this).removeClass('is-valid');
+            $(this).addClass('is-invalid');
+        } else {
+            $(this).removeClass('is-invalid');
+            $(this).addClass('is-valid');
+        }
+    })
+    $('#helpDescription').on('keypress', function () {
+        if ($(this).val().length >= 5) {
+            $(this).removeClass('is-invalid');
+            $(this).addClass('is-valid');
+        } else {
+            $(this).removeClass('is-valid');
+            $(this).addClass('is-invalid');
+        }
+    })
+
+    $(document).ready(function () { // Ensure we remove any previous click handlers before binding
+        $('#Submit_Help_Request').off('click').on('click', function (event) { // Prevent the default form submission
+            event.preventDefault();
+
+            var data = {
+                method: 'helpRequest',
+                emplid: $('#help_emplid').val(),
+                priority: $('#help_Priority').val(),
+                priorityText: $('#help_Priority option:selected').text(),
+                description: $('#helpDescription').val()
+            };
+
+            // Simple client-side validation
+            if (data.emplid === '') {
+                $('#help_emplid').addClass('is-invalid');
+                return;
+            }
+            if (data.priority === '') {
+                $('#help_Priority').addClass('is-invalid');
+                return;
+            }
+            if (data.description === '') {
+                $('#helpDescription').addClass('is-invalid');
+                return;
+            }
+
+            // Display submission feedback
+            $('#help_text_block').slideUp(500);
+            $('#messageSubmitted').slideDown(500);
+
+            // Hide the modal after 6 seconds and reset form fields
+            setTimeout(function () {
+                $('#helpForm').modal('hide');
+                $('#helpDescription').val('');
+                $('#help_emplid').val('');
+            }, 6000);
+
+            // Countdown timer before closing the modal form and resetting fields
+            var countDownDate = new Date().getTime() + 4000;
+            var x = setInterval(function () {
+                var now = new Date().getTime();
+                var distance = countDownDate - now;
+                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                $('#Submit_Help_Request').html('<i class="far fa-hourglass fa-spin"></i> Closing in ' + seconds + ' seconds. ');
+                if (distance < 0) {
+                    clearInterval(x);
+                    $('#helpForm').modal('hide');
+                    $('#helpDescription').val('');
+                    $('#help_emplid').val('');
+                    $('#Submit_Help_Request').html('<i class="far fa-paper-plane"></i> Send Request').prop('disabled', true);
+                    $('#help_Priority').val('');
+                }
+            }, 1000);
+
+            // Call the AJAX function once
+            myHelpRequest(data);
+        });
+    });
 
 });

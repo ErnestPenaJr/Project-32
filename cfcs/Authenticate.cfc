@@ -8,7 +8,7 @@
     <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
         <cfset this.DBSERVER = "inside2_docmp" />
         <cfset this.DBUSER = "CONFROOM_USER" />
-        <cfset this.DBPASS = "1docmD4OU6D88" />
+        <cfset this.DBPASS = "1DOCMAU4CNFRM6" />
          <cfset this.DBSCHEMA = "CONFROOM" />
     <cfelseif ListFirst(CGI.SERVER_NAME,'.') EQ 's-cmapps'>
         <cfset this.DBSERVER = "inside2_docms" />
@@ -164,7 +164,7 @@
                     ap.DEPTID
                     FROM 
                         CONFROOM.ACTIVE_PEOPLESOFT ap
-                    WHERE ap.LEV4_DEPTID = 900014
+                    WHERE ap.EMPLID IN (115153, 127625, 131755, 145339, 147349, 162185, 162271, 171647, 192194, 193869, 199475, 214909, 232143, 257171, 260611, 275163, 291863, 121003, 106276, 135424, 153135, 218801, 230243, 131820, 160381, 135735, 134244, 217382, 148269, 157555, 195656, 126456, 163776, 162974, 295154, 177895, 311472, 186473, 190232, 193980, 203698, 247872, 255569, 269384, 269477, 270110, 281116, 281117, 281124, 281126, 281128, 281129, 281131, 281140, 281232, 291665, 291704, 291713, 292433, 292439, 292440, 292441, 292442, 292443, 292448, 292449, 301586, 301588, 301591, 301597, 301600, 301602, 301631, 301632, 301636, 301647, 301730, 301731)
                     <cfif isNumeric(LDAP.UserID)>
                         AND ap.EMPLID = #LDAP.UserID#
                     <cfelse>
