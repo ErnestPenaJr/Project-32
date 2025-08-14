@@ -625,7 +625,27 @@
                                     data-bs-placement="bottom" data-bs-title="Open FC11 Floor Map"><i
                                         class="fas fa-map"></i></button>
                             </div>
-                            <div class="col-3">
+                            <div class="col-2">
+                                <!-- Quick Settings Access -->
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-user-cog"></i> Settings
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="user-notification-preferences.html">
+                                            <i class="fas fa-bell"></i> Notification Preferences
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="dashboard.html">
+                                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                                        </a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="admin-notification-control.html" id="adminSettingsLink" style="display: none;">
+                                            <i class="fas fa-shield-alt"></i> Admin: Notifications
+                                        </a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-1">
                                 <button class="btn-new-booking float-end">
                                     <i class="fas fa-plus me-2"></i>New Booking
                                 </button>
@@ -881,6 +901,8 @@
                 $('#downloadUserGuide').click(function () {
                     window.open('DoCM_Admin_Reservation_Help_Guide.pdf', '_blank');
                 });
+                // Show admin settings link
+                $('#adminSettingsLink').show();
             } else {
                 $('#topNav').load('topNav-User.html');
                 $('.fa-bug').attr('data-bs-title', 'Staging');

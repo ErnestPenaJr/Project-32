@@ -36,13 +36,32 @@
         <cfreturn qGetNotifications>
     </cffunction>
 
-    <!--- Create a new notification --->
+    <!--- Create a new notification with system-wide controls check --->
     <cffunction name="create_notification" access="remote" returntype="boolean" returnformat="json">
         <cfargument name="user_id" type="string" required="true">
         <cfargument name="notification_type" type="string" required="true">
         <cfargument name="notification_message" type="string" required="true">
+        <cfargument name="bypass_user_preferences" type="boolean" required="false" default="false">
+        <cfargument name="force_create" type="boolean" required="false" default="false">  <!--- For backward compatibility --->
         
         <cftry>
+            <!--- Initialize SystemNotificationManager if not forced creation --->
+            <cfif NOT arguments.force_create>
+                <cfset local.systemManager = createObject("component", "SystemNotificationManager")>
+                
+                <!--- Check if notification should be sent --->
+                <cfset local.notificationDecision = local.systemManager.shouldSendNotification(
+                    user_id = val(arguments.user_id),
+                    notification_type = arguments.notification_type,
+                    bypass_user_preferences = arguments.bypass_user_preferences
+                )>
+                
+                <!--- If neither email nor in-app notifications are allowed, don't create --->
+                <cfif NOT local.notificationDecision.allow_email AND NOT local.notificationDecision.allow_in_app>
+                    <cfreturn false>
+                </cfif>
+            </cfif>
+            
             <cfquery datasource="#this.DBSERVER#">
                 INSERT INTO notifications (
                     user_id,
@@ -60,8 +79,28 @@
                     CURRENT_TIMESTAMP
                 )
             </cfquery>
+            
+            <!--- Update analytics if system manager was used --->
+            <cfif NOT arguments.force_create>
+                <cfset local.systemManager.updateNotificationAnalytics(
+                    notification_type = arguments.notification_type,
+                    delivery_method = "IN_APP",
+                    increment_sent = 1,
+                    increment_delivered = 1
+                )>
+            </cfif>
+            
             <cfreturn true>
             <cfcatch>
+                <!--- Update failed analytics if system manager was used --->
+                <cfif NOT arguments.force_create>
+                    <cfset local.systemManager.updateNotificationAnalytics(
+                        notification_type = arguments.notification_type,
+                        delivery_method = "IN_APP",
+                        increment_sent = 1,
+                        increment_failed = 1
+                    )>
+                </cfif>
                 <cfreturn false>
             </cfcatch>
         </cftry>
@@ -163,11 +202,14 @@
         <cfreturn qRecentNotifications>
     </cffunction>
 
-    <!--- Send booking reminder notification --->
+    <!--- Send booking reminder notification with enhanced system controls --->
     <cffunction name="sendBookingReminder" access="remote" returntype="boolean" returnformat="json">
         <cfargument name="booking_id" type="numeric" required="true">
         
         <cftry>
+            <!--- Initialize SystemNotificationManager --->
+            <cfset local.systemManager = createObject("component", "SystemNotificationManager")>
+            
             <!--- Get booking details --->
             <cfquery name="qGetBooking" datasource="#this.DBSERVER#">
                 SELECT 
@@ -186,37 +228,75 @@
                 WHERE b.booking_id = <cfqueryparam value="#arguments.booking_id#" cfsqltype="cf_sql_numeric">
             </cfquery>
 
-            <!--- Send email notification --->
             <cfif qGetBooking.recordCount>
-                <cfmail 
-                    to="#qGetBooking.email#"
-                    from="noreply@company.com"
-                    subject="Upcoming Booking Reminder"
-                    type="html">
-                    <cfoutput>
-                    <h2>Booking Reminder</h2>
-                    <p>Dear #qGetBooking.first_name# #qGetBooking.last_name#,</p>
-                    <p>This is a reminder for your upcoming booking:</p>
-                    <ul>
-                        <li>Room: #qGetBooking.room_name#</li>
-                        <li>Start Time: #DateTimeFormat(qGetBooking.start_time, "mmm d, yyyy h:nn tt")#</li>
-                        <li>End Time: #DateTimeFormat(qGetBooking.end_time, "mmm d, yyyy h:nn tt")#</li>
-                    </ul>
-                    <p>Thank you for using our booking system.</p>
-                    </cfoutput>
-                </cfmail>
-
-                <!--- Create notification record --->
-                <cfset createNotification(
+                <!--- Check if notification should be sent --->
+                <cfset local.notificationDecision = local.systemManager.shouldSendNotification(
                     user_id = qGetBooking.user_id,
-                    notification_type = "BOOKING_REMINDER",
-                    notification_message = "Reminder: You have an upcoming booking in #qGetBooking.room_name# at #DateTimeFormat(qGetBooking.start_time, 'h:nn tt')#"
+                    notification_type = "BOOKING_REMINDER"
                 )>
                 
-                <cfreturn true>
+                <!--- Send email notification if allowed --->
+                <cfif local.notificationDecision.allow_email>
+                    <cftry>
+                        <cfmail 
+                            to="#qGetBooking.email#"
+                            from="noreply@company.com"
+                            subject="Upcoming Booking Reminder"
+                            type="html">
+                            <cfoutput>
+                            <h2>Booking Reminder</h2>
+                            <p>Dear #qGetBooking.first_name# #qGetBooking.last_name#,</p>
+                            <p>This is a reminder for your upcoming booking:</p>
+                            <ul>
+                                <li>Room: #qGetBooking.room_name#</li>
+                                <li>Start Time: #DateTimeFormat(qGetBooking.start_time, "mmm d, yyyy h:nn tt")#</li>
+                                <li>End Time: #DateTimeFormat(qGetBooking.end_time, "mmm d, yyyy h:nn tt")#</li>
+                            </ul>
+                            <p>Thank you for using our booking system.</p>
+                            </cfoutput>
+                        </cfmail>
+                        
+                        <!--- Update email analytics --->
+                        <cfset local.systemManager.updateNotificationAnalytics(
+                            notification_type = "BOOKING_REMINDER",
+                            delivery_method = "EMAIL",
+                            increment_sent = 1,
+                            increment_delivered = 1
+                        )>
+                        
+                    <cfcatch>
+                        <!--- Update failed email analytics --->
+                        <cfset local.systemManager.updateNotificationAnalytics(
+                            notification_type = "BOOKING_REMINDER",
+                            delivery_method = "EMAIL",
+                            increment_sent = 1,
+                            increment_failed = 1
+                        )>
+                    </cfcatch>
+                    </cftry>
+                </cfif>
+
+                <!--- Create in-app notification if allowed --->
+                <cfif local.notificationDecision.allow_in_app>
+                    <cfset create_notification(
+                        user_id = qGetBooking.user_id,
+                        notification_type = "BOOKING_REMINDER",
+                        notification_message = "Reminder: You have an upcoming booking in #qGetBooking.room_name# at #DateTimeFormat(qGetBooking.start_time, 'h:nn tt')#",
+                        force_create = true  <!--- Skip double-checking since we already validated --->
+                    )>
+                </cfif>
+                
+                <cfreturn (local.notificationDecision.allow_email OR local.notificationDecision.allow_in_app)>
             </cfif>
             
             <cfcatch>
+                <!--- Update failed analytics --->
+                <cfset local.systemManager.updateNotificationAnalytics(
+                    notification_type = "BOOKING_REMINDER",
+                    delivery_method = "BOTH",
+                    increment_sent = 1,
+                    increment_failed = 1
+                )>
                 <cfreturn false>
             </cfcatch>
         </cftry>
@@ -755,6 +835,281 @@
             <cfreturn qDefaultAdmins>
         </cfcatch>
         </cftry>
+    </cffunction>
+
+    <!--- ===========================
+          ADDITIONAL API ENDPOINTS
+          =========================== --->
+
+    <!--- Get notification delivery summary for user --->
+    <cffunction name="getUserNotificationSummary" access="remote" returntype="struct" returnformat="json">
+        <cfargument name="user_id" type="numeric" required="true">
+        <cfargument name="days" type="numeric" required="false" default="30">
+        
+        <cfset local.result = {
+            "total_received": 0,
+            "unread_count": 0,
+            "by_type": {},
+            "recent_activity": []
+        }>
+        
+        <cftry>
+            <!--- Get total and unread counts --->
+            <cfquery name="qSummary" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT 
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN UPPER(STATUS) = 'UNREAD' THEN 1 ELSE 0 END) as unread_count
+                FROM #this.DBSCHEMA#.NOTIFICATIONS
+                WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                AND CREATED_AT >= SYSDATE - <cfqueryparam value="#arguments.days#" cfsqltype="cf_sql_numeric">
+            </cfquery>
+            
+            <cfif qSummary.recordCount GT 0>
+                <cfset local.result.total_received = qSummary.total_count>
+                <cfset local.result.unread_count = qSummary.unread_count>
+            </cfif>
+            
+            <!--- Get breakdown by type --->
+            <cfquery name="qByType" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT 
+                    TYPE,
+                    COUNT(*) as type_count
+                FROM #this.DBSCHEMA#.NOTIFICATIONS
+                WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                AND CREATED_AT >= SYSDATE - <cfqueryparam value="#arguments.days#" cfsqltype="cf_sql_numeric">
+                GROUP BY TYPE
+                ORDER BY type_count DESC
+            </cfquery>
+            
+            <cfloop query="qByType">
+                <cfset local.result.by_type[qByType.TYPE] = qByType.type_count>
+            </cfloop>
+            
+            <!--- Get recent activity --->
+            <cfquery name="qRecent" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT 
+                    TYPE,
+                    CONTENT,
+                    STATUS,
+                    CREATED_AT
+                FROM #this.DBSCHEMA#.NOTIFICATIONS
+                WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                ORDER BY CREATED_AT DESC
+                FETCH FIRST 10 ROWS ONLY
+            </cfquery>
+            
+            <cfloop query="qRecent">
+                <cfset arrayAppend(local.result.recent_activity, {
+                    "type": qRecent.TYPE,
+                    "content": qRecent.CONTENT,
+                    "status": qRecent.STATUS,
+                    "created_at": qRecent.CREATED_AT
+                })>
+            </cfloop>
+            
+        <cfcatch>
+            <!--- Return empty summary on error --->
+        </cfcatch>
+        </cftry>
+        
+        <cfreturn local.result>
+    </cffunction>
+
+    <!--- Mark multiple notifications as read --->
+    <cffunction name="markMultipleNotificationsRead" access="remote" returntype="struct" returnformat="json">
+        <cfargument name="user_id" type="numeric" required="true">
+        <cfargument name="notification_ids" type="string" required="true">
+        
+        <cfset local.result = {"success": false, "message": "", "updated_count": 0}>
+        
+        <cftry>
+            <cfset local.idList = listToArray(arguments.notification_ids)>
+            <cfset local.updatedCount = 0>
+            
+            <cfloop array="#local.idList#" index="notificationId">
+                <cftry>
+                    <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                        UPDATE #this.DBSCHEMA#.NOTIFICATIONS
+                        SET STATUS = 'READ'
+                        WHERE NOTIFICATION_ID = <cfqueryparam value="#trim(notificationId)#" cfsqltype="cf_sql_numeric">
+                        AND USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                    </cfquery>
+                    <cfset local.updatedCount++>
+                <cfcatch>
+                    <!--- Continue with other notifications if one fails --->
+                </cfcatch>
+                </cftry>
+            </cfloop>
+            
+            <cfset local.result.success = local.updatedCount GT 0>
+            <cfset local.result.updated_count = local.updatedCount>
+            <cfset local.result.message = "Marked #local.updatedCount# notifications as read">
+            
+        <cfcatch>
+            <cfset local.result.message = "Error updating notifications: #cfcatch.message#">
+        </cfcatch>
+        </cftry>
+        
+        <cfreturn local.result>
+    </cffunction>
+
+    <!--- Delete multiple notifications --->
+    <cffunction name="deleteMultipleNotifications" access="remote" returntype="struct" returnformat="json">
+        <cfargument name="user_id" type="numeric" required="true">
+        <cfargument name="notification_ids" type="string" required="true">
+        
+        <cfset local.result = {"success": false, "message": "", "deleted_count": 0}>
+        
+        <cftry>
+            <cfset local.idList = listToArray(arguments.notification_ids)>
+            <cfset local.deletedCount = 0>
+            
+            <cfloop array="#local.idList#" index="notificationId">
+                <cftry>
+                    <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                        DELETE FROM #this.DBSCHEMA#.NOTIFICATIONS
+                        WHERE NOTIFICATION_ID = <cfqueryparam value="#trim(notificationId)#" cfsqltype="cf_sql_numeric">
+                        AND USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                    </cfquery>
+                    <cfset local.deletedCount++>
+                <cfcatch>
+                    <!--- Continue with other notifications if one fails --->
+                </cfcatch>
+                </cftry>
+            </cfloop>
+            
+            <cfset local.result.success = local.deletedCount GT 0>
+            <cfset local.result.deleted_count = local.deletedCount>
+            <cfset local.result.message = "Deleted #local.deletedCount# notifications">
+            
+        <cfcatch>
+            <cfset local.result.message = "Error deleting notifications: #cfcatch.message#">
+        </cfcatch>
+        </cftry>
+        
+        <cfreturn local.result>
+    </cffunction>
+
+    <!--- Search notifications --->
+    <cffunction name="searchNotifications" access="remote" returntype="query" returnformat="json">
+        <cfargument name="user_id" type="numeric" required="true">
+        <cfargument name="search_term" type="string" required="true">
+        <cfargument name="notification_type" type="string" required="false" default="">
+        <cfargument name="status" type="string" required="false" default="">
+        <cfargument name="limit" type="numeric" required="false" default="50">
+        
+        <cftry>
+            <cfquery name="qSearch" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT 
+                    NOTIFICATION_ID,
+                    USER_ID,
+                    TYPE,
+                    CONTENT,
+                    STATUS,
+                    CREATED_AT
+                FROM #this.DBSCHEMA#.NOTIFICATIONS
+                WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                AND (
+                    UPPER(CONTENT) LIKE <cfqueryparam value="%#UCase(arguments.search_term)#%" cfsqltype="cf_sql_varchar">
+                    OR UPPER(TYPE) LIKE <cfqueryparam value="%#UCase(arguments.search_term)#%" cfsqltype="cf_sql_varchar">
+                )
+                <cfif len(trim(arguments.notification_type))>
+                    AND UPPER(TYPE) = <cfqueryparam value="#UCase(arguments.notification_type)#" cfsqltype="cf_sql_varchar">
+                </cfif>
+                <cfif len(trim(arguments.status))>
+                    AND UPPER(STATUS) = <cfqueryparam value="#UCase(arguments.status)#" cfsqltype="cf_sql_varchar">
+                </cfif>
+                ORDER BY CREATED_AT DESC
+                FETCH FIRST <cfqueryparam value="#arguments.limit#" cfsqltype="cf_sql_numeric"> ROWS ONLY
+            </cfquery>
+            
+            <cfreturn qSearch>
+            
+        <cfcatch>
+            <!--- Return empty query on error --->
+            <cfset local.emptySearch = queryNew("NOTIFICATION_ID,USER_ID,TYPE,CONTENT,STATUS,CREATED_AT", "numeric,numeric,varchar,varchar,varchar,timestamp")>
+            <cfreturn local.emptySearch>
+        </cfcatch>
+        </cftry>
+    </cffunction>
+
+    <!--- Get notification settings health check --->
+    <cffunction name="getNotificationHealthCheck" access="remote" returntype="struct" returnformat="json">
+        <cfargument name="user_id" type="numeric" required="false" default="0">
+        
+        <cfset local.result = {
+            "database_accessible": false,
+            "tables_exist": false,
+            "user_preferences_count": 0,
+            "system_notifications_enabled": false,
+            "recent_notification_count": 0,
+            "health_status": "unknown"
+        }>
+        
+        <cftry>
+            <!--- Check database accessibility --->
+            <cfquery name="qTest" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT 1 FROM DUAL
+            </cfquery>
+            <cfset local.result.database_accessible = true>
+            
+            <!--- Check if notification tables exist --->
+            <cftry>
+                <cfquery name="qTableCheck" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT COUNT(*) as table_count
+                    FROM USER_TABLES
+                    WHERE TABLE_NAME IN ('NOTIFICATIONS', 'NOTIFICATION_TYPES', 'NOTIFICATION_PREFERENCES')
+                </cfquery>
+                <cfset local.result.tables_exist = qTableCheck.table_count GTE 3>
+            <cfcatch>
+                <cfset local.result.tables_exist = false>
+            </cfcatch>
+            </cftry>
+            
+            <cfif local.result.tables_exist>
+                <!--- Get user preferences count if user specified --->
+                <cfif arguments.user_id GT 0>
+                    <cfquery name="qUserPrefs" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                        SELECT COUNT(*) as pref_count
+                        FROM #this.DBSCHEMA#.NOTIFICATION_PREFERENCES
+                        WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                    </cfquery>
+                    <cfset local.result.user_preferences_count = qUserPrefs.pref_count>
+                </cfif>
+                
+                <!--- Check recent notification activity --->
+                <cfquery name="qRecentActivity" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    SELECT COUNT(*) as recent_count
+                    FROM #this.DBSCHEMA#.NOTIFICATIONS
+                    WHERE CREATED_AT >= SYSDATE - 1
+                </cfquery>
+                <cfset local.result.recent_notification_count = qRecentActivity.recent_count>
+            </cfif>
+            
+            <!--- Try to check system notification manager --->
+            <cftry>
+                <cfset local.systemManager = createObject("component", "SystemNotificationManager")>
+                <cfset local.result.system_notifications_enabled = local.systemManager.areNotificationsEnabled()>
+            <cfcatch>
+                <cfset local.result.system_notifications_enabled = true> <!--- Default to enabled if can't check --->
+            </cfcatch>
+            </cftry>
+            
+            <!--- Determine overall health status --->
+            <cfif local.result.database_accessible AND local.result.tables_exist AND local.result.system_notifications_enabled>
+                <cfset local.result.health_status = "healthy">
+            <cfelseif local.result.database_accessible AND local.result.tables_exist>
+                <cfset local.result.health_status = "warning">
+            <cfelse>
+                <cfset local.result.health_status = "error">
+            </cfif>
+            
+        <cfcatch>
+            <cfset local.result.health_status = "error">
+        </cfcatch>
+        </cftry>
+        
+        <cfreturn local.result>
     </cffunction>
 
 </cfcomponent>

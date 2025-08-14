@@ -1,0 +1,9 @@
+/* Custom styles for DoCM Room Reservation System */
+
+/* Add any custom CSS rules here */
+.custom-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+/* Additional custom styles can be added as needed */

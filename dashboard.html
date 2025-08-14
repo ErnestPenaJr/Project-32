@@ -99,13 +99,27 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Room Reservation</a>
+                        <a class="nav-link" href="index.html">Room Reservation</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="#">Dashboard</a>
+                        <a class="nav-link active" href="dashboard.html">Dashboard</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link disabled" href="#">Calendar</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-bell"></i> Notifications
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="user-notification-preferences.html">
+                                <i class="fas fa-user-cog"></i> My Preferences
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="admin-notification-control.html" id="adminNotificationLink" style="display: none;">
+                                <i class="fas fa-shield-alt"></i> Admin Control
+                            </a></li>
+                        </ul>
                     </li>
                 </ul>
 
@@ -184,6 +198,36 @@
             </div>
         </div>
 
+        <!-- Quick Actions Section -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-bell text-primary"></i> Notification Preferences
+                        </h5>
+                        <p class="card-text text-muted">Customize how and when you receive notifications about your bookings and system updates.</p>
+                        <a href="user-notification-preferences.html" class="btn btn-outline-primary">
+                            <i class="fas fa-cog"></i> Manage Preferences
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6" id="adminNotificationCard" style="display: none;">
+                <div class="card h-100 border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-shield-alt text-warning"></i> Admin: System Notifications
+                        </h5>
+                        <p class="card-text text-muted">Manage system-wide notification settings and control user notification preferences.</p>
+                        <a href="admin-notification-control.html" class="btn btn-warning text-dark">
+                            <i class="fas fa-tools"></i> Admin Control
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Upcoming Bookings Section -->
         <div class="card">
             <div class="card-body">
@@ -199,6 +243,17 @@
     <!-- Bootstrap JS and dependencies -->
     <script src="node_modules/jquery/dist/jquery.min.js"></script>
     <script src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    
+    <script>
+        // Show admin notification controls if user is admin
+        document.addEventListener('DOMContentLoaded', function() {
+            const userRole = sessionStorage.getItem('USER_ROLE') || sessionStorage.getItem('ROLE') || localStorage.getItem('USER_ROLE');
+            if (userRole === 'Admin' || userRole === 'Site Admin') {
+                document.getElementById('adminNotificationLink').style.display = 'block';
+                document.getElementById('adminNotificationCard').style.display = 'block';
+            }
+        });
+    </script>
 </body>
 
 </html>
