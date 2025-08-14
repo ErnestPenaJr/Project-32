@@ -672,6 +672,7 @@
         <cfargument name="comments" required="false" type="string" default="">
         
         <cfset var retVal = {} />
+        <cfset var warnings = [] />
         <cfset var bookingIds = [] />
         
         <cftry>
@@ -818,16 +819,18 @@
                 "END:VEVENT",
                 "END:VCALENDAR"
             ]>
-            <!--- Join array with CRLF and create file --->
-            <cfset var icsFileName = "booking_#qryGetBooking.BOOKING_ID#.ics">
-            <cfset var icsFilePath = ExpandPath("../assets/temp/#icsFileName#")>
-            <cfset var finalContent = arrayToList(icsContent, chr(13) & chr(10))>
+            <!--- Wrap ICS generation and email sending to prevent breaking JSON response --->
+            <cftry>
+                <!--- Join array with CRLF and create file --->
+                <cfset var icsFileName = "booking_#qryGetBooking.BOOKING_ID#.ics">
+                <cfset var icsFilePath = ExpandPath("../assets/temp/#icsFileName#")>
+                <cfset var finalContent = arrayToList(icsContent, chr(13) & chr(10))>
 
-            <!--- Write the ICS file --->
-            <cffile action="write" file="#icsFilePath#" output="#finalContent#" charset="utf-8">
-            <!--- <p>Thank you for your reservation! We're happy to confirm that your office space (#qryGetBooking.ROOM_NAME#) is successfully booked.</p>--->
+                <!--- Write the ICS file --->
+                <cffile action="write" file="#icsFilePath#" output="#finalContent#" charset="utf-8">
+                <!--- <p>Thank you for your reservation! We're happy to confirm that your office space (#qryGetBooking.ROOM_NAME#) is successfully booked.</p>--->
 
-            <cfset var emailBody = "
+                <cfset var emailBody = "
                 <cfoutput>
                      <h2>BOOKING CONFIRMATION - PENDING APPROVAL</h2>
 
@@ -846,7 +849,7 @@
                         <li><strong>Starting On:</strong> #DateFormat(startTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(startTime, "h:mm tt")# </li>
                         <li><strong>Ending On:</strong> #DateFormat(endTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(endTime, "h:mm tt")# </li>
                         <li><strong>Booking ID:</strong> #qryGetBooking.BOOKING_ID#</li>
-                        <li><strong>Add to Calendar:</strong> <a href="" https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#"" target=""_blank"">Add to Calendar</a> | <a href="" https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#"">Download iCalendar</a></li>
+                        <li><strong>Add to Calendar:</strong> <a href=""https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#" target="_blank"">Add to Calendar</a> | <a href=""https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#"">Download iCalendar</a></li>
                     </ul>
                                    
                         <h3>Important Information:</h3>
@@ -865,40 +868,47 @@
                     </p>
                 </cfoutput>
             ">
-
-            <!--- Check if user should receive booking confirmation email --->
-            <cfset notificationService = createObject("component", "assets.cfc.notifications") />
-            <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CONFIRMATION") />
-            
-            <!--- Only send email if user has email notifications enabled for booking confirmations --->
-            <cfif userPreferences.email>
-                <!--- Get admins who should receive this notification --->
-                <cfset qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CONFIRMATION", "email") />
+                <!--- Check if user should receive booking confirmation email --->
+                <cfset notificationService = createObject("component", "assets.cfc.notifications") />
+                <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CONFIRMATION") />
                 
-                <!--- Build list of admin emails --->
-                <cfset adminEmails = "">
-                <cfloop query="qryAdminsToNotify">
-                    <cfset adminEmails = ListAppend(adminEmails, qryAdminsToNotify.EMAIL)>
-                </cfloop>
-                
-                <!--- Send email to requester and CC admins who want notifications --->
-                <cfif len(trim(adminEmails))>
-                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
-                            subject="Office Space Reservation - Pending Approval" type="html" cc="#adminEmails#">
-                        <cfmailpart type="text/html">
-                            <cfoutput>#emailBody#</cfoutput>
-                        </cfmailpart>
-                    </cfmail>
-                <cfelse>
-                    <!--- If no admins to CC, just send to requester --->
-                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
-                            subject="Office Space Reservation - Pending Approval" type="html">
-                        <cfmailpart type="text/html">
-                            <cfoutput>#emailBody#</cfoutput>
-                        </cfmailpart>
-                    </cfmail>
+                <!--- Only send email if user has email notifications enabled for booking confirmations --->
+                <cfif userPreferences.email>
+                    <!--- Get admins who should receive this notification --->
+                    <cfset qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CONFIRMATION", "email") />
+                    
+                    <!--- Build list of admin emails --->
+                    <cfset adminEmails = "">
+                    <cfloop query="qryAdminsToNotify">
+                        <cfset adminEmails = ListAppend(adminEmails, qryAdminsToNotify.EMAIL)>
+                    </cfloop>
+                    
+                    <!--- Send email to requester and CC admins who want notifications --->
+                    <cfif len(trim(adminEmails))>
+                        <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
+                                subject="Office Space Reservation - Pending Approval" type="html" cc="#adminEmails#">
+                            <cfmailpart type="text/html">
+                                <cfoutput>#emailBody#</cfoutput>
+                            </cfmailpart>
+                        </cfmail>
+                    <cfelse>
+                        <!--- If no admins to CC, just send to requester --->
+                        <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
+                                subject="Office Space Reservation - Pending Approval" type="html">
+                            <cfmailpart type="text/html">
+                                <cfoutput>#emailBody#</cfoutput>
+                            </cfmailpart>
+                        </cfmail>
+                    </cfif>
                 </cfif>
-            </cfif>
+            <cfcatch type="any">
+                <!--- Do not fail booking if ICS or email fails; collect warning --->
+                <cfset arrayAppend(warnings, {
+                    message = "Post-booking notification failed",
+                    detail = cfcatch.message
+                })>
+            </cfcatch>
+            </cftry>
 
 
 
@@ -916,6 +926,10 @@
                     "bookingCount": 1,
                     "bookingIds": bookingIds
                 }>
+            </cfif>
+            <!--- Include warnings if any --->
+            <cfif arrayLen(warnings)>
+                <cfset retVal["warnings"] = warnings>
             </cfif>
   
         <cfreturn retVal>
