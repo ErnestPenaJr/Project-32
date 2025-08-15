@@ -16,7 +16,7 @@
 <body>
     <!-- Navigation -->
     <div id="topNav"></div>
-    
+
     <!-- Offcanvas Help Panel -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
         <div class="offcanvas-header">
@@ -26,7 +26,8 @@
         <div class="offcanvas-body">
             <div class="mb-3">
                 <h4>ABOUT THIS PAGE</h4>
-                <p>This page allows administrators to configure notification preferences for all users in the system.</p>
+                <p>This page allows administrators to configure notification preferences for all users in the system.
+                </p>
             </div>
             <div class="mb-3">
                 <h4>NOTIFICATION TYPES</h4>
@@ -49,7 +50,7 @@
     </div>
 
     <!-- Main Container -->
-    <div class="container-fluid mt-4">
+    <div class="container mt-4">
         <!-- Header Section -->
         <div class="row">
             <div class="col">
@@ -59,7 +60,8 @@
                         <button class="btn btn-primary me-2" onclick="loadNotificationPreferences()">
                             <i class="fas fa-sync"></i> Refresh
                         </button>
-                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasExample">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="offcanvas"
+                            data-bs-target="#offcanvasExample">
                             <i class="fal fa-question-circle"></i> Help
                         </button>
                     </div>
@@ -159,7 +161,18 @@
         let hasUnsavedChanges = false;
 
         // Initialize when document is ready
-        $(document).ready(function() {
+        $(document).ready(function () {
+            // Load admin navigation (this page is admin-only)
+            $('#topNav').load('topNav-Admin.html', function () {
+                // Check admin functions after navigation loads
+                if (typeof checkNewUsers === 'function') {
+                    checkNewUsers();
+                }
+                if (typeof checkPendingApprovals === 'function') {
+                    checkPendingApprovals();
+                }
+            });
+
             initializeNotificationPreferences();
             AOS.init();
         });
@@ -180,10 +193,10 @@
                 url: 'assets/cfc/notifications.cfc?method=getUsersForNotification',
                 type: 'GET',
                 dataType: 'json',
-                success: function(response) {
+                success: function (response) {
                     populateUserSelect(response.DATA || response);
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     console.error('Error loading users:', error);
                     showToast('Error loading users', 'error');
                 }
@@ -197,9 +210,9 @@
             const userSelect = $('#userSelect');
             userSelect.empty();
             userSelect.append('<option value="">Select a user...</option>');
-            
+
             if (Array.isArray(users)) {
-                users.forEach(function(user) {
+                users.forEach(function (user) {
                     const optionText = `${user.FIRST_NAME} ${user.LAST_NAME} (${user.EMAIL}) - ${user.ROLE}`;
                     userSelect.append(`<option value="${user.USER_ID}">${optionText}</option>`);
                 });
@@ -214,10 +227,10 @@
                 url: 'assets/cfc/notifications.cfc?method=getAllNotificationTypes',
                 type: 'GET',
                 dataType: 'json',
-                success: function(response) {
+                success: function (response) {
                     allNotificationTypes = response.DATA || response;
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     console.error('Error loading notification types:', error);
                     showToast('Error loading notification types', 'error');
                 }
@@ -235,17 +248,17 @@
             }
 
             currentUserId = userId;
-            
+
             $.ajax({
                 url: 'assets/cfc/notifications.cfc?method=getUserNotificationPreferences',
                 type: 'GET',
                 data: { user_id: userId },
                 dataType: 'json',
-                success: function(response) {
+                success: function (response) {
                     displayUserPreferences(response.DATA || response);
                     $('#bulkActionsRow').show();
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     console.error('Error loading user preferences:', error);
                     showToast('Error loading user preferences', 'error');
                 }
@@ -261,16 +274,16 @@
 
             // Group preferences by category
             const categories = {};
-            
+
             if (Array.isArray(allNotificationTypes)) {
-                allNotificationTypes.forEach(function(type) {
+                allNotificationTypes.forEach(function (type) {
                     if (!categories[type.CATEGORY]) {
                         categories[type.CATEGORY] = [];
                     }
-                    
+
                     // Find user's preference for this type
                     const userPref = preferences.find(p => p.NOTIFICATION_TYPE === type.TYPE_CODE);
-                    
+
                     categories[type.CATEGORY].push({
                         ...type,
                         USER_EMAIL_ENABLED: userPref ? userPref.EMAIL_ENABLED : type.DEFAULT_EMAIL_ENABLED,
@@ -280,7 +293,7 @@
             }
 
             // Create cards for each category
-            Object.keys(categories).forEach(function(category) {
+            Object.keys(categories).forEach(function (category) {
                 const categoryCard = createCategoryCard(category, categories[category]);
                 container.append(categoryCard);
             });
@@ -310,7 +323,7 @@
                                 </thead>
                                 <tbody>`;
 
-            notifications.forEach(function(notification) {
+            notifications.forEach(function (notification) {
                 if (notification.ADMIN_ONLY && !isCurrentUserAdmin()) {
                     return; // Skip admin-only notifications for non-admin users
                 }
@@ -374,20 +387,20 @@
             }
 
             const preferences = [];
-            
+
             // Collect all preference settings
-            $('input[data-type]').each(function() {
+            $('input[data-type]').each(function () {
                 const type = $(this).data('type');
                 const method = $(this).data('method');
                 const enabled = $(this).is(':checked');
-                
+
                 // Find or create preference object for this type
                 let pref = preferences.find(p => p.type === type);
                 if (!pref) {
                     pref = { type: type, email: false, in_app: false };
                     preferences.push(pref);
                 }
-                
+
                 pref[method] = enabled;
             });
 
@@ -395,7 +408,7 @@
             let savedCount = 0;
             const totalPrefs = preferences.length;
 
-            preferences.forEach(function(pref) {
+            preferences.forEach(function (pref) {
                 $.ajax({
                     url: 'assets/cfc/notifications.cfc?method=updateNotificationPreference',
                     type: 'POST',
@@ -406,14 +419,14 @@
                         in_app_enabled: pref.in_app
                     },
                     dataType: 'json',
-                    success: function(response) {
+                    success: function (response) {
                         savedCount++;
                         if (savedCount === totalPrefs) {
                             showToast('All preferences saved successfully', 'success');
                             hasUnsavedChanges = false;
                         }
                     },
-                    error: function(xhr, status, error) {
+                    error: function (xhr, status, error) {
                         console.error('Error saving preference:', error);
                         showToast('Error saving some preferences', 'error');
                     }
@@ -487,7 +500,7 @@
         }
 
         // Warn user about unsaved changes
-        window.addEventListener('beforeunload', function(e) {
+        window.addEventListener('beforeunload', function (e) {
             if (hasUnsavedChanges) {
                 e.preventDefault();
                 e.returnValue = '';

@@ -181,7 +181,7 @@ class AdminNotificationControl {
         if (this.notificationTypes.length === 0) {
             container.innerHTML = `
                 <div class="text-center text-muted">
-                    <i class="bi bi-inbox"></i>
+                    <i class="fas fa-inbox"></i>
                     <p>No notification types found</p>
                 </div>
             `;
@@ -199,7 +199,7 @@ class AdminNotificationControl {
             html += `
                 <div class="mb-4">
                     <h6 class="text-muted mb-3">
-                        <i class="bi bi-folder"></i> ${category}
+                        <i class="fas fa-folder"></i> ${category}
                         <span class="badge bg-secondary ms-2">${types.length}</span>
                     </h6>
                     <div class="row">
@@ -232,11 +232,11 @@ class AdminNotificationControl {
                                 <p class="card-text small text-muted mb-3">${type.DESCRIPTION || 'No description available'}</p>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="small">
-                                        <i class="bi bi-envelope${type.DEFAULT_EMAIL_ENABLED ? '-fill' : ''} me-1" 
+                                        <i class="${type.DEFAULT_EMAIL_ENABLED ? 'fas' : 'far'} fa-envelope me-1" 
                                            title="Email ${type.DEFAULT_EMAIL_ENABLED ? 'enabled' : 'disabled'} by default"></i>
-                                        <i class="bi bi-app${type.DEFAULT_IN_APP_ENABLED ? '-indicator' : ''} me-1" 
+                                        <i class="${type.DEFAULT_IN_APP_ENABLED ? 'fas' : 'far'} fa-bell me-1" 
                                            title="In-app ${type.DEFAULT_IN_APP_ENABLED ? 'enabled' : 'disabled'} by default"></i>
-                                        ${type.ADMIN_ONLY ? '<i class="bi bi-shield-fill text-warning" title="Admin only"></i>' : ''}
+                                        ${type.ADMIN_ONLY ? '<i class="fas fa-shield-alt text-warning" title="Admin only"></i>' : ''}
                                     </div>
                                     <label class="toggle-switch">
                                         <input type="checkbox" ${isEnabled ? 'checked' : ''} 
@@ -263,10 +263,10 @@ class AdminNotificationControl {
         const container = document.getElementById('notificationTypes');
         container.innerHTML = `
             <div class="text-center text-danger">
-                <i class="bi bi-exclamation-triangle"></i>
+                <i class="fas fa-exclamation-triangle"></i>
                 <p>Failed to load notification types</p>
                 <button class="btn btn-outline-primary btn-sm" onclick="adminControl.loadNotificationTypes()">
-                    <i class="bi bi-arrow-clockwise"></i> Retry
+                    <i class="fas fa-sync-alt"></i> Retry
                 </button>
             </div>
         `;
@@ -363,7 +363,7 @@ class AdminNotificationControl {
         container.innerHTML = `
             <div class="metric-card">
                 <div class="metric-value text-danger">
-                    <i class="bi bi-exclamation-triangle"></i>
+                    <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <div class="metric-label">Failed to load analytics</div>
             </div>
@@ -669,19 +669,19 @@ class AdminNotificationControl {
         switch (type) {
             case 'success':
                 toastHeader.classList.add('bg-success', 'text-white');
-                icon.className = 'bi bi-check-circle-fill text-white me-2';
+                icon.className = 'fas fa-check-circle text-white me-2';
                 break;
             case 'error':
                 toastHeader.classList.add('bg-danger', 'text-white');
-                icon.className = 'bi bi-exclamation-triangle-fill text-white me-2';
+                icon.className = 'fas fa-exclamation-triangle text-white me-2';
                 break;
             case 'warning':
                 toastHeader.classList.add('bg-warning', 'text-dark');
-                icon.className = 'bi bi-exclamation-triangle-fill text-dark me-2';
+                icon.className = 'fas fa-exclamation-triangle text-dark me-2';
                 break;
             default:
                 toastHeader.classList.add('bg-info', 'text-white');
-                icon.className = 'bi bi-info-circle-fill text-white me-2';
+                icon.className = 'fas fa-info-circle text-white me-2';
         }
         
         const bsToast = new bootstrap.Toast(toast);

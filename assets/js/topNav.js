@@ -94,8 +94,13 @@ function myHelpRequest(data) {
 
 // Check notifications on page load
 $(document).ready(function () {
-    checkNewUsers();
-    checkPendingApprovals();
+    // Only call admin functions if they exist (when admin navigation is loaded)
+    if (typeof checkNewUsers === 'function') {
+        checkNewUsers();
+    }
+    if (typeof checkPendingApprovals === 'function') {
+        checkPendingApprovals();
+    }
     initSessionTimeout();
     getNotifications();
 

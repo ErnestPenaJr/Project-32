@@ -54,7 +54,14 @@ Developer Notes:
                     <a class="nav-link fw-bold text-uppercase btn-user-topNav mx-2 dropdown-toggle" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-bell"></i> Notifications
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width: 350px;">
+                        <!-- Dynamic notifications will be populated here -->
+                        <li><h6 class="dropdown-header">Recent Notifications</h6></li>
+                        <div id="notificationDropdown">
+                            <li><span class="dropdown-item-text text-muted">No new notifications</span></li>
+                        </div>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Manage</h6></li>
                         <li><a class="dropdown-item" href="user-notification-preferences.html">
                             <i class="fas fa-user-cog"></i> My Preferences
                         </a></li>

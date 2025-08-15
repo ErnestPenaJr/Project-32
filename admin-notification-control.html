@@ -1,61 +1,198 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Notification Control - DoCM Room Reservation</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="assets/css/custom.css" rel="stylesheet">
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
     <style>
-        .notification-card {
-            border-left: 4px solid #007bff;
-            margin-bottom: 1rem;
+        :root {
+            --md-primary: #003C7F;
+            --md-secondary: #006BA6;
+            --md-success: #28a745;
+            --md-danger: #dc3545;
+            --md-warning: #ffc107;
+            --md-info: #17a2b8;
+            --md-light: #f8f9fa;
+            --md-dark: #343a40;
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
         }
-        .notification-card.critical {
-            border-left-color: #dc3545;
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .notification-card.warning {
-            border-left-color: #ffc107;
-        }
-        .status-badge {
-            font-size: 0.8rem;
-        }
-        .analytics-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
             color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: var(--shadow);
         }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* System Status Cards */
         .system-status {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
+
+        .system-status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--md-primary), var(--md-secondary));
+        }
+
         .system-status.enabled {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 2px solid var(--md-success);
             color: #155724;
         }
+
+        .system-status.enabled::before {
+            background: linear-gradient(90deg, var(--md-success), #20c997);
+        }
+
         .system-status.disabled {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border: 2px solid var(--md-danger);
             color: #721c24;
         }
+
+        .system-status.disabled::before {
+            background: linear-gradient(90deg, var(--md-danger), #e74c3c);
+        }
+
         .system-status.maintenance {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 2px solid var(--md-warning);
             color: #856404;
         }
+
+        .system-status.maintenance::before {
+            background: linear-gradient(90deg, var(--md-warning), #f39c12);
+        }
+
+        .system-status h5 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .system-status p {
+            font-size: 1.1rem;
+            margin-bottom: 0;
+        }
+
+        /* Enhanced Cards */
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0;
+            padding: 1.5rem;
+            border: none;
+        }
+
+        .card-header h5 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        /* Notification Cards */
+        .notification-card {
+            border-left: 5px solid var(--md-primary);
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+        }
+
+        .notification-card:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow);
+        }
+
+        .notification-card.critical {
+            border-left-color: var(--md-danger);
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+        }
+
+        .notification-card.warning {
+            border-left-color: var(--md-warning);
+            background: linear-gradient(135deg, #fffbf0 0%, #fef5e7 100%);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Enhanced Toggle Switches */
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 60px;
-            height: 34px;
+            width: 70px;
+            height: 38px;
         }
+
         .toggle-switch input {
             opacity: 0;
             width: 0;
             height: 0;
         }
+
         .slider {
             position: absolute;
             cursor: pointer;
@@ -63,80 +200,301 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+            background: linear-gradient(135deg, #ccc 0%, #aaa 100%);
+            transition: all 0.4s ease;
+            border-radius: 38px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         .slider:before {
             position: absolute;
             content: "";
-            height: 26px;
-            width: 26px;
+            height: 30px;
+            width: 30px;
             left: 4px;
             bottom: 4px;
-            background-color: white;
-            transition: .4s;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            transition: all 0.4s ease;
             border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
-        input:checked + .slider {
-            background-color: #2196F3;
+
+        input:checked+.slider {
+            background: linear-gradient(135deg, var(--md-success) 0%, #20c997 100%);
         }
-        input:checked + .slider:before {
-            transform: translateX(26px);
+
+        input:checked+.slider:before {
+            transform: translateX(32px);
         }
+
+        .slider:hover {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 10px rgba(0, 123, 255, 0.3);
+        }
+
+        /* Analytics Grid */
         .analytics-summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 2px solid transparent;
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--md-primary), var(--md-secondary));
+        }
+
+        .metric-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--md-primary);
+        }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--md-primary);
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-label {
+            color: var(--md-dark);
+            font-size: 1rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Enhanced Buttons */
+        .btn {
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+            box-shadow: 0 4px 15px rgba(0, 60, 127, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 60, 127, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--md-success) 0%, #20c997 100%);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--md-warning) 0%, #f39c12 100%);
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+            color: var(--md-dark);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--md-danger) 0%, #e74c3c 100%);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, var(--md-info) 0%, #3498db 100%);
+            box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+        }
+
+        /* Form Controls */
+        .form-control,
+        .form-select {
+            border-radius: 0.75rem;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--md-primary);
+            box-shadow: 0 0 0 0.2rem rgba(0, 60, 127, 0.25);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--md-dark);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Section Headers */
+        .section-header {
+            background: linear-gradient(135deg, var(--md-light) 0%, #e9ecef 100%);
+            border-left: 5px solid var(--md-primary);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
             margin-bottom: 2rem;
         }
-        .metric-card {
-            background: white;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 1.5rem;
-            text-align: center;
+
+        .section-header h3 {
+            margin: 0;
+            color: var(--md-primary);
+            font-weight: 600;
         }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #495057;
+
+        /* Loading States */
+        .spinner-border {
+            color: var(--md-primary);
         }
-        .metric-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
+
+        /* Toast Enhancements */
+        .toast {
+            border-radius: 1rem;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Modal Enhancements */
+        .modal-content {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            border-radius: 1rem 1rem 0 0;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .page-header {
+                padding: 1.5rem 0;
+            }
+
+            .page-header h1 {
+                font-size: 2rem;
+            }
+
+            .card-body {
+                padding: 1.5rem;
+            }
+
+            .system-status {
+                padding: 1.5rem;
+            }
+
+            .analytics-summary {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .metric-card {
+                padding: 1.5rem;
+            }
+
+            .metric-value {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Accessibility Improvements */
+        .btn:focus {
+            outline: 3px solid rgba(0, 123, 255, 0.5);
+            outline-offset: 2px;
+        }
+
+        .toggle-switch input:focus+.slider {
+            outline: 3px solid rgba(0, 123, 255, 0.5);
+            outline-offset: 2px;
+        }
+
+        /* Animation Classes */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
+
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.html">
-                <i class="bi bi-building"></i> DoCM Room Reservations
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="admin-dashboard.html">
-                    <i class="bi bi-speedometer2"></i> Dashboard
-                </a>
-                <a class="nav-link active" href="admin-notification-control.html">
-                    <i class="bi bi-bell-fill"></i> Notification Control
-                </a>
-                <a class="nav-link" href="notification-management.html">
-                    <i class="bi bi-envelope"></i> Notifications
-                </a>
-            </div>
-        </div>
-    </nav>
+    <div id="topNav"></div>
 
-    <div class="container-fluid mt-4">
-        <div class="row">
-            <div class="col-12">
-                <h1><i class="bi bi-gear-fill"></i> System Notification Control</h1>
-                <p class="text-muted">Manage system-wide notification settings and monitor notification delivery</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h1><i class="fas fa-cog me-3"></i>System Notification Control</h1>
+                    <p class="mb-0">Manage system-wide notification settings and monitor notification delivery for MD
+                        Anderson Cancer Center</p>
+                </div>
             </div>
         </div>
+    </div>
+
+    <div class="container">
 
         <!-- System Status Overview -->
         <div class="row">
@@ -149,10 +507,10 @@
                         </div>
                         <div class="d-flex gap-3">
                             <button id="maintenanceModeBtn" class="btn btn-warning btn-sm">
-                                <i class="bi bi-tools"></i> Maintenance Mode
+                                <i class="fas fa-tools"></i> Maintenance Mode
                             </button>
                             <button id="emergencyModeBtn" class="btn btn-danger btn-sm">
-                                <i class="bi bi-exclamation-triangle"></i> Emergency Mode
+                                <i class="fas fa-exclamation-triangle"></i> Emergency Mode
                             </button>
                         </div>
                     </div>
@@ -165,7 +523,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="bi bi-toggles"></i> Global Notification Controls</h5>
+                        <h5><i class="fas fa-toggle-on"></i> Global Notification Controls</h5>
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -204,12 +562,14 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="bi bi-sliders"></i> System Settings</h5>
+                        <h5><i class="fas fa-sliders-h"></i> System Settings</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label for="maxDailyNotifications" class="form-label">Max Daily Notifications per User</label>
-                            <input type="number" class="form-control" id="maxDailyNotifications" value="50" min="1" max="1000">
+                            <label for="maxDailyNotifications" class="form-label">Max Daily Notifications per
+                                User</label>
+                            <input type="number" class="form-control" id="maxDailyNotifications" value="50" min="1"
+                                max="1000">
                         </div>
                         <div class="row">
                             <div class="col-6">
@@ -223,7 +583,7 @@
                         </div>
                         <div class="mt-3">
                             <button class="btn btn-primary" onclick="saveSystemSettings()">
-                                <i class="bi bi-save"></i> Save Settings
+                                <i class="fas fa-save"></i> Save Settings
                             </button>
                         </div>
                     </div>
@@ -232,10 +592,12 @@
         </div>
 
         <!-- Analytics Summary -->
-        <div class="row mt-4">
+        <div class="row mt-5">
             <div class="col-12">
-                <h3><i class="bi bi-graph-up"></i> Notification Analytics</h3>
-                <div class="analytics-summary" id="analyticsSummary">
+                <div class="section-header">
+                    <h3><i class="fas fa-chart-line me-2"></i>Notification Analytics</h3>
+                </div>
+                <div class="analytics-summary fade-in" id="analyticsSummary">
                     <!-- Analytics cards will be populated by JavaScript -->
                 </div>
             </div>
@@ -246,7 +608,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5><i class="bi bi-list-check"></i> Notification Types</h5>
+                        <h5><i class="fas fa-list-check"></i> Notification Types</h5>
                         <div>
                             <select id="categoryFilter" class="form-select form-select-sm d-inline-block w-auto me-2">
                                 <option value="">All Categories</option>
@@ -257,7 +619,7 @@
                                 <option value="Administrative">Administrative</option>
                             </select>
                             <button class="btn btn-success btn-sm" onclick="refreshNotificationTypes()">
-                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                                <i class="fas fa-sync-alt"></i> Refresh
                             </button>
                         </div>
                     </div>
@@ -281,7 +643,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="bi bi-lightning-fill"></i> Bulk Actions</h5>
+                        <h5><i class="fas fa-bolt"></i> Bulk Actions</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
@@ -295,7 +657,7 @@
                             </select>
                         </div>
                         <button class="btn btn-warning" onclick="executeBulkAction()" disabled id="executeBulkBtn">
-                            <i class="bi bi-play-fill"></i> Execute Action
+                            <i class="fas fa-play"></i> Execute Action
                         </button>
                     </div>
                 </div>
@@ -303,7 +665,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="bi bi-clock-history"></i> Scheduled Actions</h5>
+                        <h5><i class="fas fa-clock"></i> Scheduled Actions</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
@@ -328,7 +690,7 @@
                         </div>
                         <div class="mt-3">
                             <button class="btn btn-info" onclick="scheduleAction()">
-                                <i class="bi bi-calendar-plus"></i> Schedule Action
+                                <i class="fas fa-calendar-plus"></i> Schedule Action
                             </button>
                         </div>
                     </div>
@@ -341,7 +703,7 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
-                <i class="bi bi-info-circle-fill text-primary me-2"></i>
+                <i class="fas fa-info-circle text-primary me-2"></i>
                 <strong class="me-auto">System Notification</strong>
                 <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
@@ -357,12 +719,13 @@
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title">
-                        <i class="bi bi-exclamation-triangle"></i> Emergency Mode
+                        <i class="fas fa-exclamation-triangle"></i> Emergency Mode
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p><strong>Warning:</strong> Emergency mode will override all user preferences and system settings for critical notifications.</p>
+                    <p><strong>Warning:</strong> Emergency mode will override all user preferences and system settings
+                        for critical notifications.</p>
                     <p>This should only be used during system emergencies or critical situations.</p>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="confirmEmergency">
@@ -373,15 +736,59 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" onclick="activateEmergencyMode()" disabled id="activateEmergencyBtn">
-                        <i class="bi bi-exclamation-triangle"></i> Activate Emergency Mode
+                    <button type="button" class="btn btn-danger" onclick="activateEmergencyMode()" disabled
+                        id="activateEmergencyBtn">
+                        <i class="fas fa-exclamation-triangle"></i> Activate Emergency Mode
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Scripts -->
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="assets/js/jquery.session-timeout.min.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <script src="assets/DataTables-2.1.8/datatables.js"></script>
+    <script src="assets/js/topNav.js"></script>
+
+    <script>
+        // Load navigation based on user role/permissions
+        $(document).ready(function () {
+            const userRole = sessionStorage.getItem('ROLE');
+            let navFile = 'topNav-User.html'; // Default to user navigation
+
+            // Load admin navigation if user has admin permissions
+            if (userRole === 'Site Admin' || userRole === 'Admin') {
+                navFile = 'topNav-Admin.html';
+            }
+
+            $('#topNav').load(navFile, function () {
+                // Check admin functions after navigation loads (only if admin nav was loaded)
+                if (navFile === 'topNav-Admin.html') {
+                    if (typeof checkNewUsers === 'function') {
+                        checkNewUsers();
+                    }
+                    if (typeof checkPendingApprovals === 'function') {
+                        checkPendingApprovals();
+                    }
+                }
+
+                // Initialize page after navigation loads
+                initializeAdminNotificationControl();
+                AOS.init();
+            });
+        });
+
+        // Admin notification control functionality
+        function initializeAdminNotificationControl() {
+            // Initialize the page functionality here
+            console.log('Admin notification control initialized');
+        }
+    </script>
     <script src="assets/js/admin-notification-control.js"></script>
 </body>
+
 </html>

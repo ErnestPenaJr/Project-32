@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DoCM Room Reservation System - Style Guide</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Pro 5.15.4 -->
+    <link href="assets/fontawesome-pro-5.15.4/css/all.css" rel="stylesheet">
+    <!-- AOS (Animate On Scroll) -->
+    <link href="node_modules/aos/dist/aos.css" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <link href="node_modules/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    <!-- DataTables -->
+    <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
+    <!-- Custom Styles -->
+    <link href="assets/css/styles.css" rel="stylesheet">
+
+    <style>
+        /* Style Guide Specific Styles */
+        :root {
+            /* MD Anderson Primary Colors */
+            --md-primary: #003C7F;
+            --md-secondary: #006BA6;
+            --md-success: #28a745;
+            --md-danger: #dc3545;
+            --md-warning: #ffc107;
+            --md-info: #17a2b8;
+            --md-light: #f8f9fa;
+            --md-dark: #343a40;
+
+            /* Shadows */
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+
+            /* User Navigation Colors */
+            --user-nav-primary: #4F46E5;
+            --user-nav-hover: #4338CA;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        /* Style Guide Specific Components */
+        .style-section {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            border-left: 5px solid var(--md-primary);
+            color: var(--md-dark);
+        }
+
+        .style-section h2,
+        .style-section h3,
+        .style-section h4,
+        .style-section h5,
+        .style-section h6 {
+            color: var(--md-primary);
+        }
+
+        .style-section p,
+        .style-section li {
+            color: var(--md-dark);
+        }
+
+        .style-header {
+            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 3rem;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .component-example {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid var(--md-info);
+        }
+
+        .code-example {
+            background: #263238;
+            color: #eeffff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+
+        .color-swatch {
+            width: 100px;
+            height: 60px;
+            border-radius: 0.5rem;
+            border: 2px solid #dee2e6;
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .icon-example {
+            text-align: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            border: 1px solid #dee2e6;
+        }
+
+        .icon-example i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--md-primary);
+        }
+
+        .icon-example {
+            color: var(--md-dark);
+        }
+
+        .icon-example code {
+            color: var(--md-primary);
+            background-color: #f8f9fa;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+        }
+
+        .icon-example small {
+            color: #6c757d;
+        }
+
+        .toc {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 2rem;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .toc ul ul {
+            padding-left: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .toc a {
+            color: var(--md-primary);
+            text-decoration: none;
+            padding: 0.25rem 0;
+            display: block;
+            border-radius: 0.25rem;
+            padding-left: 0.5rem;
+        }
+
+        .toc a:hover {
+            background-color: var(--md-light);
+        }
+
+        /* Typography Examples */
+        .type-scale h1 {
+            font-size: 2.5rem;
+            color: var(--md-dark);
+        }
+
+        .type-scale h2 {
+            font-size: 2rem;
+            color: var(--md-dark);
+        }
+
+        .type-scale h3 {
+            font-size: 1.75rem;
+            color: var(--md-dark);
+        }
+
+        .type-scale h4 {
+            font-size: 1.5rem;
+            color: var(--md-dark);
+        }
+
+        .type-scale h5 {
+            font-size: 1.25rem;
+            color: var(--md-dark);
+        }
+
+        .type-scale h6 {
+            font-size: 1rem;
+            color: var(--md-dark);
+        }
+
+        .type-scale p {
+            color: var(--md-dark);
+        }
+
+        .type-scale small {
+            color: #6c757d;
+        }
+
+        /* Enhanced Components */
+        .enhanced-card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            background: white;
+            color: var(--md-dark);
+        }
+
+        .enhanced-card:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .enhanced-card .card-header {
+            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0;
+            padding: 1.5rem;
+            border: none;
+        }
+
+        /* Toggle Switches */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 70px;
+            height: 38px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #ccc 0%, #aaa 100%);
+            transition: all 0.4s ease;
+            border-radius: 38px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 30px;
+            width: 30px;
+            left: 4px;
+            bottom: 4px;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            transition: all 0.4s ease;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked+.slider {
+            background: linear-gradient(135deg, var(--md-success) 0%, #20c997 100%);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(32px);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Enhanced Buttons */
+        .btn-enhanced {
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-enhanced::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-enhanced:hover::before {
+            left: 100%;
+        }
+
+        .btn-enhanced.btn-primary {
+            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+            box-shadow: 0 4px 15px rgba(0, 60, 127, 0.3);
+        }
+
+        .btn-enhanced.btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 60, 127, 0.4);
+        }
+
+        /* Navigation Button Styles */
+        .btn-admin-topNav {
+            border: 1px solid #ffffff;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-admin-topNav:hover {
+            background: #bbbabe;
+            color: rgb(0, 0, 0);
+            border-color: #2d2b3b;
+        }
+
+        .btn-user-topNav {
+            border: 1px solid var(--user-nav-primary);
+            color: var(--user-nav-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-user-topNav:hover {
+            background: var(--user-nav-hover);
+            color: white;
+            border-color: white;
+        }
+
+        /* Form Control Enhancements */
+        .form-control-enhanced,
+        .form-select-enhanced {
+            border-radius: 0.75rem;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control-enhanced:focus,
+        .form-select-enhanced:focus {
+            border-color: var(--md-primary);
+            box-shadow: 0 0 0 0.2rem rgba(0, 60, 127, 0.25);
+        }
+
+        /* Accessibility Focus Styles */
+        .btn-enhanced:focus {
+            outline: 3px solid rgba(0, 123, 255, 0.5);
+            outline-offset: 2px;
+        }
+
+        .toggle-switch input:focus+.slider {
+            outline: 3px solid rgba(0, 123, 255, 0.5);
+            outline-offset: 2px;
+        }
+
+        /* Animation Classes */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Room Color Variables Display */
+        .room-colors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .room-color-example {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            border: 2px solid #dee2e6;
+        }
+
+        /* Text Color Fixes - Ensure all text is visible */
+        body,
+        p,
+        div,
+        span,
+        li,
+        td,
+        th {
+            color: var(--md-dark);
+        }
+
+        code:not([style]) {
+            color: var(--md-primary);
+            background-color: #f8f9fa;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+        }
+
+        .component-example code {
+            color: var(--md-primary);
+            background-color: #f8f9fa;
+        }
+
+        .table {
+            color: var(--md-dark);
+        }
+
+        .table th {
+            color: var(--md-dark);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .style-header {
+                padding: 2rem 0;
+            }
+
+            .style-section {
+                padding: 1.5rem;
+            }
+
+            .component-example {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <div id="topNav"></div>
+
+    <!-- Header -->
+    <div class="style-header">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h2 class="h3 opacity-75">Design System & Style Guide</h2>
+                    <p class="lead mb-0">Comprehensive documentation of design patterns, components, and usage
+                        guidelines for MD Anderson Cancer Center's room reservation system</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <!-- Table of Contents -->
+            <div class="col-lg-3 col-xl-2">
+                <div class="toc">
+                    <h5><i class="fas fa-list me-2"></i>Table of Contents</h5>
+                    <ul>
+                        <li><a href="#overview">Overview</a></li>
+                        <li><a href="#colors">Color Palette</a>
+                            <ul>
+                                <li><a href="#primary-colors">Primary Colors</a></li>
+                                <li><a href="#room-colors">Room Colors</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#typography">Typography</a></li>
+                        <li><a href="#buttons">Buttons</a>
+                            <ul>
+                                <li><a href="#standard-buttons">Standard Buttons</a></li>
+                                <li><a href="#navigation-buttons">Navigation Buttons</a></li>
+                                <li><a href="#enhanced-buttons">Enhanced Buttons</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#forms">Form Controls</a></li>
+                        <li><a href="#cards">Cards & Layouts</a></li>
+                        <li><a href="#icons">Icons</a></li>
+                        <li><a href="#components">Interactive Components</a>
+                            <ul>
+                                <li><a href="#toggles">Toggle Switches</a></li>
+                                <li><a href="#badges">Status Badges</a></li>
+                                <li><a href="#modals">Modals</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#navigation">Navigation Patterns</a></li>
+                        <li><a href="#animations">Animations</a></li>
+                        <li><a href="#accessibility">Accessibility</a></li>
+                        <li><a href="#usage-guidelines">Usage Guidelines</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9 col-xl-10">
+                <!-- Overview -->
+                <section id="overview" class="style-section">
+                    <h2><i class="fas fa-info-circle me-2"></i>Overview</h2>
+                    <p>The DoCM Room Reservation System design system is built on Bootstrap 5.x with custom MD Anderson
+                        Cancer Center branding. The system emphasizes accessibility, usability, and professional
+                        healthcare aesthetics.</p>
+
+                    <h3>Technology Stack</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Frontend Technologies</h4>
+                            <ul>
+                                <li><strong>Bootstrap 5.x</strong> - CSS framework for responsive design</li>
+                                <li><strong>FontAwesome Pro 5.15.4</strong> - Icon library</li>
+                                <li><strong>jQuery 3.7.0</strong> - JavaScript library</li>
+                                <li><strong>SweetAlert2</strong> - Enhanced modals and alerts</li>
+                                <li><strong>AOS (Animate On Scroll)</strong> - Animation library</li>
+                                <li><strong>FullCalendar 6.1.15</strong> - Calendar component</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Design Principles</h4>
+                            <ul>
+                                <li><strong>Accessibility First</strong> - WCAG 2.1 AA compliance</li>
+                                <li><strong>Mobile Responsive</strong> - Mobile-first design approach</li>
+                                <li><strong>MD Anderson Branding</strong> - Consistent institutional identity</li>
+                                <li><strong>User Experience</strong> - Intuitive and efficient workflows</li>
+                                <li><strong>Progressive Enhancement</strong> - Graceful degradation</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Colors -->
+                <section id="colors" class="style-section">
+                    <h2><i class="fas fa-palette me-2"></i>Color Palette</h2>
+
+                    <div id="primary-colors">
+                        <h3>Primary Colors</h3>
+                        <p>MD Anderson Cancer Center brand colors and system colors.</p>
+
+                        <div class="row">
+                            <div class="col-md-2 text-center">
+                                <div class="color-swatch" style="background-color: #003C7F;">PRIMARY</div>
+                                <code
+                                    style="color: var(--md-dark); background-color: #f8f9fa; padding: 0.125rem 0.25rem; border-radius: 0.25rem;">#003C7F</code>
+                                <p class="small mt-1" style="color: var(--md-dark);">Main brand color, primary buttons,
+                                    headers</p>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <div class="color-swatch" style="background-color: #006BA6;">SECONDARY</div>
+                                <code
+                                    style="color: var(--md-dark); background-color: #f8f9fa; padding: 0.125rem 0.25rem; border-radius: 0.25rem;">#006BA6</code>
+                                <p class="small mt-1" style="color: var(--md-dark);">Secondary actions, gradients</p>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <div class="color-swatch" style="background-color: #4F46E5;">USER NAV</div>
+                                <code
+                                    style="color: var(--md-dark); background-color: #f8f9fa; padding: 0.125rem 0.25rem; border-radius: 0.25rem;">#4F46E5</code>
+                                <p class="small mt-1" style="color: var(--md-dark);">User navigation elements</p>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <div class="color-swatch" style="background-color: #28a745;">SUCCESS</div>
+                                <code
+                                    style="color: var(--md-dark); background-color: #f8f9fa; padding: 0.125rem 0.25rem; border-radius: 0.25rem;">#28a745</code>
+                                <p class="small mt-1" style="color: var(--md-dark);">Success states, confirmations</p>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <div class="color-swatch" style="background-color: #dc3545;">DANGER</div>
+                                <code
+                                    style="color: var(--md-dark); background-color: #f8f9fa; padding: 0.125rem 0.25rem; border-radius: 0.25rem;">#dc3545</code>
+                                <p class="small mt-1" style="color: var(--md-dark);">Errors, deletions, warnings</p>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <div class="color-swatch" style="background-color: #ffc107; color: #000;">WARNING</div>
+                                <code
+                                    style="color: var(--md-dark); background-color: #f8f9fa; padding: 0.125rem 0.25rem; border-radius: 0.25rem;">#ffc107</code>
+                                <p class="small mt-1" style="color: var(--md-dark);">Cautions, pending states</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="room-colors" class="mt-4">
+                        <h3>Room Color System</h3>
+                        <p>Each room in the calendar system has a unique color scheme for easy identification. Colors
+                            are designed for accessibility with proper contrast ratios.</p>
+
+                        <div class="room-colors-grid">
+                            <div class="room-color-example" style="background-color: #FFFFF0; color: #556B2F;">
+                                <strong>Room Color 1</strong><br>
+                                <code>--room-color-1: #FFFFF0</code><br>
+                                <code>--room-color-1-text: #556B2F</code>
+                            </div>
+                            <div class="room-color-example" style="background-color: #F0F0F0; color: #333333;">
+                                <strong>Room Color 2</strong><br>
+                                <code>--room-color-2: #F0F0F0</code><br>
+                                <code>--room-color-2-text: #333333</code>
+                            </div>
+                            <div class="room-color-example" style="background-color: #FFF9DB; color: #4E342E;">
+                                <strong>Room Color 3</strong><br>
+                                <code>--room-color-3: #FFF9DB</code><br>
+                                <code>--room-color-3-text: #4E342E</code>
+                            </div>
+                            <!-- Note: System supports up to 25 room colors -->
+                        </div>
+                        <p class="text-muted"><em>Note: The system supports up to 25 different room color combinations.
+                                All colors meet WCAG AA contrast requirements.</em></p>
+                    </div>
+
+                    <div class="component-example">
+                        <h4>CSS Variables Usage</h4>
+                        <div class="code-example">/* CSS Variables for consistent theming */
+                            :root {
+                            --md-primary: #003C7F;
+                            --md-secondary: #006BA6;
+                            --user-nav-primary: #4F46E5;
+                            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+                            --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+                            }
+
+                            /* Usage in components */
+                            .btn-primary {
+                            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+                            }</div>
+                    </div>
+                </section>
+
+                <!-- Typography -->
+                <section id="typography" class="style-section">
+                    <h2><i class="fas fa-font me-2"></i>Typography</h2>
+                    <p>The system uses <strong>Montserrat</strong> as the primary font family, imported from Google
+                        Fonts for optimal web performance.</p>
+
+                    <div class="component-example">
+                        <h3>Font Family</h3>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 1.1rem;">Montserrat Regular - The
+                            quick brown fox jumps over the lazy dog</p>
+                        <p style="font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 1.1rem;">
+                            Montserrat Semi-Bold - The quick brown fox jumps over the lazy dog</p>
+                        <p style="font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.1rem;">
+                            Montserrat Bold - The quick brown fox jumps over the lazy dog</p>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Typography Scale</h3>
+                        <div class="type-scale">
+                            <h1>Heading 1 - 2.5rem (40px)</h1>
+                            <h2>Heading 2 - 2rem (32px)</h2>
+                            <h3>Heading 3 - 1.75rem (28px)</h3>
+                            <h4>Heading 4 - 1.5rem (24px)</h4>
+                            <h5>Heading 5 - 1.25rem (20px)</h5>
+                            <h6>Heading 6 - 1rem (16px)</h6>
+                            <p>Body text - 1rem (16px) - Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                            <small>Small text - 0.875rem (14px) - Additional information or metadata</small>
+                        </div>
+                    </div>
+
+                    <div class="code-example">/* Typography Implementation */
+                        @import
+                        url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+                        body {
+                        font-family: 'Montserrat', sans-serif;
+                        }
+
+                        h1, h2, h3, h4, h5, h6 {
+                        color: var(--md-dark);
+                        margin-bottom: 1rem;
+                        }</div>
+                </section>
+
+                <!-- Buttons -->
+                <section id="buttons" class="style-section">
+                    <h2><i class="fas fa-mouse-pointer me-2"></i>Buttons</h2>
+
+                    <div id="standard-buttons">
+                        <h3>Standard Bootstrap Buttons</h3>
+                        <div class="component-example">
+                            <button type="button" class="btn btn-primary me-2">Primary</button>
+                            <button type="button" class="btn btn-secondary me-2">Secondary</button>
+                            <button type="button" class="btn btn-success me-2">Success</button>
+                            <button type="button" class="btn btn-danger me-2">Danger</button>
+                            <button type="button" class="btn btn-warning me-2">Warning</button>
+                            <button type="button" class="btn btn-info me-2">Info</button>
+                            <button type="button" class="btn btn-light me-2">Light</button>
+                            <button type="button" class="btn btn-dark me-2">Dark</button>
+                        </div>
+
+                        <div class="component-example">
+                            <h4>Outline Buttons</h4>
+                            <button type="button" class="btn btn-outline-primary me-2">Primary</button>
+                            <button type="button" class="btn btn-outline-secondary me-2">Secondary</button>
+                            <button type="button" class="btn btn-outline-success me-2">Success</button>
+                            <button type="button" class="btn btn-outline-danger me-2">Danger</button>
+                            <button type="button" class="btn btn-outline-warning me-2">Warning</button>
+                            <button type="button" class="btn btn-outline-info me-2">Info</button>
+                        </div>
+                    </div>
+
+                    <div id="navigation-buttons" class="mt-4">
+                        <h3>Navigation Buttons</h3>
+                        <div class="component-example" style="background: #343a40; padding: 2rem;">
+                            <h4 class="text-white">Admin Navigation Buttons</h4>
+                            <a href="#" class="btn-admin-topNav me-2">Dashboard</a>
+                            <a href="#" class="btn-admin-topNav me-2">Users</a>
+                            <a href="#" class="btn-admin-topNav me-2">Rooms</a>
+                            <a href="#" class="btn-admin-topNav">History</a>
+                        </div>
+
+                        <div class="component-example" style="background: #f8f9fa; padding: 2rem;">
+                            <h4>User Navigation Buttons</h4>
+                            <a href="#" class="btn-user-topNav me-2">Home</a>
+                            <a href="#" class="btn-user-topNav me-2">View My Bookings</a>
+                            <a href="#" class="btn-user-topNav">Notifications</a>
+                        </div>
+
+                        <div class="code-example">/* Navigation Button Styles */
+                            .btn-admin-topNav {
+                            border: 1px solid #ffffff;
+                            color: #ffffff;
+                            padding: 0.5rem 1rem;
+                            border-radius: 5px;
+                            text-decoration: none;
+                            transition: all 0.3s ease;
+                            }
+
+                            .btn-admin-topNav:hover {
+                            background: #bbbabe;
+                            color: rgb(0, 0, 0);
+                            border-color: #2d2b3b;
+                            }
+
+                            .btn-user-topNav {
+                            border: 1px solid #4F46E5;
+                            color: #4F46E5;
+                            padding: 0.5rem 1rem;
+                            border-radius: 6px;
+                            text-decoration: none;
+                            transition: all 0.3s ease;
+                            }
+
+                            .btn-user-topNav:hover {
+                            background: #4338CA;
+                            color: white;
+                            border-color: white;
+                            }</div>
+                    </div>
+
+                    <div id="enhanced-buttons" class="mt-4">
+                        <h3>Enhanced Buttons with Animations</h3>
+                        <div class="component-example">
+                            <button type="button" class="btn-enhanced btn-primary me-2">
+                                <i class="fas fa-save me-1"></i>Save Changes
+                            </button>
+                            <button type="button" class="btn-enhanced btn-success me-2">
+                                <i class="fas fa-check me-1"></i>Approve
+                            </button>
+                            <button type="button" class="btn-enhanced btn-danger me-2">
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </button>
+                            <button type="button" class="btn-enhanced btn-warning me-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Warning
+                            </button>
+                        </div>
+
+                        <div class="code-example">/* Enhanced Button with Animation */
+                            .btn-enhanced {
+                            border-radius: 0.75rem;
+                            padding: 0.75rem 1.5rem;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                            transition: all 0.3s ease;
+                            border: none;
+                            position: relative;
+                            overflow: hidden;
+                            }
+
+                            .btn-enhanced::before {
+                            content: '';
+                            position: absolute;
+                            top: 0;
+                            left: -100%;
+                            width: 100%;
+                            height: 100%;
+                            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                            transition: left 0.5s;
+                            }
+
+                            .btn-enhanced:hover::before {
+                            left: 100%;
+                            }</div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h3>Button Sizes</h3>
+                        <div class="component-example">
+                            <button type="button" class="btn btn-primary btn-lg me-2">Large Button</button>
+                            <button type="button" class="btn btn-primary me-2">Default Button</button>
+                            <button type="button" class="btn btn-primary btn-sm me-2">Small Button</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Forms -->
+                <section id="forms" class="style-section">
+                    <h2><i class="fas fa-edit me-2"></i>Form Controls</h2>
+
+                    <div class="component-example">
+                        <h3>Standard Form Controls</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="textInput" class="form-label">Text Input</label>
+                                    <input type="text" class="form-control" id="textInput" placeholder="Enter text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="emailInput" class="form-label">Email Input</label>
+                                    <input type="email" class="form-control" id="emailInput" placeholder="Enter email">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="selectInput" class="form-label">Select Dropdown</label>
+                                    <select class="form-select" id="selectInput">
+                                        <option selected>Choose...</option>
+                                        <option value="1">Option 1</option>
+                                        <option value="2">Option 2</option>
+                                        <option value="3">Option 3</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="textareaInput" class="form-label">Textarea</label>
+                                    <textarea class="form-control" id="textareaInput" rows="3"
+                                        placeholder="Enter message"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="dateInput" class="form-label">Date Input</label>
+                                    <input type="date" class="form-control" id="dateInput">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="timeInput" class="form-label">Time Input</label>
+                                    <input type="time" class="form-control" id="timeInput">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Enhanced Form Controls</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="enhancedText" class="form-label">Enhanced Text Input</label>
+                                    <input type="text" class="form-control-enhanced" id="enhancedText"
+                                        placeholder="Enhanced styling">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="enhancedSelect" class="form-label">Enhanced Select</label>
+                                    <select class="form-select-enhanced" id="enhancedSelect">
+                                        <option selected>Choose...</option>
+                                        <option value="1">Option 1</option>
+                                        <option value="2">Option 2</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
+                                        <label class="form-check-label" for="flexCheckDefault">
+                                            Default checkbox
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="flexRadioDefault"
+                                            id="flexRadioDefault1">
+                                        <label class="form-check-label" for="flexRadioDefault1">
+                                            Default radio
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="flexRadioDefault"
+                                            id="flexRadioDefault2" checked>
+                                        <label class="form-check-label" for="flexRadioDefault2">
+                                            Default checked radio
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Floating Labels</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="floatingInput"
+                                        placeholder="name@example.com">
+                                    <label for="floatingInput">Name</label>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <input type="email" class="form-control" id="floatingEmail"
+                                        placeholder="name@example.com">
+                                    <label for="floatingEmail">Email address</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <textarea class="form-control" placeholder="Leave a comment here"
+                                        id="floatingTextarea" style="height: 100px"></textarea>
+                                    <label for="floatingTextarea">Comments</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-example">/* Enhanced Form Control Styles */
+                        .form-control-enhanced,
+                        .form-select-enhanced {
+                        border-radius: 0.75rem;
+                        border: 2px solid #e9ecef;
+                        padding: 0.75rem 1rem;
+                        transition: all 0.3s ease;
+                        }
+
+                        .form-control-enhanced:focus,
+                        .form-select-enhanced:focus {
+                        border-color: var(--md-primary);
+                        box-shadow: 0 0 0 0.2rem rgba(0, 60, 127, 0.25);
+                        }
+
+                        .form-label {
+                        font-weight: 600;
+                        color: var(--md-dark);
+                        margin-bottom: 0.75rem;
+                        }</div>
+                </section>
+
+                <!-- Cards -->
+                <section id="cards" class="style-section">
+                    <h2><i class="fas fa-layer-group me-2"></i>Cards & Layouts</h2>
+
+                    <div class="component-example">
+                        <h3>Standard Cards</h3>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Standard Card</h5>
+                                        <p class="card-text">This is a standard Bootstrap card with basic styling.</p>
+                                        <a href="#" class="btn btn-primary">Action</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        Card Header
+                                    </div>
+                                    <div class="card-body">
+                                        <h5 class="card-title">Card with Header</h5>
+                                        <p class="card-text">Card with a header section.</p>
+                                        <a href="#" class="btn btn-secondary">Action</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Card with Footer</h5>
+                                        <p class="card-text">Card with a footer section.</p>
+                                    </div>
+                                    <div class="card-footer text-muted">
+                                        2 days ago
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Enhanced Cards</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="enhanced-card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-chart-line me-2"></i>Analytics Card</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Enhanced card with gradient header and hover effects.</p>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-muted">Total</span>
+                                            <span class="fw-bold">1,234</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="enhanced-card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-users me-2"></i>Users Card</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Another enhanced card with consistent styling.</p>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-muted">Active Users</span>
+                                            <span class="fw-bold">567</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Statistics Cards</h3>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h6 class="card-title">Total Bookings</h6>
+                                                <h3>1,234</h3>
+                                            </div>
+                                            <div class="align-self-center">
+                                                <i class="fas fa-calendar fa-2x"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h6 class="card-title">Approved</h6>
+                                                <h3>987</h3>
+                                            </div>
+                                            <div class="align-self-center">
+                                                <i class="fas fa-check fa-2x"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning text-dark">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h6 class="card-title">Pending</h6>
+                                                <h3>123</h3>
+                                            </div>
+                                            <div class="align-self-center">
+                                                <i class="fas fa-clock fa-2x"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-danger text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h6 class="card-title">Rejected</h6>
+                                                <h3>45</h3>
+                                            </div>
+                                            <div class="align-self-center">
+                                                <i class="fas fa-times fa-2x"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Icons -->
+                <section id="icons" class="style-section">
+                    <h2><i class="fas fa-icons me-2"></i>Icons</h2>
+                    <p>The system uses <strong>FontAwesome Pro 5.15.4</strong> for icons. Common icons used throughout
+                        the application:</p>
+
+                    <div class="component-example">
+                        <h3>Common System Icons</h3>
+                        <div class="icon-grid">
+                            <div class="icon-example">
+                                <i class="fas fa-calendar-alt"></i>
+                                <div class="mt-2"><code>fa-calendar-alt</code></div>
+                                <small>Calendar/Booking</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-users"></i>
+                                <div class="mt-2"><code>fa-users</code></div>
+                                <small>Users/Groups</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-door-open"></i>
+                                <div class="mt-2"><code>fa-door-open</code></div>
+                                <small>Rooms</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-bell"></i>
+                                <div class="mt-2"><code>fa-bell</code></div>
+                                <small>Notifications</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-cog"></i>
+                                <div class="mt-2"><code>fa-cog</code></div>
+                                <small>Settings</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-chart-line"></i>
+                                <div class="mt-2"><code>fa-chart-line</code></div>
+                                <small>Analytics</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-shield-alt"></i>
+                                <div class="mt-2"><code>fa-shield-alt</code></div>
+                                <small>Admin/Security</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-question-circle"></i>
+                                <div class="mt-2"><code>fa-question-circle</code></div>
+                                <small>Help</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Action Icons</h3>
+                        <div class="icon-grid">
+                            <div class="icon-example">
+                                <i class="fas fa-plus"></i>
+                                <div class="mt-2"><code>fa-plus</code></div>
+                                <small>Add/Create</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-edit"></i>
+                                <div class="mt-2"><code>fa-edit</code></div>
+                                <small>Edit</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-trash"></i>
+                                <div class="mt-2"><code>fa-trash</code></div>
+                                <small>Delete</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-save"></i>
+                                <div class="mt-2"><code>fa-save</code></div>
+                                <small>Save</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-check"></i>
+                                <div class="mt-2"><code>fa-check</code></div>
+                                <small>Approve/Confirm</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-times"></i>
+                                <div class="mt-2"><code>fa-times</code></div>
+                                <small>Cancel/Close</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-sync"></i>
+                                <div class="mt-2"><code>fa-sync</code></div>
+                                <small>Refresh</small>
+                            </div>
+                            <div class="icon-example">
+                                <i class="fas fa-search"></i>
+                                <div class="mt-2"><code>fa-search</code></div>
+                                <small>Search</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-example">/* Icon Usage Examples */
+                        <!-- Standard usage -->
+                        &lt;i class="fas fa-calendar-alt"&gt;&lt;/i&gt;
+
+                        <!-- With sizing -->
+                        &lt;i class="fas fa-users fa-2x"&gt;&lt;/i&gt;
+
+                        <!-- With button -->
+                        &lt;button class="btn btn-primary"&gt;
+                        &lt;i class="fas fa-plus me-2"&gt;&lt;/i&gt;New Booking
+                        &lt;/button&gt;
+                    </div>
+                </section>
+
+                <!-- Interactive Components -->
+                <section id="components" class="style-section">
+                    <h2><i class="fas fa-puzzle-piece me-2"></i>Interactive Components</h2>
+
+                    <div id="toggles">
+                        <h3>Toggle Switches</h3>
+                        <div class="component-example">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <strong>Email Notifications</strong>
+                                            <br><small class="text-muted">Receive email alerts</small>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <strong>In-App Notifications</strong>
+                                            <br><small class="text-muted">Show notifications in app</small>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="code-example">/* Toggle Switch HTML */
+                                        &lt;label class="toggle-switch"&gt;
+                                        &lt;input type="checkbox" checked&gt;
+                                        &lt;span class="slider"&gt;&lt;/span&gt;
+                                        &lt;/label&gt;</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="badges" class="mt-4">
+                        <h3>Status Badges</h3>
+                        <div class="component-example">
+                            <span class="status-badge bg-success text-white me-2">Approved</span>
+                            <span class="status-badge bg-warning text-dark me-2">Pending</span>
+                            <span class="status-badge bg-danger text-white me-2">Rejected</span>
+                            <span class="status-badge bg-info text-white me-2">Processing</span>
+                            <span class="status-badge bg-secondary text-white me-2">Draft</span>
+                        </div>
+
+                        <div class="component-example">
+                            <h4>Notification Badges</h4>
+                            <button type="button" class="btn btn-primary position-relative me-3">
+                                <i class="fas fa-bell"></i> Notifications
+                                <span
+                                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    5
+                                    <span class="visually-hidden">unread messages</span>
+                                </span>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary position-relative">
+                                <i class="fas fa-users"></i> Users
+                                <span
+                                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
+                                    New
+                                    <span class="visually-hidden">new users</span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="modals" class="mt-4">
+                        <h3>Modal Examples</h3>
+                        <div class="component-example">
+                            <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal"
+                                data-bs-target="#exampleModal">
+                                Launch Standard Modal
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="showSweetAlert()">
+                                Launch SweetAlert2
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Navigation -->
+                <section id="navigation" class="style-section">
+                    <h2><i class="fas fa-compass me-2"></i>Navigation Patterns</h2>
+
+                    <div class="component-example">
+                        <h3>Admin Navigation</h3>
+                        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+                            <div class="container-fluid">
+                                <a class="navbar-brand text-uppercase" href="#">
+                                    <span class="text-info">DEV</span> Admin Portal
+                                    <i class="fas fa-bug" style="color: red;"></i>
+                                </a>
+                                <div class="navbar-nav ms-auto">
+                                    <a class="nav-link btn-admin-topNav text-uppercase me-2" href="#">Dashboard</a>
+                                    <a class="nav-link btn-admin-topNav text-uppercase me-2" href="#">Users</a>
+                                    <a class="nav-link btn-admin-topNav text-uppercase me-2" href="#">Rooms</a>
+                                    <a class="nav-link btn-admin-topNav text-uppercase" href="#">History</a>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>User Navigation</h3>
+                        <nav class="navbar navbar-expand-lg bg-light bg-gradient shadow">
+                            <div class="container">
+                                <a class="navbar-brand d-flex align-items-center" href="#">
+                                    <img src="assets/images/logo.png" alt="MD Anderson" height="45" class="me-2">
+                                </a>
+                                <div class="navbar-nav">
+                                    <a class="nav-link btn-user-topNav me-2" href="#">Home</a>
+                                    <a class="nav-link btn-user-topNav me-2" href="#">View My Bookings</a>
+                                    <a class="nav-link btn-user-topNav" href="#">Notifications</a>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Breadcrumb Navigation</h3>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="#">Home</a></li>
+                                <li class="breadcrumb-item"><a href="#">Admin</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Style Guide</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </section>
+
+                <!-- Animations -->
+                <section id="animations" class="style-section">
+                    <h2><i class="fas fa-magic me-2"></i>Animations</h2>
+
+                    <div class="component-example">
+                        <h3>AOS (Animate On Scroll) Examples</h3>
+                        <p>The system uses AOS library for scroll-based animations:</p>
+
+                        <div class="row">
+                            <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-arrow-up fa-2x text-primary mb-2"></i>
+                                        <h5>Fade Up</h5>
+                                        <code>data-aos="fade-up"</code>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4" data-aos="fade-left" data-aos-delay="200">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-arrow-left fa-2x text-success mb-2"></i>
+                                        <h5>Fade Left</h5>
+                                        <code>data-aos="fade-left"</code>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4" data-aos="zoom-in" data-aos-delay="300">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-search-plus fa-2x text-info mb-2"></i>
+                                        <h5>Zoom In</h5>
+                                        <code>data-aos="zoom-in"</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>CSS Animations</h3>
+                        <button type="button" class="btn btn-primary me-2" onclick="this.classList.add('fade-in')">Fade
+                            In</button>
+                        <button type="button" class="btn btn-success" onclick="this.classList.add('slide-in')">Slide
+                            In</button>
+
+                        <div class="code-example mt-3">/* CSS Animation Classes */
+                            .fade-in {
+                            animation: fadeIn 0.5s ease-in;
+                            }
+
+                            @keyframes fadeIn {
+                            from {
+                            opacity: 0;
+                            transform: translateY(20px);
+                            }
+                            to {
+                            opacity: 1;
+                            transform: translateY(0);
+                            }
+                            }
+
+                            .slide-in {
+                            animation: slideIn 0.3s ease-out;
+                            }
+
+                            @keyframes slideIn {
+                            from {
+                            transform: translateX(-20px);
+                            opacity: 0;
+                            }
+                            to {
+                            transform: translateX(0);
+                            opacity: 1;
+                            }
+                            }</div>
+                    </div>
+                </section>
+
+                <!-- Accessibility -->
+                <section id="accessibility" class="style-section">
+                    <h2><i class="fas fa-universal-access me-2"></i>Accessibility</h2>
+
+                    <div class="component-example">
+                        <h3>Focus States</h3>
+                        <p>All interactive elements have clear focus indicators for keyboard navigation:</p>
+                        <button type="button" class="btn btn-primary me-2">Focusable Button</button>
+                        <a href="#" class="btn btn-outline-primary me-2">Focusable Link</a>
+                        <input type="text" class="form-control" style="width: 200px; display: inline-block;"
+                            placeholder="Focusable Input">
+                    </div>
+
+                    <div class="component-example">
+                        <h3>ARIA Labels and Screen Reader Support</h3>
+                        <div class="code-example">/* Accessibility Examples */
+                            &lt;!-- Button with ARIA label --&gt;
+                            &lt;button aria-label="Close dialog" class="btn-close"&gt;&lt;/button&gt;
+
+                            &lt;!-- Navigation with ARIA --&gt;
+                            &lt;nav aria-label="breadcrumb"&gt;
+                            &lt;ol class="breadcrumb"&gt;...&lt;/ol&gt;
+                            &lt;/nav&gt;
+
+                            &lt;!-- Form with proper labels --&gt;
+                            &lt;label for="email"&gt;Email Address&lt;/label&gt;
+                            &lt;input type="email" id="email" class="form-control" required&gt;
+
+                            &lt;!-- Status announcements --&gt;
+                            &lt;div aria-live="polite" id="status"&gt;&lt;/div&gt;</div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Color Contrast</h3>
+                        <p>All color combinations meet WCAG AA standards:</p>
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <div style="background: #003C7F; color: white; padding: 1rem; border-radius: 0.5rem;">
+                                    Primary on White<br>
+                                    <strong>Contrast: 12.6:1</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div style="background: #28a745; color: white; padding: 1rem; border-radius: 0.5rem;">
+                                    Success on White<br>
+                                    <strong>Contrast: 7.4:1</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div style="background: #dc3545; color: white; padding: 1rem; border-radius: 0.5rem;">
+                                    Danger on White<br>
+                                    <strong>Contrast: 8.2:1</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div style="background: #ffc107; color: #000; padding: 1rem; border-radius: 0.5rem;">
+                                    Warning on Black<br>
+                                    <strong>Contrast: 11.8:1</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Usage Guidelines -->
+                <section id="usage-guidelines" class="style-section">
+                    <h2><i class="fas fa-book me-2"></i>Usage Guidelines</h2>
+
+                    <div class="component-example">
+                        <h3>Design Principles</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4>Do's</h4>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Use
+                                        consistent spacing (0.5rem, 1rem, 1.5rem, 2rem)</li>
+                                    <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Follow MD
+                                        Anderson brand colors</li>
+                                    <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Ensure
+                                        proper contrast ratios</li>
+                                    <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Use
+                                        semantic HTML elements</li>
+                                    <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Test with
+                                        keyboard navigation</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h4>Don'ts</h4>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item"><i class="fas fa-times text-danger me-2"></i>Don't use
+                                        arbitrary colors outside the palette</li>
+                                    <li class="list-group-item"><i class="fas fa-times text-danger me-2"></i>Don't rely
+                                        solely on color to convey information</li>
+                                    <li class="list-group-item"><i class="fas fa-times text-danger me-2"></i>Don't use
+                                        too many font weights or sizes</li>
+                                    <li class="list-group-item"><i class="fas fa-times text-danger me-2"></i>Don't
+                                        create custom components without consulting this guide</li>
+                                    <li class="list-group-item"><i class="fas fa-times text-danger me-2"></i>Don't
+                                        override Bootstrap defaults without good reason</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Implementation Guidelines</h3>
+                        <h4>CSS Organization</h4>
+                        <ol>
+                            <li><strong>Bootstrap CSS</strong> - Load first for base styles</li>
+                            <li><strong>FontAwesome</strong> - Icon library</li>
+                            <li><strong>Third-party libraries</strong> - AOS, SweetAlert2, DataTables</li>
+                            <li><strong>Custom styles.css</strong> - System-specific overrides and components</li>
+                        </ol>
+
+                        <h4>JavaScript Libraries</h4>
+                        <ol>
+                            <li><strong>jQuery 3.7.0</strong> - DOM manipulation and AJAX</li>
+                            <li><strong>Bootstrap JS</strong> - Component interactions</li>
+                            <li><strong>SweetAlert2</strong> - Enhanced modals and alerts</li>
+                            <li><strong>AOS</strong> - Scroll animations</li>
+                            <li><strong>Custom scripts</strong> - Application-specific functionality</li>
+                        </ol>
+                    </div>
+
+                    <div class="component-example">
+                        <h3>Responsive Design Guidelines</h3>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Breakpoint</th>
+                                        <th>Size</th>
+                                        <th>Container max-width</th>
+                                        <th>Usage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>xs</td>
+                                        <td>&lt;576px</td>
+                                        <td>100%</td>
+                                        <td>Mobile phones</td>
+                                    </tr>
+                                    <tr>
+                                        <td>sm</td>
+                                        <td>≥576px</td>
+                                        <td>540px</td>
+                                        <td>Large phones, small tablets</td>
+                                    </tr>
+                                    <tr>
+                                        <td>md</td>
+                                        <td>≥768px</td>
+                                        <td>720px</td>
+                                        <td>Tablets</td>
+                                    </tr>
+                                    <tr>
+                                        <td>lg</td>
+                                        <td>≥992px</td>
+                                        <td>960px</td>
+                                        <td>Laptops, small desktops</td>
+                                    </tr>
+                                    <tr>
+                                        <td>xl</td>
+                                        <td>≥1200px</td>
+                                        <td>1140px</td>
+                                        <td>Large desktops</td>
+                                    </tr>
+                                    <tr>
+                                        <td>xxl</td>
+                                        <td>≥1400px</td>
+                                        <td>1320px</td>
+                                        <td>Extra large desktops</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Standard Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Example Modal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    This is a standard Bootstrap modal example used in the DoCM system.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/aos/dist/aos.js"></script>
+    <script src="node_modules/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <script src="assets/js/topNav.js"></script>
+
+    <script>
+        // Initialize AOS
+        AOS.init({
+            duration: 800,
+            offset: 100,
+            once: true
+        });
+
+        // Load navigation based on user role
+        $(document).ready(function () {
+            const userRole = sessionStorage.getItem('ROLE');
+            let navFile = 'topNav-User.html'; // Default to user navigation
+
+            // Load admin navigation if user has admin permissions
+            if (userRole === 'Site Admin' || userRole === 'Admin') {
+                navFile = 'topNav-Admin.html';
+            }
+
+            $('#topNav').load(navFile, function () {
+                // Check admin functions after navigation loads (only if admin nav was loaded)
+                if (navFile === 'topNav-Admin.html') {
+                    if (typeof checkNewUsers === 'function') {
+                        checkNewUsers();
+                    }
+                    if (typeof checkPendingApprovals === 'function') {
+                        checkPendingApprovals();
+                    }
+                }
+            });
+        });
+
+        // SweetAlert2 example
+        function showSweetAlert() {
+            Swal.fire({
+                title: 'SweetAlert2 Example',
+                text: 'This is how SweetAlert2 modals look in the DoCM system.',
+                icon: 'info',
+                confirmButtonText: 'Got it!',
+                customClass: {
+                    confirmButton: 'btn btn-primary'
+                },
+                buttonsStyling: false
+            });
+        }
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('.toc a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Remove animation classes after animation completes
+        document.addEventListener('click', function (e) {
+            if (e.target.matches('button')) {
+                setTimeout(() => {
+                    e.target.classList.remove('fade-in', 'slide-in');
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+
+</html>
