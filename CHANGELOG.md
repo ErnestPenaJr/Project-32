@@ -17,3 +17,7 @@
   - Added visible duration element `#bookingDuration` beside Booking Time header in `index.html`.
   - Implemented jQuery logic to compute and update duration from `#startTime` and `#endTime` on change and on modal init/reset.
   - Updated duration to count business hours only (default Mon–Fri, 08:00–16:00), configurable via `BUSINESS_HOURS` in `index.html`.
+
+- fix: replace profile dropdown with static user name label
+  - Updated `topNav-User.html` and `topNav-Admin.html` to remove `#profileDropdown` and render a non-interactive label with the user’s name.
+  - Kept `#notificationsDropdown` unchanged.

@@ -70,23 +70,11 @@ Developer Notes:
             </ul>
             <!-- add logout to flat at end of navbar -->
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown d-flex align-items-center justify-content-end">
-                    <a class="nav-link fw-bold text-uppercase btn-user-topNav mx-2 dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <li class="nav-item d-flex align-items-center justify-content-end">
+                    <span class="navbar-text text-uppercase mx-2" style="cursor: default;">
                         <i class="fas fa-user-circle"></i>
                         <span id="welcomeMessage" class="welcome-title mx-2"></span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                        <li><a class="dropdown-item" href="user-notification-preferences.html">
-                            <i class="fas fa-bell"></i> Notification Preferences
-                        </a></li>
-                        <li><a class="dropdown-item" href="dashboard.html">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="admin-notification-control.html" id="adminSettingsLink" style="display: none;">
-                            <i class="fas fa-shield-alt"></i> Admin: Notifications
-                        </a></li>
-                    </ul>
+                    </span>
                 </li>
                 <li class="nav-item d-flex align-items-center justify-content-end">
                     <button class="btn btn-outline-danger logout-btn">Logout</button>
