@@ -91,6 +91,9 @@
             padding: 0.5rem 1rem;
             border-radius: 6px;
             text-decoration: none;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
         }
 
         .btn-new-booking:hover {
@@ -625,28 +628,9 @@
                                     data-bs-placement="bottom" data-bs-title="Open FC11 Floor Map"><i
                                         class="fas fa-map"></i></button>
                             </div>
-                            <div class="col-2">
-                                <!-- Quick Settings Access -->
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-user-cog"></i> Settings
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="user-notification-preferences.html">
-                                            <i class="fas fa-bell"></i> Notification Preferences
-                                        </a></li>
-                                        <li><a class="dropdown-item" href="dashboard.html">
-                                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                                        </a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="admin-notification-control.html" id="adminSettingsLink" style="display: none;">
-                                            <i class="fas fa-shield-alt"></i> Admin: Notifications
-                                        </a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="col-1">
-                                <button class="btn-new-booking float-end">
+                            
+                            <div class="col-auto">
+                                <button class="btn-new-booking float-end text-nowrap">
                                     <i class="fas fa-plus me-2"></i>New Booking
                                 </button>
                             </div>
@@ -700,8 +684,9 @@
                                             Select
                                             Room</label>
                                         <select class="form-select" id="roomSelect" name="roomSelect" required>
-                                            <option value="">Choose a room...</option>
+                                            <option value="">Choose room...</option>
                                         </select>
+                                        <div class="form-text">Select a room for your reservation</div>
                                     </div>
                                 </div>
                                 <div class="col-3">
@@ -749,8 +734,9 @@
                                     <div class="card border-0 shadow-sm p-0">
                                         <div class="card-body">
 
-                                            <h6 class="card-title mb-3">
+                                            <h6 class="card-title mb-3 d-flex align-items-center">
                                                 <i class="fas fa-clock me-1"></i>Booking Time
+                                                <small id="bookingDuration" class="text-muted ms-2"></small>
                                             </h6>
                                             <div class="row g-3">
                                                 <div class="col-md">
@@ -960,6 +946,87 @@
                 }
             };
 
+            // business hours config (adjust as needed)
+            const BUSINESS_HOURS = {
+                startHour: 8,    // 08:00 local time
+                endHour: 16,     // 16:00 local time (8-hour window)
+                workDays: [1,2,3,4,5] // Mon–Fri; 0=Sun .. 6=Sat
+            };
+
+            // compute business minutes between two datetimes
+            function computeBusinessMinutes(startDate, endDate) {
+                if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 0;
+                if (isNaN(startDate) || isNaN(endDate) || endDate <= startDate) return 0;
+
+                const { startHour, endHour, workDays } = BUSINESS_HOURS;
+                const msPerMinute = 60000;
+
+                // iterate day by day
+                let totalMinutes = 0;
+                let cursor = new Date(startDate);
+                // normalize cursor to start of its day
+                cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+
+                const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+                while (cursor <= endDay) {
+                    const dow = cursor.getDay();
+                    const isWorkDay = workDays.includes(dow);
+
+                    if (isWorkDay) {
+                        // business window for this day
+                        const windowStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), startHour, 0, 0, 0);
+                        const windowEnd   = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), endHour, 0, 0, 0);
+
+                        // actual overlap window for this day
+                        const dayStart = new Date(Math.max(windowStart.getTime(), startDate.getTime()));
+                        const dayEnd   = new Date(Math.min(windowEnd.getTime(), endDate.getTime()));
+
+                        if (dayEnd > dayStart) {
+                            const minutes = Math.round((dayEnd - dayStart) / msPerMinute);
+                            // safety cap at 8h per day
+                            totalMinutes += Math.min(minutes, (endHour - startHour) * 60);
+                        }
+                    }
+
+                    // advance 1 day
+                    cursor.setDate(cursor.getDate() + 1);
+                }
+
+                return totalMinutes;
+            }
+
+            // compute and render the booking duration next to the header (business hours only)
+            function updateBookingDuration() {
+                const startISO = $('#startTime').val();
+                const endISO = $('#endTime').val();
+                const $duration = $('#bookingDuration');
+
+                if (!startISO || !endISO) {
+                    $duration.text('');
+                    return;
+                }
+
+                const startDate = new Date(startISO);
+                const endDate = new Date(endISO);
+                const totalMinutes = computeBusinessMinutes(startDate, endDate);
+
+                if (isNaN(totalMinutes) || totalMinutes <= 0) {
+                    $duration.text('');
+                    return;
+                }
+
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+
+                const parts = [];
+                if (hours > 0) parts.push(hours + ' hour' + (hours !== 1 ? 's' : ''));
+                if (minutes > 0) parts.push(minutes + ' minute' + (minutes !== 1 ? 's' : ''));
+
+                // e.g., (2 business hours 15 minutes)
+                $duration.text(parts.length ? '(' + parts.join(' ') + ' in business hours)' : '(0 minutes)');
+            }
+
             // Initialize the datetime pickers when the booking modal is shown
             $('#bookingModal').on('show.bs.modal', function () {
                 // Initialize start time picker
@@ -983,7 +1050,10 @@
                             if (endTimePicker && typeof endTimePicker.clear === 'function') {
                                 endTimePicker.clear();
                             }
+                            updateBookingDuration();
+                            return;
                         }
+                        updateBookingDuration();
                     }
                 });
 
@@ -1006,15 +1076,18 @@
                             if (endTimePicker && typeof endTimePicker.clear === 'function') {
                                 endTimePicker.clear();
                             }
+                            updateBookingDuration();
                             return;
                         }
                         $('#endTime').val(date.toISOString());
+                        updateBookingDuration();
                     }
                 });
 
                 // Set initial values
                 $('#startTime').val(new Date().toISOString());
                 $('#endTime').val(defaultEndTime.toISOString());
+                updateBookingDuration();
             });
 
             // The formatDateForColdFusion function has been moved to the global scope
@@ -1060,12 +1133,14 @@
                     $('#endTime').val(formattedEndTime);
                 }
 
-                if (!roomId || roomId === '') {
+                // Handle both single room and multiple room validation
+                const selectedRooms = Array.isArray(roomId) ? roomId : (roomId ? [roomId] : []);
+                if (selectedRooms.length === 0) {
                     e.preventDefault();
                     Swal.fire({
                         icon: 'error',
                         title: 'Missing Information',
-                        text: 'Please select a room.'
+                        text: 'Please select at least one room.'
                     });
                     return false;
                 }
@@ -1092,6 +1167,7 @@
                 $('#endTime').val('');
                 $('#titleContainer').addClass('d-none');
                 $('#bookingTitle').prop('required', false);
+                $('#bookingDuration').text('');
             });
 
             const bookingManager = {
@@ -1248,6 +1324,11 @@
                                 roomSelect.off('change').on('change', async function () {
                                     const selectedRoom = $(this).val();
                                     const selectedOption = $(this).find(':selected');
+                                    
+                                    // Handle single room selection
+                                    if (!selectedRoom) {
+                                        return;
+                                    }
                                     const allowsRecurring = selectedOption.data('recurring') === 'YES';
                                     const imgContainer = $('#roomImageContainer');
                                     const roomImg = $('#selectedRoomImage');
@@ -1704,8 +1785,9 @@
                 const startTimeRaw = $('#startTime').val();
                 const endTimeRaw = $('#endTime').val();
 
+                // Single room selection validation
                 if (!roomId || !startTimeRaw || !endTimeRaw || !userId) {
-                    showAlert('Please fill in all required fields', 'warning');
+                    showAlert('Please fill in all required fields and select a room', 'warning');
                     return;
                 }
 
@@ -1720,12 +1802,20 @@
                     startDate.getMonth() !== endDate.getMonth() ||
                     startDate.getFullYear() !== endDate.getFullYear();
 
-                // Validate booking duration (max 7 days)
+                // Validate booking duration (allow extended bookings for workstations)
                 const durationMs = endDate - startDate;
                 const durationDays = durationMs / (1000 * 60 * 60 * 24);
+                const selectedRoomName = $('#roomSelect option:selected').text();
+                const isWorkstation = selectedRoomName.toLowerCase().includes('workstation') || 
+                                    selectedRoomName.toLowerCase().includes('12a') || 
+                                    selectedRoomName.toLowerCase().includes('12b') || 
+                                    selectedRoomName.toLowerCase().includes('12c');
 
-                if (durationDays > 7) {
-                    showAlert('Maximum booking duration is 7 days', 'warning');
+                // Different limits for different room types
+                const maxDays = isWorkstation ? 365 : 7; // Allow up to 1 year for workstations, 7 days for others
+                
+                if (durationDays > maxDays) {
+                    showAlert(`Maximum booking duration is ${maxDays} days for this room type`, 'warning');
                     return;
                 }
 
@@ -1745,7 +1835,7 @@
                     }
                 });
 
-                // Create booking
+                // Create single booking
                 $.ajax({
                     url: 'cfcs/dashboard-data.cfc',
                     method: 'POST',
@@ -1753,7 +1843,7 @@
                         method: 'createBooking',
                         employee_id: sessionStorage.getItem('EMPLID'),
                         user_id: sessionStorage.getItem('USER_ID'),
-                        room_id: $('#roomSelect').val(),
+                        room_id: roomId,
                         start_time: startTime,
                         end_time: endTime,
                         is_multi_day: isMultiDay ? 1 : 0,
@@ -1761,72 +1851,72 @@
                         comments: meetingTitle || ''
                     },
                     dataType: 'json',
-                    timeout: 30000, // 30 second timeout
-                    success: function (response) {
-                        Swal.close(); // Close loading indicator
+                    timeout: 30000 // 30 second timeout
+                }).then(result => {
+                    Swal.close(); // Close loading indicator
+                    
+                    if (result.status === 'success') {
+                        // Booking successful
+                        checkPendingApprovals();
                         
-                        if (response.status === 'success') {
-                            checkPendingApprovals()
-                            // First hide the modal
-                            $('#bookingModal').modal('hide');
-                            
-                            // Reset the form inputs
-                            $('#bookingForm')[0].reset();
-                            
-                            // Reset title field and hide the container
-                            $('#bookingTitle').val('');
-                            $('#titleContainer').addClass('d-none');
+                        // First hide the modal
+                        $('#bookingModal').modal('hide');
+                        
+                        // Reset the form inputs
+                        $('#bookingForm')[0].reset();
+                        
+                        // Reset title field and hide the container
+                        $('#bookingTitle').val('');
+                        $('#titleContainer').addClass('d-none');
 
-                            // Re-initialize the pickers on next modal open
-                            $('#start-picker, #end-picker').empty();
-                            $('#roomSelect').val('');
-                            $('#recurringDetails').val('');
+                        // Re-initialize the pickers on next modal open
+                        $('#start-picker, #end-picker').empty();
+                        $('#roomSelect').val('');
+                        $('#recurringDetails').val('');
 
-                            // Show success message
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Booking Created Successfully!',
-                                text: response.data.message || 'Your booking has been created and is pending approval.',
-                                timer: 3000,
-                                timerProgressBar: true,
-                                showConfirmButton: true
-                            });
+                        // Show success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Booking Created Successfully!',
+                            text: 'Your booking has been created and is pending approval.',
+                            timer: 3000,
+                            timerProgressBar: true,
+                            showConfirmButton: true
+                        });
 
-                            // Refresh calendar and bookings list with a delay to ensure server has processed the booking
-                            setTimeout(function () {
-                                globalCalendar.refetchEvents();
+                        // Refresh calendar and bookings list
+                        setTimeout(function () {
+                            globalCalendar.refetchEvents();
+                            if (typeof bookingManager !== 'undefined' && bookingManager.loadUserBookings) {
                                 bookingManager.loadUserBookings();
-                                checkPendingApprovals();
-                            }, 1000);
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Booking Failed',
-                                text: response.data.message || response.message || 'Error creating booking. Please try again.',
-                                showConfirmButton: true
-                            });
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        Swal.close(); // Close loading indicator
-                        
-                        let errorMessage = 'Error creating booking. Please try again.';
-                        
-                        if (status === 'timeout') {
-                            errorMessage = 'The request timed out. Please check your connection and try again.';
-                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
-                            errorMessage = xhr.responseJSON.message;
-                        } else if (error) {
-                            errorMessage = 'Error: ' + error;
+                            }
+                            checkPendingApprovals();
+                        }, 1000);
+                    } else {
+                        // Booking failed
+                        var errorMessage = 'An error occurred while creating your booking.';
+                        if (result.data && result.data.message) {
+                            errorMessage = result.data.message;
+                        } else if (result.message) {
+                            errorMessage = result.message;
                         }
                         
                         Swal.fire({
                             icon: 'error',
-                            title: 'Booking Failed',
-                            text: errorMessage,
-                            showConfirmButton: true
+                            title: 'Room Not Available',
+                            html: errorMessage.replace(/\n/g, '<br>'),
+                            showConfirmButton: true,
+                            width: '600px'
                         });
                     }
+                }).catch(error => {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'System Error',
+                        text: 'An unexpected error occurred while processing your booking.',
+                        showConfirmButton: true
+                    });
                 });
             });
 

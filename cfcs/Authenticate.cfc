@@ -56,7 +56,28 @@
         <cfcatch type="ANY">
 
             <cfset originalError = cfcatch />
-            <cfset LDAP.ErrorCode = Mid(cfcatch.Message,Find(", data ", cfcatch.message)+7,Find(",", cfcatch.Message,Find(", data ", cfcatch.message)+1)-Find(", data ", cfcatch.message)-7) />
+            <!--- Safely extract LDAP error code with proper validation --->
+            <cfset var dataPos = Find(", data ", cfcatch.message) />
+            <cfset var commaPos = 0 />
+            <cfset LDAP.ErrorCode = "" />
+            
+            <cfif dataPos GT 0>
+                <cfset commaPos = Find(",", cfcatch.Message, dataPos + 7) />
+                <cfif commaPos GT dataPos>
+                    <cfset var startPos = dataPos + 7 />
+                    <cfset var extractLength = commaPos - startPos />
+                    <cfif extractLength GT 0>
+                        <cfset LDAP.ErrorCode = Mid(cfcatch.Message, startPos, extractLength) />
+                    </cfif>
+                </cfif>
+            </cfif>
+            
+            <!--- If we couldn't extract the error code, set a default --->
+            <cfif len(trim(LDAP.ErrorCode)) EQ 0>
+                <cfset LDAP.ErrorCode = "unknown" />
+                <!--- Log the original error message for debugging --->
+                <cflog file="ldap_errors" type="error" text="Could not extract LDAP error code from message: #cfcatch.message#" />
+            </cfif>
 
             <cfif LDAP.ErrorCode eq "525">
                 <cfset LDAP["ADMessage"] = "User Not Found" />
@@ -74,6 +95,8 @@
                 <cfset LDAP["ADMessage"] = "Account disabled" />
             <cfelseif LDAP.ErrorCode eq "775">
                 <cfset LDAP["ADMessage"] =  "Account locked out" />
+            <cfelseif LDAP.ErrorCode eq "unknown">
+                <cfset LDAP["ADMessage"] = "Authentication failed. Please check your credentials and try again." />
             <cfelse>
                 <cfset LDAP["ADMessage"] = "Rejected with unknown reason code (#LDAP.ErrorCode#)." />
             </cfif>

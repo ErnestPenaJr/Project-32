@@ -23,20 +23,22 @@ This is the DoCM Room Reservation System - a comprehensive office reservation ma
 - **DataTables**: Advanced table functionality
 
 ### Build Tools
-- **Node.js/npm**: Package management and build processes
-- **TailwindCSS CLI**: CSS compilation and optimization
+- **npm**: Package management and build processes
 - **PostCSS**: CSS processing with autoprefixer
+- **SweetAlert2**: Enhanced alert dialogs
+- **DataTables**: Advanced table functionality
+- **FullCalendar**: Interactive calendar for booking management
+- **Flatpickr**: Date/time picker
+- **Select2**: Enhanced dropdowns
+- **Moment.js**: Date manipulation
 
 ## Common Development Commands
 
 ### CSS Development
-```bash
-# Watch and compile TailwindCSS during development
-npm run dev
+- CSS is compiled from /src/input.css to /assets/css/styles.css
+- Use bootstrap 5 for responsive design
+- Use FontAwesome Pro for icons
 
-# Build and minify CSS for production
-npm run build
-```
 
 ### Testing and Development
 - Use local ColdFusion server for development

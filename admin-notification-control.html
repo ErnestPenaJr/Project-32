@@ -499,91 +499,149 @@
         <!-- System Status Overview -->
         <div class="row">
             <div class="col-12">
-                <div id="systemStatus" class="system-status">
+                <div id="systemStatus" class="system-status enabled">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h5 id="systemStatusTitle">System Status Loading...</h5>
-                            <p id="systemStatusMessage" class="mb-0">Checking system notification status...</p>
+                            <h5 id="systemStatusTitle"><i class="fas fa-check-circle me-2"></i>Email System Operational</h5>
+                            <p id="systemStatusMessage" class="mb-0">All email notifications are functioning normally</p>
                         </div>
                         <div class="d-flex gap-3">
+                            <button id="testEmailBtn" class="btn btn-info btn-sm">
+                                <i class="fas fa-paper-plane"></i> Send Test Email
+                            </button>
                             <button id="maintenanceModeBtn" class="btn btn-warning btn-sm">
                                 <i class="fas fa-tools"></i> Maintenance Mode
                             </button>
-                            <button id="emergencyModeBtn" class="btn btn-danger btn-sm">
-                                <i class="fas fa-exclamation-triangle"></i> Emergency Mode
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Global Controls -->
+        <!-- Email System Controls -->
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-8">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="fas fa-toggle-on"></i> Global Notification Controls</h5>
+                        <h5><i class="fas fa-envelope"></i> Email Notification Controls</h5>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <strong>All Notifications</strong>
-                                <br><small class="text-muted">Master switch for all notifications</small>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="globalNotifications" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <strong>Email Notifications</strong>
-                                <br><small class="text-muted">System-wide email notifications</small>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="emailNotifications" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <strong>In-App Notifications</strong>
-                                <br><small class="text-muted">System-wide in-app notifications</small>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="inAppNotifications" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-sliders-h"></i> System Settings</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="maxDailyNotifications" class="form-label">Max Daily Notifications per
-                                User</label>
-                            <input type="number" class="form-control" id="maxDailyNotifications" value="50" min="1"
-                                max="1000">
-                        </div>
                         <div class="row">
-                            <div class="col-6">
-                                <label for="quietHoursStart" class="form-label">Quiet Hours Start</label>
-                                <input type="time" class="form-control" id="quietHoursStart" value="22:00">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>All Email Notifications</strong>
+                                        <br><small class="text-muted">Master switch for all emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="globalEmailNotifications" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>Booking Confirmations</strong>
+                                        <br><small class="text-muted">New booking confirmation emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="bookingConfirmations" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>Booking Cancellations</strong>
+                                        <br><small class="text-muted">Booking cancellation emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="bookingCancellations" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>Booking Reminders</strong>
+                                        <br><small class="text-muted">Upcoming booking reminder emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="bookingReminders" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
                             </div>
-                            <div class="col-6">
-                                <label for="quietHoursEnd" class="form-label">Quiet Hours End</label>
-                                <input type="time" class="form-control" id="quietHoursEnd" value="08:00">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>Approval Notifications</strong>
+                                        <br><small class="text-muted">Booking approval/rejection emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="approvalNotifications" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>Password Reset Emails</strong>
+                                        <br><small class="text-muted">Password reset request emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="passwordResetEmails" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>User Access Requests</strong>
+                                        <br><small class="text-muted">New user access request emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="userAccessRequests" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>Help Request Notifications</strong>
+                                        <br><small class="text-muted">IT help request emails</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="helpRequestNotifications" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                        <div class="mt-3">
-                            <button class="btn btn-primary" onclick="saveSystemSettings()">
-                                <i class="fas fa-save"></i> Save Settings
+                        <hr>
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-primary" onclick="saveNotificationSettings()">
+                                <i class="fas fa-save"></i> Save All Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-bar"></i> Email Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="emailsSentToday">0</div>
+                                <div class="metric-label">Emails Sent Today</div>
+                            </div>
+                        </div>
+                        <div class="text-center mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="emailsFailedToday">0</div>
+                                <div class="metric-label">Failed Today</div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <button class="btn btn-outline-primary btn-sm" onclick="refreshStats()">
+                                <i class="fas fa-sync"></i> Refresh Stats
                             </button>
                         </div>
                     </div>
@@ -591,107 +649,41 @@
             </div>
         </div>
 
-        <!-- Analytics Summary -->
-        <div class="row mt-5">
-            <div class="col-12">
-                <div class="section-header">
-                    <h3><i class="fas fa-chart-line me-2"></i>Notification Analytics</h3>
-                </div>
-                <div class="analytics-summary fade-in" id="analyticsSummary">
-                    <!-- Analytics cards will be populated by JavaScript -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Notification Types Management -->
-        <div class="row">
+        <!-- Recent Email Activity -->
+        <div class="row mt-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5><i class="fas fa-list-check"></i> Notification Types</h5>
+                        <h5><i class="fas fa-history"></i> Recent Email Activity</h5>
                         <div>
-                            <select id="categoryFilter" class="form-select form-select-sm d-inline-block w-auto me-2">
-                                <option value="">All Categories</option>
-                                <option value="Booking Lifecycle">Booking Lifecycle</option>
-                                <option value="Approval Workflow">Approval Workflow</option>
-                                <option value="User Management">User Management</option>
-                                <option value="System">System</option>
-                                <option value="Administrative">Administrative</option>
-                            </select>
-                            <button class="btn btn-success btn-sm" onclick="refreshNotificationTypes()">
-                                <i class="fas fa-sync-alt"></i> Refresh
+                            <button class="btn btn-success btn-sm" onclick="refreshEmailLog()">
+                                <i class="fas fa-sync"></i> Refresh
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="notificationTypes">
-                            <!-- Notification types will be loaded here -->
-                            <div class="text-center">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <p class="mt-2">Loading notification types...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bulk Actions -->
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-bolt"></i> Bulk Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="bulkAction" class="form-label">Action</label>
-                            <select class="form-select" id="bulkAction">
-                                <option value="">Select Action...</option>
-                                <option value="enable">Enable Selected Types</option>
-                                <option value="disable">Disable Selected Types</option>
-                                <option value="enable_all">Enable All Types</option>
-                                <option value="disable_all_non_critical">Disable All Non-Critical</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-warning" onclick="executeBulkAction()" disabled id="executeBulkBtn">
-                            <i class="fas fa-play"></i> Execute Action
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-clock"></i> Scheduled Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="scheduledNotificationType" class="form-label">Notification Type</label>
-                            <select class="form-select" id="scheduledNotificationType">
-                                <option value="">Select Type...</option>
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-6">
-                                <label for="scheduledAction" class="form-label">Action</label>
-                                <select class="form-select" id="scheduledAction">
-                                    <option value="ENABLE">Enable</option>
-                                    <option value="DISABLE">Disable</option>
-                                    <option value="PAUSE">Pause</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label for="scheduledDateTime" class="form-label">Date & Time</label>
-                                <input type="datetime-local" class="form-control" id="scheduledDateTime">
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <button class="btn btn-info" onclick="scheduleAction()">
-                                <i class="fas fa-calendar-plus"></i> Schedule Action
-                            </button>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="emailLogTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Type</th>
+                                        <th>Recipient</th>
+                                        <th>Subject</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="emailLogBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            Loading recent email activity...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -713,32 +705,34 @@
         </div>
     </div>
 
-    <!-- Emergency Mode Confirmation Modal -->
-    <div class="modal fade" id="emergencyModeModal" tabindex="-1">
+    <!-- Test Email Modal -->
+    <div class="modal fade" id="testEmailModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
+                <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="fas fa-exclamation-triangle"></i> Emergency Mode
+                        <i class="fas fa-paper-plane"></i> Send Test Email
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p><strong>Warning:</strong> Emergency mode will override all user preferences and system settings
-                        for critical notifications.</p>
-                    <p>This should only be used during system emergencies or critical situations.</p>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="confirmEmergency">
-                        <label class="form-check-label" for="confirmEmergency">
-                            I understand the implications and want to activate emergency mode
-                        </label>
+                    <div class="mb-3">
+                        <label for="testEmailRecipient" class="form-label">Recipient Email</label>
+                        <input type="email" class="form-control" id="testEmailRecipient" placeholder="admin@mdanderson.org">
+                    </div>
+                    <div class="mb-3">
+                        <label for="testEmailType" class="form-label">Test Notification Type</label>
+                        <select class="form-select" id="testEmailType">
+                            <option value="booking_confirmation">Booking Confirmation</option>
+                            <option value="booking_reminder">Booking Reminder</option>
+                            <option value="system_test">System Test Email</option>
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" onclick="activateEmergencyMode()" disabled
-                        id="activateEmergencyBtn">
-                        <i class="fas fa-exclamation-triangle"></i> Activate Emergency Mode
+                    <button type="button" class="btn btn-primary" onclick="sendTestEmail()">
+                        <i class="fas fa-paper-plane"></i> Send Test Email
                     </button>
                 </div>
             </div>
@@ -784,8 +778,315 @@
 
         // Admin notification control functionality
         function initializeAdminNotificationControl() {
-            // Initialize the page functionality here
+            loadNotificationSettings();
+            loadEmailStats();
+            loadRecentEmailActivity();
             console.log('Admin notification control initialized');
+        }
+        
+        // Load current notification settings
+        function loadNotificationSettings() {
+            $.ajax({
+                url: 'assets/cfc/SystemNotificationManager.cfc?method=getAllNotificationTypesWithStatus',
+                type: 'POST',
+                dataType: 'json',
+                success: function(response) {
+                    // Update toggle switches based on current settings
+                    updateNotificationToggles(response);
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error loading notification settings: ' + error, 'error');
+                }
+            });
+        }
+        
+        // Update toggle switches with current settings
+        function updateNotificationToggles(response) {
+            if (response && response.success && response.data) {
+                // Map actual notification types to the simplified interface
+                const typeMapping = {
+                    'BOOKING_CONFIRMATION': 'bookingConfirmations',
+                    'BOOKING_CANCELLATION': 'bookingCancellations', 
+                    'BOOKING_REMINDER': 'bookingReminders',
+                    'NEW_USER_ACCESS_REQUEST': 'userAccessRequests',
+                    'HELP_REQUEST': 'helpRequestNotifications',
+                    'PASSWORD_RESET': 'passwordResetEmails'
+                };
+                
+                response.data.forEach(function(setting) {
+                    const toggleId = typeMapping[setting.type_code];
+                    if (toggleId) {
+                        const toggle = document.getElementById(toggleId);
+                        if (toggle) {
+                            toggle.checked = setting.enabled;
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Load email statistics
+        function loadEmailStats() {
+            $.ajax({
+                url: 'assets/cfc/SystemNotificationManager.cfc?method=getNotificationAnalytics',
+                type: 'POST',
+                data: {
+                    start_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    end_date: new Date().toISOString().split('T')[0]
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response && response.length > 0) {
+                        // Calculate daily totals from analytics data
+                        let totalSent = 0;
+                        let totalFailed = 0;
+                        
+                        response.forEach(function(record) {
+                            totalSent += parseInt(record.TOTAL_SENT) || 0;
+                            totalFailed += parseInt(record.TOTAL_FAILED) || 0;
+                        });
+                        
+                        $('#emailsSentToday').text(totalSent);
+                        $('#emailsFailedToday').text(totalFailed);
+                    } else {
+                        $('#emailsSentToday').text(0);
+                        $('#emailsFailedToday').text(0);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading email stats:', error);
+                    $('#emailsSentToday').text('-');
+                    $('#emailsFailedToday').text('-');
+                }
+            });
+        }
+        
+        // Load recent email activity
+        function loadRecentEmailActivity() {
+            $.ajax({
+                url: 'assets/cfc/notifications.cfc?method=getAllNotifications',
+                type: 'POST',
+                data: {
+                    page_size: 10,
+                    page_number: 1
+                },
+                dataType: 'json',
+                success: function(response) {
+                    // Convert notification records to email activity format
+                    const emailActivity = [];
+                    if (response && response.recordCount > 0) {
+                        response.data.forEach(function(notification) {
+                            emailActivity.push({
+                                SENT_DATE: notification.CREATED_AT,
+                                TYPE: notification.TYPE,
+                                RECIPIENT: notification.EMAIL || 'N/A',
+                                SUBJECT: `${notification.TYPE} Notification`,
+                                STATUS: 'sent'
+                            });
+                        });
+                    }
+                    updateEmailLogTable(emailActivity);
+                },
+                error: function(xhr, status, error) {
+                    $('#emailLogBody').html('<tr><td colspan="5" class="text-center text-muted">Error loading email activity</td></tr>');
+                }
+            });
+        }
+        
+        // Update email log table
+        function updateEmailLogTable(emails) {
+            const tbody = $('#emailLogBody');
+            tbody.empty();
+            
+            if (emails.length === 0) {
+                tbody.html('<tr><td colspan="5" class="text-center text-muted">No recent email activity</td></tr>');
+                return;
+            }
+            
+            emails.forEach(function(email) {
+                const statusBadge = email.STATUS === 'sent' 
+                    ? '<span class="badge bg-success">Sent</span>' 
+                    : '<span class="badge bg-danger">Failed</span>';
+                    
+                const row = `
+                    <tr>
+                        <td>${email.SENT_DATE}</td>
+                        <td>${email.TYPE}</td>
+                        <td>${email.RECIPIENT}</td>
+                        <td>${email.SUBJECT}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+        }
+        
+        // Save notification settings
+        function saveNotificationSettings() {
+            const settings = [
+                { type: 'BOOKING_CONFIRMATION', enabled: $('#bookingConfirmations').is(':checked') },
+                { type: 'BOOKING_CANCELLATION', enabled: $('#bookingCancellations').is(':checked') },
+                { type: 'BOOKING_REMINDER', enabled: $('#bookingReminders').is(':checked') },
+                { type: 'NEW_USER_ACCESS_REQUEST', enabled: $('#userAccessRequests').is(':checked') },
+                { type: 'PASSWORD_RESET', enabled: $('#passwordResetEmails').is(':checked') },
+                { type: 'HELP_REQUEST', enabled: $('#helpRequestNotifications').is(':checked') }
+            ];
+            
+            let savePromises = [];
+            settings.forEach(function(setting) {
+                const promise = $.ajax({
+                    url: 'assets/cfc/SystemNotificationManager.cfc?method=toggleNotificationType',
+                    type: 'POST',
+                    data: {
+                        notification_type: setting.type,
+                        enabled: setting.enabled,
+                        updated_by: sessionStorage.getItem('userId') || 1
+                    },
+                    dataType: 'json'
+                });
+                savePromises.push(promise);
+            });
+            
+            // Save global email setting
+            const globalPromise = $.ajax({
+                url: 'assets/cfc/SystemNotificationManager.cfc?method=updateSystemSetting',
+                type: 'POST',
+                data: {
+                    setting_name: 'EMAIL_NOTIFICATIONS_ENABLED',
+                    setting_value: $('#globalEmailNotifications').is(':checked') ? '1' : '0',
+                    updated_by: sessionStorage.getItem('userId') || 1
+                },
+                dataType: 'json'
+            });
+            savePromises.push(globalPromise);
+            
+            Promise.all(savePromises).then(function(responses) {
+                showToast('Notification settings saved successfully', 'success');
+                loadNotificationSettings(); // Refresh the interface
+            }).catch(function(error) {
+                showToast('Error saving notification settings: ' + error, 'error');
+            });
+        }
+        
+        // Send test email
+        function sendTestEmail() {
+            const recipient = $('#testEmailRecipient').val();
+            const type = $('#testEmailType').val();
+            
+            if (!recipient) {
+                showToast('Please enter a recipient email address', 'warning');
+                return;
+            }
+            
+            // Create a simple test email using the EmailService component
+            $.ajax({
+                url: 'components/EmailService.cfc?method=sendTestEmail',
+                type: 'POST',
+                data: {
+                    recipient: recipient,
+                    type: type
+                },
+                dataType: 'json',
+                success: function(response) {
+                    $('#testEmailModal').modal('hide');
+                    if (response === true || (response && response.success !== false)) {
+                        showToast('Test email sent successfully', 'success');
+                        loadEmailStats();
+                        loadRecentEmailActivity();
+                    } else {
+                        showToast('Test email failed', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    // Try alternative method with direct CFMAIL
+                    $.ajax({
+                        url: 'api/send-test-email.cfm',
+                        type: 'POST',
+                        data: {
+                            recipient: recipient,
+                            type: type
+                        },
+                        success: function(response) {
+                            $('#testEmailModal').modal('hide');
+                            showToast('Test email sent successfully', 'success');
+                            loadEmailStats();
+                            loadRecentEmailActivity();
+                        },
+                        error: function(xhr2, status2, error2) {
+                            showToast('Error sending test email: Email service unavailable', 'error');
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Refresh functions
+        function refreshStats() {
+            loadEmailStats();
+        }
+        
+        function refreshEmailLog() {
+            loadRecentEmailActivity();
+        }
+        
+        // Show test email modal
+        $('#testEmailBtn').on('click', function() {
+            $('#testEmailModal').modal('show');
+        });
+        
+        // Maintenance mode toggle
+        $('#maintenanceModeBtn').on('click', function() {
+            const isMaintenanceMode = $(this).hasClass('active');
+            const newMode = !isMaintenanceMode;
+            
+            $.ajax({
+                url: 'assets/cfc/SystemNotificationManager.cfc?method=updateSystemSetting',
+                type: 'POST',
+                data: { 
+                    setting_name: 'MAINTENANCE_MODE',
+                    setting_value: newMode ? '1' : '0',
+                    updated_by: sessionStorage.getItem('userId') || 1
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        if (newMode) {
+                            $('#maintenanceModeBtn').addClass('active');
+                            $('#systemStatus').removeClass('enabled').addClass('maintenance');
+                            $('#systemStatusTitle').html('<i class="fas fa-tools me-2"></i>Maintenance Mode Active');
+                            $('#systemStatusMessage').text('Non-critical email notifications are temporarily disabled');
+                            showToast('Maintenance mode activated', 'warning');
+                        } else {
+                            $('#maintenanceModeBtn').removeClass('active');
+                            $('#systemStatus').removeClass('maintenance').addClass('enabled');
+                            $('#systemStatusTitle').html('<i class="fas fa-check-circle me-2"></i>Email System Operational');
+                            $('#systemStatusMessage').text('All email notifications are functioning normally');
+                            showToast('Maintenance mode deactivated', 'success');
+                        }
+                    } else {
+                        showToast('Error toggling maintenance mode: ' + response.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error toggling maintenance mode: ' + error, 'error');
+                }
+            });
+        });
+        
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const iconClass = {
+                'success': 'fas fa-check-circle text-success',
+                'error': 'fas fa-exclamation-circle text-danger',
+                'warning': 'fas fa-exclamation-triangle text-warning',
+                'info': 'fas fa-info-circle text-primary'
+            };
+            
+            $('#notificationToast .toast-header i').attr('class', iconClass[type] + ' me-2');
+            $('#toastMessage').text(message);
+            
+            const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
+            toast.show();
         }
     </script>
     <script src="assets/js/admin-notification-control.js"></script>

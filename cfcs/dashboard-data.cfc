@@ -700,17 +700,40 @@
                 <cfset bookingDates = calculateRecurringDates(local.parsedStartTime, local.parsedEndTime, arguments.recurring_type) />
                 <cfset recurringDetails = "Type: #arguments.recurring_type#, Created: #DateFormat(Now(), 'yyyy-mm-dd')#" />
             <cfelse>
+                <!--- For extended single bookings, validate date range --->
+                <cfset dateDifference = DateDiff("d", local.parsedStartTime, local.parsedEndTime) />
+                <cfif dateDifference GT 365>
+                    <cfset retVal["status"] = "error" />
+                    <cfset retVal["data"] = {"message": "Maximum booking duration is 365 days"} />
+                    <cfreturn retVal />
+                </cfif>
+                
                 <cfset arrayAppend(bookingDates, {
                     "startDate": local.parsedStartTime,
                     "endDate": local.parsedEndTime
                 }) />
             </cfif>
             
+            <!--- Get room information for better error messages --->
+            <cfquery name="qryRoomInfo" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT 
+                    ROOM_NAME, 
+                    BUILDING,
+                    ROOM_NUMBER,
+                    (BUILDING || ' ' || ROOM_NUMBER) AS LOCATION
+                FROM #this.DBSCHEMA#.ROOMS
+                WHERE ROOM_ID = <cfqueryparam value="#arguments.room_id#" cfsqltype="cf_sql_numeric">
+            </cfquery>
+            
             <!--- Check availability for all dates before creating any bookings --->
             <cfset var conflictDates = [] />
+            <cfset var conflictDetails = [] />
             <cfloop array="#bookingDates#" index="dateSlot">
                 <cfquery name="qryCheckAvailability" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                    SELECT COUNT(*) as conflict_count
+                    SELECT 
+                        COUNT(*) as conflict_count,
+                        MIN(TO_CHAR(START_TIME, 'HH12:MI AM')) as earliest_start,
+                        MAX(TO_CHAR(END_TIME, 'HH12:MI AM')) as latest_end
                     FROM #this.DBSCHEMA#.BOOKINGS
                     WHERE ROOM_ID = <cfqueryparam value="#arguments.room_id#" cfsqltype="cf_sql_numeric">
                     AND LOWER(STATUS) IN('approved', 'pending')
@@ -728,16 +751,31 @@
                 
                 <cfif qryCheckAvailability.conflict_count GT 0>
                     <cfset arrayAppend(conflictDates, DateFormat(dateSlot.startDate, 'yyyy-mm-dd')) />
+                    <cfset arrayAppend(conflictDetails, {
+                        "date": DateFormat(dateSlot.startDate, 'dddd, mmmm dd, yyyy'),
+                        "requestedTime": TimeFormat(dateSlot.startDate, 'h:mm tt') & ' - ' & TimeFormat(dateSlot.endDate, 'h:mm tt'),
+                        "conflictTime": qryCheckAvailability.earliest_start & ' - ' & qryCheckAvailability.latest_end
+                    }) />
                 </cfif>
             </cfloop>
             
             <!--- If any conflicts found, return error --->
             <cfif arrayLen(conflictDates) GT 0>
                 <cfset retVal["status"] = "error" />
+                <cfset var roomName = qryRoomInfo.RecordCount GT 0 ? qryRoomInfo.ROOM_NAME : "Selected room" />
+                <cfset var roomLocation = qryRoomInfo.RecordCount GT 0 ? qryRoomInfo.LOCATION : "" />
+                <cfset var fullRoomInfo = roomName & (len(trim(roomLocation)) GT 0 ? " (" & roomLocation & ")" : "") />
+                
                 <cfif arrayLen(conflictDates) EQ 1>
-                    <cfset retVal["data"] = {"message": "Time slot not available on #conflictDates[1]#"} />
+                    <cfset var conflict = conflictDetails[1] />
+                    <cfset retVal["data"] = {"message": "#fullRoomInfo# is not available on #conflict.date# from #conflict.requestedTime#. The room is already booked during #conflict.conflictTime#. Please choose a different time or room."} />
                 <cfelse>
-                    <cfset retVal["data"] = {"message": "Time slots not available on the following dates: #arrayToList(conflictDates, ', ')#"} />
+                    <cfset var detailedMessage = "#fullRoomInfo# is not available for the following dates:" />
+                    <cfloop array="#conflictDetails#" index="i" item="conflict">
+                        <cfset detailedMessage &= chr(10) & "• #conflict.date# from #conflict.requestedTime# (conflicting booking: #conflict.conflictTime#)" />
+                    </cfloop>
+                    <cfset detailedMessage &= chr(10) & chr(10) & "Please choose different dates and times, or select an available room." />
+                    <cfset retVal["data"] = {"message": detailedMessage} />
                 </cfif>
                 <cfreturn retVal />
             </cfif>
@@ -830,7 +868,11 @@
                 <cffile action="write" file="#icsFilePath#" output="#finalContent#" charset="utf-8">
                 <!--- <p>Thank you for your reservation! We're happy to confirm that your office space (#qryGetBooking.ROOM_NAME#) is successfully booked.</p>--->
 
-                <cfset var emailBody = "
+                <!--- Build calendar link URLs outside of cfoutput --->
+                <cfset var calendarLinkURL = "https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#" />
+                
+                <!--- Build email body using cfoutput properly --->
+                <cfsavecontent variable="emailBody">
                 <cfoutput>
                      <h2>BOOKING CONFIRMATION - PENDING APPROVAL</h2>
 
@@ -849,7 +891,7 @@
                         <li><strong>Starting On:</strong> #DateFormat(startTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(startTime, "h:mm tt")# </li>
                         <li><strong>Ending On:</strong> #DateFormat(endTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(endTime, "h:mm tt")# </li>
                         <li><strong>Booking ID:</strong> #qryGetBooking.BOOKING_ID#</li>
-                        <li><strong>Add to Calendar:</strong> <a href=""https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#" target="_blank"">Add to Calendar</a> | <a href=""https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#"">Download iCalendar</a></li>
+                        <li><strong>Add to Calendar:</strong> <a href="#calendarLinkURL#" target="_blank">Add to Calendar</a> | <a href="#calendarLinkURL#">Download iCalendar</a></li>
                     </ul>
                                    
                         <h3>Important Information:</h3>
@@ -867,7 +909,7 @@
                         <strong>DoCM Reservation System</strong>
                     </p>
                 </cfoutput>
-            ">
+                </cfsavecontent>
                 <!--- Check if user should receive booking confirmation email --->
                 <cfset notificationService = createObject("component", "assets.cfc.notifications") />
                 <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CONFIRMATION") />

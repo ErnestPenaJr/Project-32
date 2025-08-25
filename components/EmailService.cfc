@@ -94,6 +94,54 @@ component {
         );
     }
 
+    // Send test email
+    remote boolean function sendTestEmail(required string recipient, string type = "system_test") {
+        try {
+            var subject = "Test Email - DoCM Room Reservation System";
+            var testContent = "
+                <h2>Test Email Notification</h2>
+                <p>This is a test email from the DoCM Room Reservation System.</p>
+                <p>If you received this email, the email notification system is working correctly.</p>
+                <p><strong>Test Details:</strong></p>
+                <ul>
+                    <li>Test Time: #dateTimeFormat(now(), 'mmm d, yyyy h:nn:ss tt')#</li>
+                    <li>Test Type: #arguments.type#</li>
+                    <li>Recipient: #arguments.recipient#</li>
+                </ul>
+                <p>Thank you for using the DoCM Room Reservation System.</p>
+            ";
+
+            // Send email using ColdFusion mail
+            cfmail(
+                to = arguments.recipient,
+                from = variables.emailFrom,
+                subject = subject,
+                type = "html"
+            ) {
+                writeOutput(testContent);
+            }
+            
+            // Log successful test email
+            writeLog(
+                type = "information",
+                text = "Test email sent successfully to #arguments.recipient#",
+                application = "yes"
+            );
+            
+            return true;
+        }
+        catch (any e) {
+            // Log error
+            writeLog(
+                type = "error",
+                text = "Test email sending failed to #arguments.recipient#: #e.message# #e.detail#",
+                application = "yes"
+            );
+            
+            return false;
+        }
+    }
+
     // Core email sending function
     private boolean function sendEmail(
         required string to,

@@ -7,3 +7,8 @@
 }
 
 /* Additional custom styles can be added as needed */
+
+/* prevent wrapping on the new booking button text */
+.btn-new-booking {
+    white-space: nowrap;
+}

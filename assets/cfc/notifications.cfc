@@ -586,14 +586,16 @@
     <cffunction name="getUsersForNotification" access="remote" returntype="query" returnformat="json">
         <cfquery name="qUsers" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
             SELECT 
-                USER_ID,
-                FIRST_NAME,
-                LAST_NAME,
-                EMAIL,
-                ROLE
-            FROM #this.DBSCHEMA#.USERS
-            WHERE ROLE IN ('User', 'Admin', 'Site Admin')
-            ORDER BY LAST_NAME, FIRST_NAME
+                u.USER_ID,
+                u.FIRST_NAME,
+                u.LAST_NAME,
+                u.EMAIL,
+                r.ROLE_NAME as ROLE
+            FROM #this.DBSCHEMA#.USERS u, #this.DBSCHEMA#.ROLES r
+            WHERE u.ROLE_ID = r.ROLE_ID
+            AND u.STATUS = 'Active'
+            AND r.ROLE_NAME IN ('User', 'Admin', 'Site Admin')
+            ORDER BY u.LAST_NAME, u.FIRST_NAME
         </cfquery>
         
         <cfreturn qUsers>
@@ -801,12 +803,13 @@
                     u.FIRST_NAME,
                     u.LAST_NAME,
                     u.EMAIL,
-                    u.ROLE
+                    r.ROLE_NAME as ROLE
                 FROM #this.DBSCHEMA#.USERS u
+                INNER JOIN #this.DBSCHEMA#.ROLES r ON u.ROLE_ID = r.ROLE_ID
                 INNER JOIN #this.DBSCHEMA#.NOTIFICATION_TYPES nt ON nt.TYPE_CODE = <cfqueryparam value="#arguments.notification_type#" cfsqltype="cf_sql_varchar">
                 LEFT JOIN #this.DBSCHEMA#.NOTIFICATION_PREFERENCES np ON np.USER_ID = u.USER_ID 
                     AND np.NOTIFICATION_TYPE = nt.TYPE_CODE
-                WHERE u.ROLE IN ('Admin', 'Site Admin')
+                WHERE r.ROLE_NAME IN ('Admin', 'Site Admin')
                 AND u.STATUS = 'Active'
                 AND (
                     (np.NOTIFICATION_ID IS NOT NULL AND #PreserveSingleQuotes(local.emailField)# = 1)
@@ -825,9 +828,10 @@
                     u.FIRST_NAME,
                     u.LAST_NAME,
                     u.EMAIL,
-                    u.ROLE
+                    r.ROLE_NAME as ROLE
                 FROM #this.DBSCHEMA#.USERS u
-                WHERE u.ROLE IN ('Admin', 'Site Admin')
+                INNER JOIN #this.DBSCHEMA#.ROLES r ON u.ROLE_ID = r.ROLE_ID
+                WHERE r.ROLE_NAME IN ('Admin', 'Site Admin')
                 AND u.STATUS = 'Active'
                 ORDER BY u.LAST_NAME, u.FIRST_NAME
             </cfquery>
