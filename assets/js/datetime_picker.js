@@ -329,10 +329,15 @@
                         } else {
                             newDate.setHours(newHour === 0 ? 0 : newHour);
                         }
-                        newDate = roundToInterval(newDate);
-                        selectedDate = newDate;
+                        const roundedDate = roundToInterval(newDate);
+                        selectedDate = roundedDate;
 
+                        // Force update of all displays
                         updateInputValue();
+                        renderTimeGrid();
+
+                        // Trigger change event
+                        $element.trigger('datetime:change', [selectedDate]);
                     });
 
                     $hourGrid.append(hourCell);
@@ -360,7 +365,12 @@
                         newDate.setMinutes(i);
                         selectedDate = newDate;
 
+                        // Force update of all displays
                         updateInputValue();
+                        renderTimeGrid();
+
+                        // Trigger change event
+                        $element.trigger('datetime:change', [selectedDate]);
                     });
 
                     $minuteGrid.append(minuteCell);
@@ -522,7 +532,13 @@
 
                     $container.find('.am-btn').addClass('selected');
                     $container.find('.pm-btn').removeClass('selected');
+
+                    // Force update of all displays
                     updateInputValue();
+                    renderTimeGrid();
+
+                    // Trigger change event
+                    $element.trigger('datetime:change', [selectedDate]);
                 }
             });
 
@@ -536,7 +552,13 @@
 
                     $container.find('.am-btn').removeClass('selected');
                     $container.find('.pm-btn').addClass('selected');
+
+                    // Force update of all displays
                     updateInputValue();
+                    renderTimeGrid();
+
+                    // Trigger change event
+                    $element.trigger('datetime:change', [selectedDate]);
                 }
             });
 

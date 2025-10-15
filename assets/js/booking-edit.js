@@ -41,7 +41,7 @@ function initEditBooking(bookingId) {
             if (response.success) {
                 if (response.canEdit) {
                     currentBookingData = response;
-                    showEditBookingModal(response);
+                    openBookingModalForEdit(response);
                 } else {
                     Swal.fire({
                         title: 'Cannot Edit Booking',
@@ -71,8 +71,62 @@ function initEditBooking(bookingId) {
 }
 
 /**
- * Display the edit booking modal with pre-filled data
+ * Open the main booking modal for editing an existing booking
  * @param {object} data - Booking data from server
+ */
+function openBookingModalForEdit(data) {
+    const booking = data.booking;
+    const availableRooms = data.availableRooms;
+
+    // Mark modal as in edit mode
+    $('#bookingModal').attr('data-edit-mode', 'true');
+    $('#bookingModal').attr('data-booking-id', booking.bookingId);
+
+    // Update modal title
+    $('#bookingModal .modal-title').html('<i class="fas fa-edit me-2"></i>Edit Booking #' + booking.bookingId);
+
+    // Update save button text
+    $('#saveBooking').html('<i class="fas fa-save me-1"></i>Update Booking');
+
+    // Populate room dropdown (this should already be loaded)
+    $('#roomSelect').val(booking.roomId).trigger('change');
+
+    // Parse start and end times (format: "YYYY-MM-DD HH:mm")
+    const startParts = booking.startTime.split(' ');
+    const endParts = booking.endTime.split(' ');
+
+    const startDate = startParts[0];
+    const startTime = startParts[1];
+    const endDate = endParts[0];
+    const endTime = endParts[1];
+
+    // Initialize datetime pickers with booking data
+    if (window.startPicker) {
+        const startDateTime = new Date(booking.startTime.replace(' ', 'T'));
+        window.startPicker.setDate(startDateTime);
+    }
+
+    if (window.endPicker) {
+        const endDateTime = new Date(booking.endTime.replace(' ', 'T'));
+        window.endPicker.setDate(endDateTime);
+    }
+
+    // Show title field if it's not a focus room and populate it
+    if (booking.comments && booking.comments.trim() !== '') {
+        $('#titleContainer').removeClass('d-none');
+        $('#bookingTitle').val(booking.comments);
+        $('#bookingTitle').prop('required', true);
+    }
+
+    // Open the modal
+    const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+    bookingModal.show();
+}
+
+/**
+ * Display the edit booking modal with pre-filled data (LEGACY - DEPRECATED)
+ * @param {object} data - Booking data from server
+ * @deprecated Use openBookingModalForEdit instead
  */
 function showEditBookingModal(data) {
     const booking = data.booking;
@@ -154,6 +208,23 @@ function showEditBookingModal(data) {
             cancelButton: 'btn btn-secondary'
         },
         buttonsStyling: false,
+        didOpen: () => {
+            // Add event listeners for datetime inputs to show live updates
+            const startInput = document.getElementById('editStartTime');
+            const endInput = document.getElementById('editEndTime');
+
+            if (startInput) {
+                startInput.addEventListener('change', function() {
+                    console.log('Start time changed to:', this.value);
+                });
+            }
+
+            if (endInput) {
+                endInput.addEventListener('change', function() {
+                    console.log('End time changed to:', this.value);
+                });
+            }
+        },
         preConfirm: () => {
             return validateAndSaveBookingEdit();
         }
@@ -203,14 +274,25 @@ function validateAndSaveBookingEdit() {
 /**
  * Save the edited booking to the server
  * @param {number} roomId - Selected room ID
- * @param {string} startTime - Start time
- * @param {string} endTime - End time
+ * @param {string} startTime - Start time in datetime-local format (YYYY-MM-DDTHH:mm)
+ * @param {string} endTime - End time in datetime-local format (YYYY-MM-DDTHH:mm)
  * @param {string} comments - Meeting title/comments
  * @returns {Promise}
  */
 function saveBookingEdit(roomId, startTime, endTime, comments) {
     const userId = sessionStorage.getItem('USER_ID');
     const bookingId = currentBookingData.booking.bookingId;
+
+    // Convert datetime-local format (YYYY-MM-DDTHH:mm) to ColdFusion-friendly format (YYYY-MM-DD HH:mm:ss)
+    const formatForColdFusion = (datetimeLocal) => {
+        if (!datetimeLocal) return '';
+        // Replace 'T' with space and add seconds if not present
+        const formatted = datetimeLocal.replace('T', ' ');
+        return formatted.length === 16 ? formatted + ':00' : formatted;
+    };
+
+    const formattedStartTime = formatForColdFusion(startTime);
+    const formattedEndTime = formatForColdFusion(endTime);
 
     return new Promise((resolve, reject) => {
         $.ajax({
@@ -220,8 +302,8 @@ function saveBookingEdit(roomId, startTime, endTime, comments) {
                 bookingId: bookingId,
                 userId: userId,
                 roomId: roomId,
-                startTime: startTime,
-                endTime: endTime,
+                startTime: formattedStartTime,
+                endTime: formattedEndTime,
                 comments: comments
             },
             dataType: 'json',
@@ -232,6 +314,11 @@ function saveBookingEdit(roomId, startTime, endTime, comments) {
                     // Refresh calendar if it exists
                     if (typeof calendar !== 'undefined' && calendar) {
                         calendar.refetchEvents();
+                    }
+
+                    // Refresh global calendar if it exists
+                    if (typeof globalCalendar !== 'undefined' && globalCalendar) {
+                        globalCalendar.refetchEvents();
                     }
 
                     // Refresh bookings table if it exists
@@ -247,6 +334,7 @@ function saveBookingEdit(roomId, startTime, endTime, comments) {
             },
             error: function(xhr, status, error) {
                 console.error('Error updating booking:', error);
+                console.error('XHR:', xhr.responseText);
                 Swal.showValidationMessage('Failed to update booking. Please try again.');
                 reject(error);
             }

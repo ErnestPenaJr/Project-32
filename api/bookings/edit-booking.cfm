@@ -29,8 +29,8 @@
     <!--- Validation --->
     <cfif bookingId EQ 0>
         <cfset response = {
-            success = false,
-            message = "Booking ID is required"
+            "success" = false,
+            "message" = "Booking ID is required"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -38,8 +38,8 @@
 
     <cfif userId EQ 0>
         <cfset response = {
-            success = false,
-            message = "User ID is required"
+            "success" = false,
+            "message" = "User ID is required"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -53,6 +53,8 @@
             b.ROOM_ID,
             b.START_TIME,
             b.END_TIME,
+            TO_CHAR(b.START_TIME, 'YYYY-MM-DD HH24:MI:SS') as START_TIME_STR,
+            TO_CHAR(b.END_TIME, 'YYYY-MM-DD HH24:MI:SS') as END_TIME_STR,
             b.COMMENTS,
             b.STATUS,
             b.REVISION_NUMBER,
@@ -68,8 +70,8 @@
 
     <cfif qGetBooking.recordCount EQ 0>
         <cfset response = {
-            success = false,
-            message = "Booking not found"
+            "success" = false,
+            "message" = "Booking not found"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -88,18 +90,21 @@
 
     <cfif NOT isAdmin AND NOT isCreator>
         <cfset response = {
-            success = false,
-            message = "You do not have permission to edit this booking"
+            "success" = false,
+            "message" = "You do not have permission to edit this booking"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
     </cfif>
 
-    <!--- Check if booking has already started (cannot edit past bookings) --->
-    <cfif qGetBooking.START_TIME LT now()>
+    <!--- Check if booking has already ended (cannot edit completed bookings) --->
+    <!--- Use END_TIME instead of START_TIME to allow editing bookings that are currently in progress --->
+    <cfset bookingEnd = parseDateTime(qGetBooking.END_TIME_STR)>
+
+    <cfif dateCompare(bookingEnd, now()) LT 0>
         <cfset response = {
-            success = false,
-            message = "Cannot edit bookings that have already started"
+            "success" = false,
+            "message" = "Cannot edit bookings that have already ended"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -108,8 +113,8 @@
     <!--- Check if booking is cancelled or rejected --->
     <cfif lCase(qGetBooking.STATUS) EQ 'cancelled' OR lCase(qGetBooking.STATUS) EQ 'rejected'>
         <cfset response = {
-            success = false,
-            message = "Cannot edit cancelled or rejected bookings"
+            "success" = false,
+            "message" = "Cannot edit cancelled or rejected bookings"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -137,8 +142,8 @@
 
         <cfif qCheckConflict.CONFLICT_COUNT GT 0>
             <cfset response = {
-                success = false,
-                message = "Room is not available for the selected time slot"
+                "success" = false,
+                "message" = "Room is not available for the selected time slot"
             }>
             <cfoutput>#serializeJSON(response)#</cfoutput>
             <cfabort>
@@ -173,10 +178,10 @@
 
     <!--- Return success response --->
     <cfset response = {
-        success = true,
-        message = "Booking updated successfully",
-        bookingId = bookingId,
-        revisionNumber = qGetBooking.REVISION_NUMBER + 1
+        "success" = true,
+        "message" = "Booking updated successfully",
+        "bookingId" = bookingId,
+        "revisionNumber" = qGetBooking.REVISION_NUMBER + 1
     }>
 
     <cfoutput>#serializeJSON(response)#</cfoutput>
@@ -184,8 +189,8 @@
 <cfcatch>
     <cflog file="booking-edit" text="Error editing booking: #cfcatch.message# #cfcatch.detail#">
     <cfset response = {
-        success = false,
-        message = "Error updating booking: " & cfcatch.message
+        "success" = false,
+        "message" = "Error updating booking: " & cfcatch.message
     }>
     <cfoutput>#serializeJSON(response)#</cfoutput>
 </cfcatch>

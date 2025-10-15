@@ -348,6 +348,100 @@
             box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.25);
         }
 
+        /* Reset all filter controls to same baseline */
+        .row.g-2 select.form-select,
+        .row.g-2 input.form-control,
+        .row.g-2 .input-group-text,
+        .row.g-2 .btn-outline-secondary {
+            height: 42px !important;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 1rem !important;
+            line-height: 1.5 !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 0.375rem !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Select-specific padding for dropdown arrow */
+        .row.g-2 select.form-select {
+            padding-right: 2.25rem !important;
+        }
+
+        /* Ensure buttons match height */
+        button#officeMap,
+        .btn-new-booking {
+            height: 42px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Fix form-check alignment - must match other elements */
+        .form-check.form-switch {
+            display: inline-flex;
+            align-items: center;
+            height: 42px;
+            margin-bottom: 0 !important;
+            padding-left: 0;
+        }
+
+        .form-check-input {
+            margin: 0 0.5rem 0 0 !important;
+            flex-shrink: 0;
+            position: relative;
+            top: 0;
+        }
+
+        .form-check-label {
+            margin-bottom: 0 !important;
+            line-height: 1.5;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        /* Search input styling - simplified */
+        .row.g-2 input#calendarSearch {
+            width: 100%;
+        }
+
+        /* Fix button alignment */
+        #officeMap,
+        .btn-new-booking {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Ensure all column wrappers have proper vertical alignment */
+        .row.g-2 {
+            align-items: center;
+        }
+
+        .row.g-2 > [class*="col-"] {
+            display: flex !important;
+            align-items: center !important;
+            height: 42px !important;
+        }
+
+        /* Make sure the input-group wrapper doesn't add extra height */
+        .row.g-2 .input-group {
+            width: 100%;
+        }
+
+        /* Title row alignment */
+        .row.align-items-center {
+            min-height: 42px;
+        }
+
+        .row.align-items-center h2 {
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .row.align-items-center .col-auto {
+            display: flex;
+            align-items: center;
+        }
+
         /* Better spacing for form elements */
         .form-label {
             margin-bottom: 0.5rem;
@@ -610,62 +704,68 @@
 
                 <div class="col-md-12">
 
-                    <div class="d-flex justify-content-between align-items-center row">
-                        <div class="row w-100">
-                            <div class="col-4">
-                                <div class=" gap-3">
-                                    <h2 class="text-uppercase fw-bold text-white mb-0">Reserved Rooms</h2>
-                                </div>
-                            </div>
-                            <div class="col-9">
-                                <div class="d-flex gap-2 flex-wrap align-items-center">
-                                    <!-- Room Filter -->
-                                    <select id="roomFilter" class="form-select" style="width: auto; min-width: 150px;">
-                                        <option value="">All Rooms</option>
-                                    </select>
-
-                                    <!-- Status Filter -->
-                                    <select id="statusFilter" class="form-select" style="width: auto; min-width: 130px;">
-                                        <option value="">All Statuses</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="approved">Approved</option>
-                                        <option value="confirmed">Confirmed</option>
-                                        <option value="rejected">Rejected</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-
-                                    <!-- My Bookings Toggle -->
-                                    <div class="form-check form-switch ms-2">
-                                        <input class="form-check-input" type="checkbox" id="myBookingsOnly" style="cursor: pointer;">
-                                        <label class="form-check-label" for="myBookingsOnly" style="cursor: pointer;">
-                                            <i class="fas fa-user me-1"></i>My Bookings Only
-                                        </label>
-                                    </div>
-
-                                    <!-- Search Bar -->
-                                    <div class="input-group" style="width: auto; min-width: 250px;">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                        <input type="text" id="calendarSearch" class="form-control" placeholder="Search by room, title, or name...">
-                                        <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Clear search">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-2">
-                                <!---add tooltip -->
-                                <button class="btn btn-primary" id="officeMap" data-bs-toggle="tooltip"
-                                    data-bs-placement="bottom" data-bs-title="Open FC11 Floor Map"><i
-                                        class="fas fa-map"></i></button>
-                            </div>
-                            
+                    <div class="mb-4">
+                        <!-- Header Row with Buttons and Toggle -->
+                        <div class="row align-items-center mb-3">
                             <div class="col-auto">
-                                <button class="btn-new-booking float-end text-nowrap">
+                                <h2 class="text-uppercase fw-bold text-white mb-0">Reserved Rooms</h2>
+                            </div>
+
+                            <!-- New Booking Button -->
+                            <div class="col-auto">
+                                <button class="btn-new-booking text-nowrap">
                                     <i class="fas fa-plus me-2"></i>New Booking
                                 </button>
                             </div>
+
+                            <!-- Map Button -->
+                            <div class="col-auto">
+                                <button class="btn btn-primary" id="officeMap" data-bs-toggle="tooltip"
+                                    data-bs-placement="bottom" data-bs-title="Open FC11 Floor Map">
+                                    <i class="fas fa-map"></i>
+                                </button>
+                            </div>
+
+                            <!-- Spacer to push toggle to the right -->
+                            <div class="col"></div>
+
+                            <!-- My Bookings Toggle -->
+                            <div class="col-auto">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="myBookingsOnly" style="cursor: pointer;">
+                                    <label class="form-check-label text-white" for="myBookingsOnly" style="cursor: pointer; white-space: nowrap;">
+                                        <i class="fas fa-user me-1"></i>My Bookings Only
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- Filters Row -->
+                        <div class="row g-2 align-items-center">
+                            <!-- Room Filter -->
+                            <div class="col-12 col-md-auto">
+                                <select id="roomFilter" class="form-select" style="min-width: 150px;">
+                                    <option value="">All Rooms</option>
+                                </select>
+                            </div>
+
+                            <!-- Status Filter -->
+                            <div class="col-12 col-md-auto">
+                                <select id="statusFilter" class="form-select" style="min-width: 130px;">
+                                    <option value="">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+
+                            <!-- Search Bar -->
+                            <div class="col-12 col-md">
+                                <input type="text" id="calendarSearch" class="form-control" placeholder="Search by room, title, or name...">
+                            </div>
+                        </div>
                     </div>
 
                     <div id="upcomingBookings" class="calendar-containe p-3 rounded"></div>
@@ -1337,6 +1437,14 @@
                 $('#endTimeSummary').text('--');
                 setTimeValidationMessage('Select start and end times to calculate duration.', 'text-muted');
                 setConnectorProgress(0);
+
+                // Reset edit mode attributes
+                $('#bookingModal').removeAttr('data-edit-mode');
+                $('#bookingModal').removeAttr('data-booking-id');
+
+                // Reset modal title and button text
+                $('#bookingModal .modal-title').html('<i class="fas fa-calendar-check me-2"></i>Reserve a Focus Room');
+                $('#saveBooking').html('<i class="fas fa-check me-1"></i>Book Room');
             });
 
             const bookingManager = {
@@ -2132,6 +2240,10 @@
                 const recurringDetails = $('#recurringDetails').val();
                 const userId = getCurrentUserId();
 
+                // Check if in edit mode
+                const isEditMode = $('#bookingModal').attr('data-edit-mode') === 'true';
+                const bookingId = $('#bookingModal').attr('data-booking-id');
+
                 // Get the date values directly from the datetime-local inputs
                 const startTimeRaw = $('#startTime').val();
                 const endTimeRaw = $('#endTime').val();
@@ -2157,14 +2269,14 @@
                 const durationMs = endDate - startDate;
                 const durationDays = durationMs / (1000 * 60 * 60 * 24);
                 const selectedRoomName = $('#roomSelect option:selected').text();
-                const isWorkstation = selectedRoomName.toLowerCase().includes('workstation') || 
-                                    selectedRoomName.toLowerCase().includes('12a') || 
-                                    selectedRoomName.toLowerCase().includes('12b') || 
+                const isWorkstation = selectedRoomName.toLowerCase().includes('workstation') ||
+                                    selectedRoomName.toLowerCase().includes('12a') ||
+                                    selectedRoomName.toLowerCase().includes('12b') ||
                                     selectedRoomName.toLowerCase().includes('12c');
 
                 // Different limits for different room types
                 const maxDays = isWorkstation ? 365 : 7; // Allow up to 1 year for workstations, 7 days for others
-                
+
                 if (durationDays > maxDays) {
                     showAlert(`Maximum booking duration is ${maxDays} days for this room type`, 'warning');
                     return;
@@ -2174,10 +2286,10 @@
                 const selectedRoom = $('#roomSelect option:selected').text();
                 const isFocusRoom = selectedRoom.includes('Focus Room');
                 const meetingTitle = !isFocusRoom ? $('#bookingTitle').val().trim() : '';
-                
+
                 // Show loading indicator
                 Swal.fire({
-                    title: 'Creating Booking...',
+                    title: isEditMode ? 'Updating Booking...' : 'Creating Booking...',
                     text: 'Please wait while we process your request.',
                     allowOutsideClick: false,
                     showConfirmButton: false,
@@ -2186,36 +2298,58 @@
                     }
                 });
 
-                // Create single booking
+                // Determine API endpoint and data
+                const apiUrl = isEditMode ? 'api/bookings/edit-booking.cfm' : 'cfcs/dashboard-data.cfc';
+                const apiData = isEditMode ? {
+                    bookingId: bookingId,
+                    userId: userId,
+                    roomId: roomId,
+                    startTime: startTime,
+                    endTime: endTime,
+                    comments: meetingTitle || ''
+                } : {
+                    method: 'createBooking',
+                    employee_id: sessionStorage.getItem('EMPLID'),
+                    user_id: sessionStorage.getItem('USER_ID'),
+                    room_id: roomId,
+                    start_time: startTime,
+                    end_time: endTime,
+                    is_multi_day: isMultiDay ? 1 : 0,
+                    recurring_details: $('#recurringDetails').val(),
+                    comments: meetingTitle || ''
+                };
+
+                // Create or update booking
                 $.ajax({
-                    url: 'cfcs/dashboard-data.cfc',
+                    url: apiUrl,
                     method: 'POST',
-                    data: {
-                        method: 'createBooking',
-                        employee_id: sessionStorage.getItem('EMPLID'),
-                        user_id: sessionStorage.getItem('USER_ID'),
-                        room_id: roomId,
-                        start_time: startTime,
-                        end_time: endTime,
-                        is_multi_day: isMultiDay ? 1 : 0,
-                        recurring_details: $('#recurringDetails').val(),
-                        comments: meetingTitle || ''
-                    },
+                    data: apiData,
                     dataType: 'json',
                     timeout: 30000 // 30 second timeout
                 }).then(result => {
                     Swal.close(); // Close loading indicator
-                    
-                    if (result.status === 'success') {
+
+                    // Handle both edit and create responses
+                    const isSuccess = isEditMode ? result.success : (result.status === 'success');
+
+                    if (isSuccess) {
                         // Booking successful
                         checkPendingApprovals();
-                        
+
+                        // Reset edit mode
+                        $('#bookingModal').removeAttr('data-edit-mode');
+                        $('#bookingModal').removeAttr('data-booking-id');
+
+                        // Reset modal title and button
+                        $('#bookingModal .modal-title').html('<i class="fas fa-calendar-check me-2"></i>Reserve a Focus Room');
+                        $('#saveBooking').html('<i class="fas fa-check me-1"></i>Book Room');
+
                         // First hide the modal
                         $('#bookingModal').modal('hide');
-                        
+
                         // Reset the form inputs
                         $('#bookingForm')[0].reset();
-                        
+
                         // Reset title field and hide the container
                         $('#bookingTitle').val('');
                         $('#titleContainer').addClass('d-none');
@@ -2228,8 +2362,8 @@
                         // Show success message
                         Swal.fire({
                             icon: 'success',
-                            title: 'Booking Created Successfully!',
-                            text: 'Your booking has been created and is pending approval.',
+                            title: isEditMode ? 'Booking Updated Successfully!' : 'Booking Created Successfully!',
+                            text: isEditMode ? 'Your booking has been updated.' : 'Your booking has been created and is pending approval.',
                             timer: 3000,
                             timerProgressBar: true,
                             showConfirmButton: true
@@ -2245,16 +2379,16 @@
                         }, 1000);
                     } else {
                         // Booking failed
-                        var errorMessage = 'An error occurred while creating your booking.';
+                        var errorMessage = isEditMode ? 'An error occurred while updating your booking.' : 'An error occurred while creating your booking.';
                         if (result.data && result.data.message) {
                             errorMessage = result.data.message;
                         } else if (result.message) {
                             errorMessage = result.message;
                         }
-                        
+
                         Swal.fire({
                             icon: 'error',
-                            title: 'Room Not Available',
+                            title: isEditMode ? 'Update Failed' : 'Room Not Available',
                             html: errorMessage.replace(/\n/g, '<br>'),
                             showConfirmButton: true,
                             width: '600px'

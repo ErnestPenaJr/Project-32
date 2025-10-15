@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Datetime Edit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="node_modules/@sweetalert2/theme-bootstrap-4/bootstrap-4.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1>Test Booking Edit DateTime</h1>
+        <button id="testEditBtn" class="btn btn-primary">Test Edit Booking Modal</button>
+        <div class="mt-3">
+            <h3>Console Output:</h3>
+            <div id="console" class="bg-dark text-white p-3" style="height: 300px; overflow-y: scroll; font-family: monospace; font-size: 12px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Mock session storage
+        sessionStorage.setItem('USER_ID', '1');
+
+        // Mock booking data
+        const mockBookingData = {
+            booking: {
+                bookingId: 123,
+                userId: 1,
+                roomId: 5,
+                roomName: "Conference Room A",
+                location: "Building 1-101",
+                startTime: "2025-10-20 09:00",
+                endTime: "2025-10-20 10:00",
+                comments: "Team Meeting",
+                status: "Confirmed",
+                revisionNumber: 0,
+                isModified: "N",
+                revisionDate: null,
+                requesterName: "John Doe"
+            },
+            availableRooms: [
+                { roomId: 5, roomName: "Conference Room A", location: "Building 1-101", capacity: 10 },
+                { roomId: 6, roomName: "Conference Room B", location: "Building 1-102", capacity: 8 }
+            ]
+        };
+
+        // Override console.log to display in page
+        const consoleDiv = document.getElementById('console');
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ');
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleDiv.appendChild(logEntry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+
+        // Simplified version of showEditBookingModal
+        function showEditBookingModal(data) {
+            const booking = data.booking;
+            const availableRooms = data.availableRooms;
+
+            let roomOptions = '';
+            availableRooms.forEach(room => {
+                const selected = room.roomId === booking.roomId ? 'selected' : '';
+                roomOptions += `<option value="${room.roomId}" ${selected}>${room.roomName} (${room.location}) - Capacity: ${room.capacity}</option>`;
+            });
+
+            const startDateTime = booking.startTime.replace(' ', 'T').substring(0, 16);
+            const endDateTime = booking.endTime.replace(' ', 'T').substring(0, 16);
+
+            const modalHtml = `
+                <div class="edit-booking-form text-start">
+                    <div class="mb-3">
+                        <label for="editRoomSelect" class="form-label fw-semibold">Room</label>
+                        <select id="editRoomSelect" class="form-select">
+                            ${roomOptions}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editStartTime" class="form-label fw-semibold">Start Time</label>
+                        <input type="datetime-local" id="editStartTime" class="form-control" value="${startDateTime}">
+                        <div class="mt-1 text-muted small">Current value: <span id="startDisplay">${startDateTime}</span></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editEndTime" class="form-label fw-semibold">End Time</label>
+                        <input type="datetime-local" id="editEndTime" class="form-control" value="${endDateTime}">
+                        <div class="mt-1 text-muted small">Current value: <span id="endDisplay">${endDateTime}</span></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editComments" class="form-label fw-semibold">Meeting Title</label>
+                        <input type="text" id="editComments" class="form-control" value="${booking.comments || ''}" placeholder="Enter meeting title (optional)">
+                    </div>
+                </div>
+            `;
+
+            Swal.fire({
+                title: 'Edit Booking #' + booking.bookingId,
+                html: modalHtml,
+                width: '600px',
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                cancelButtonText: 'Cancel',
+                didOpen: () => {
+                    console.log('Modal opened');
+
+                    const startInput = document.getElementById('editStartTime');
+                    const endInput = document.getElementById('editEndTime');
+                    const startDisplay = document.getElementById('startDisplay');
+                    const endDisplay = document.getElementById('endDisplay');
+
+                    if (startInput) {
+                        startInput.addEventListener('change', function() {
+                            console.log('Start time changed to:', this.value);
+                            if (startDisplay) startDisplay.textContent = this.value;
+                        });
+                        startInput.addEventListener('input', function() {
+                            console.log('Start time input:', this.value);
+                            if (startDisplay) startDisplay.textContent = this.value;
+                        });
+                    }
+
+                    if (endInput) {
+                        endInput.addEventListener('change', function() {
+                            console.log('End time changed to:', this.value);
+                            if (endDisplay) endDisplay.textContent = this.value;
+                        });
+                        endInput.addEventListener('input', function() {
+                            console.log('End time input:', this.value);
+                            if (endDisplay) endDisplay.textContent = this.value;
+                        });
+                    }
+                },
+                preConfirm: () => {
+                    const startTime = $('#editStartTime').val();
+                    const endTime = $('#editEndTime').val();
+                    const comments = $('#editComments').val();
+
+                    console.log('Saving with values:');
+                    console.log('  Start Time:', startTime);
+                    console.log('  End Time:', endTime);
+                    console.log('  Comments:', comments);
+
+                    // Format for ColdFusion
+                    const formatForColdFusion = (datetimeLocal) => {
+                        if (!datetimeLocal) return '';
+                        const formatted = datetimeLocal.replace('T', ' ');
+                        return formatted.length === 16 ? formatted + ':00' : formatted;
+                    };
+
+                    console.log('Formatted for ColdFusion:');
+                    console.log('  Start Time:', formatForColdFusion(startTime));
+                    console.log('  End Time:', formatForColdFusion(endTime));
+
+                    return true;
+                }
+            });
+        }
+
+        document.getElementById('testEditBtn').addEventListener('click', () => {
+            console.log('Testing edit booking modal');
+            showEditBookingModal(mockBookingData);
+        });
+    </script>
+</body>
+</html>

@@ -560,7 +560,7 @@
             </cfoutput>
         ">
             <!--- Check if user should receive booking cancellation email --->
-            <cfset notificationService = createObject("component", "assets.cfc.notifications") />
+            <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications") />
             <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CANCELLATION") />
             
             <!--- Only send email if user has email notifications enabled for booking cancellations --->
@@ -943,7 +943,7 @@
                 </cfoutput>
                 </cfsavecontent>
                 <!--- Check if user should receive booking confirmation email --->
-                <cfset notificationService = createObject("component", "assets.cfc.notifications") />
+                <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications") />
                 <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CONFIRMATION") />
                 
                 <!--- Only send email if user has email notifications enabled for booking confirmations --->

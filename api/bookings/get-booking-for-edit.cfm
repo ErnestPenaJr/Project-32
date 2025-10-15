@@ -24,8 +24,8 @@
 
     <cfif bookingId EQ 0>
         <cfset response = {
-            success = false,
-            message = "Booking ID is required"
+            "success" = false,
+            "message" = "Booking ID is required"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -33,8 +33,8 @@
 
     <cfif userId EQ 0>
         <cfset response = {
-            success = false,
-            message = "User ID is required"
+            "success" = false,
+            "message" = "User ID is required"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -46,8 +46,10 @@
             b.BOOKING_ID,
             b.USER_ID,
             b.ROOM_ID,
-            TO_CHAR(b.START_TIME, 'YYYY-MM-DD HH24:MI') as START_TIME,
-            TO_CHAR(b.END_TIME, 'YYYY-MM-DD HH24:MI') as END_TIME,
+            b.START_TIME,
+            b.END_TIME,
+            TO_CHAR(b.START_TIME, 'YYYY-MM-DD HH24:MI') as START_TIME_FORMATTED,
+            TO_CHAR(b.END_TIME, 'YYYY-MM-DD HH24:MI') as END_TIME_FORMATTED,
             b.COMMENTS,
             b.STATUS,
             b.REVISION_NUMBER,
@@ -72,8 +74,8 @@
 
     <cfif qGetBooking.recordCount EQ 0>
         <cfset response = {
-            success = false,
-            message = "Booking not found"
+            "success" = false,
+            "message" = "Booking not found"
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -85,9 +87,9 @@
 
     <cfif NOT isAdmin AND NOT isCreator>
         <cfset response = {
-            success = false,
-            message = "You do not have permission to edit this booking",
-            canEdit = false
+            "success" = false,
+            "message" = "You do not have permission to edit this booking",
+            "canEdit" = false
         }>
         <cfoutput>#serializeJSON(response)#</cfoutput>
         <cfabort>
@@ -97,10 +99,13 @@
     <cfset canEdit = true>
     <cfset editBlockReason = "">
 
-    <!--- Cannot edit if already started --->
-    <cfif parseDateTime(qGetBooking.START_TIME) LT now()>
+    <!--- Cannot edit if already ended --->
+    <!--- Use END_TIME instead of START_TIME to allow editing bookings that are currently in progress --->
+    <cfset bookingEnd = parseDateTime(qGetBooking.END_TIME_FORMATTED)>
+
+    <cfif dateCompare(bookingEnd, now()) LT 0>
         <cfset canEdit = false>
-        <cfset editBlockReason = "Booking has already started">
+        <cfset editBlockReason = "Booking has already ended">
     </cfif>
 
     <!--- Cannot edit if cancelled or rejected --->
@@ -126,40 +131,40 @@
     <cfset availableRooms = []>
     <cfloop query="qAvailableRooms">
         <cfset arrayAppend(availableRooms, {
-            roomId = qAvailableRooms.ROOM_ID,
-            roomName = qAvailableRooms.ROOM_NAME,
-            building = qAvailableRooms.BUILDING,
-            roomNumber = qAvailableRooms.ROOM_NUMBER,
-            capacity = qAvailableRooms.CAPACITY,
-            location = qAvailableRooms.BUILDING & "-" & qAvailableRooms.ROOM_NUMBER
+            "roomId" = qAvailableRooms.ROOM_ID,
+            "roomName" = qAvailableRooms.ROOM_NAME,
+            "building" = qAvailableRooms.BUILDING,
+            "roomNumber" = qAvailableRooms.ROOM_NUMBER,
+            "capacity" = qAvailableRooms.CAPACITY,
+            "location" = qAvailableRooms.BUILDING & "-" & qAvailableRooms.ROOM_NUMBER
         })>
     </cfloop>
 
     <!--- Return booking details with edit permission info --->
     <cfset response = {
-        success = true,
-        canEdit = canEdit,
-        editBlockReason = editBlockReason,
-        booking = {
-            bookingId = qGetBooking.BOOKING_ID,
-            userId = qGetBooking.USER_ID,
-            roomId = qGetBooking.ROOM_ID,
-            roomName = qGetBooking.ROOM_NAME,
-            location = qGetBooking.BUILDING & "-" & qGetBooking.ROOM_NUMBER,
-            startTime = qGetBooking.START_TIME,
-            endTime = qGetBooking.END_TIME,
-            comments = qGetBooking.COMMENTS,
-            status = qGetBooking.STATUS,
-            revisionNumber = qGetBooking.REVISION_NUMBER,
-            isModified = qGetBooking.IS_MODIFIED,
-            revisionDate = qGetBooking.REVISION_DATE,
-            requesterName = qGetBooking.REQUESTER_NAME,
-            requesterEmail = qGetBooking.EMAIL
+        "success" = true,
+        "canEdit" = canEdit,
+        "editBlockReason" = editBlockReason,
+        "booking" = {
+            "bookingId" = qGetBooking.BOOKING_ID,
+            "userId" = qGetBooking.USER_ID,
+            "roomId" = qGetBooking.ROOM_ID,
+            "roomName" = qGetBooking.ROOM_NAME,
+            "location" = qGetBooking.BUILDING & "-" & qGetBooking.ROOM_NUMBER,
+            "startTime" = qGetBooking.START_TIME_FORMATTED,
+            "endTime" = qGetBooking.END_TIME_FORMATTED,
+            "comments" = qGetBooking.COMMENTS,
+            "status" = qGetBooking.STATUS,
+            "revisionNumber" = qGetBooking.REVISION_NUMBER,
+            "isModified" = qGetBooking.IS_MODIFIED,
+            "revisionDate" = qGetBooking.REVISION_DATE,
+            "requesterName" = qGetBooking.REQUESTER_NAME,
+            "requesterEmail" = qGetBooking.EMAIL
         },
-        availableRooms = availableRooms,
-        userPermissions = {
-            isAdmin = isAdmin,
-            isCreator = isCreator
+        "availableRooms" = availableRooms,
+        "userPermissions" = {
+            "isAdmin" = isAdmin,
+            "isCreator" = isCreator
         }
     }>
 
@@ -168,8 +173,8 @@
 <cfcatch>
     <cflog file="booking-edit" text="Error getting booking for edit: #cfcatch.message# #cfcatch.detail#">
     <cfset response = {
-        success = false,
-        message = "Error retrieving booking details: " & cfcatch.message
+        "success" = false,
+        "message" = "Error retrieving booking details: " & cfcatch.message
     }>
     <cfoutput>#serializeJSON(response)#</cfoutput>
 </cfcatch>
