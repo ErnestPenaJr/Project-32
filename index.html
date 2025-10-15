@@ -617,10 +617,40 @@
                                     <h2 class="text-uppercase fw-bold text-white mb-0">Reserved Rooms</h2>
                                 </div>
                             </div>
-                            <div class="col-3">
-                                <select id="roomFilter" class="form-select" style="width: auto; min-width: 150px;">
-                                    <option value="">All Rooms</option>
-                                </select>
+                            <div class="col-9">
+                                <div class="d-flex gap-2 flex-wrap align-items-center">
+                                    <!-- Room Filter -->
+                                    <select id="roomFilter" class="form-select" style="width: auto; min-width: 150px;">
+                                        <option value="">All Rooms</option>
+                                    </select>
+
+                                    <!-- Status Filter -->
+                                    <select id="statusFilter" class="form-select" style="width: auto; min-width: 130px;">
+                                        <option value="">All Statuses</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="confirmed">Confirmed</option>
+                                        <option value="rejected">Rejected</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+
+                                    <!-- My Bookings Toggle -->
+                                    <div class="form-check form-switch ms-2">
+                                        <input class="form-check-input" type="checkbox" id="myBookingsOnly" style="cursor: pointer;">
+                                        <label class="form-check-label" for="myBookingsOnly" style="cursor: pointer;">
+                                            <i class="fas fa-user me-1"></i>My Bookings Only
+                                        </label>
+                                    </div>
+
+                                    <!-- Search Bar -->
+                                    <div class="input-group" style="width: auto; min-width: 250px;">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" id="calendarSearch" class="form-control" placeholder="Search by room, title, or name...">
+                                        <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Clear search">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-2">
                                 <!---add tooltip -->
@@ -738,15 +768,35 @@
                                                 <i class="fas fa-clock me-1"></i>Booking Time
                                                 <small id="bookingDuration" class="text-muted ms-2"></small>
                                             </h6>
+                                            <div class="time-selection-connector">
+                                                <div class="time-node time-node-start">
+                                                    <span class="node-icon"><i class="fas fa-play"></i></span>
+                                                    <div class="node-meta">
+                                                        <span class="node-label">Start</span>
+                                                        <span class="node-value" id="startTimeSummary">--</span>
+                                                    </div>
+                                                </div>
+                                                <div class="connector-bar">
+                                                    <span class="connector-progress"></span>
+                                                </div>
+                                                <div class="time-node time-node-end">
+                                                    <span class="node-icon"><i class="fas fa-flag-checkered"></i></span>
+                                                    <div class="node-meta">
+                                                        <span class="node-label">End</span>
+                                                        <span class="node-value" id="endTimeSummary">--</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="timeValidationMessage" class="small mt-2 text-muted">Select start and end times to calculate duration.</div>
                                             <div class="row g-3">
                                                 <div class="col-md">
-                                                    <div id="start-picker"></div>
+                                                    <div id="start-picker" class="datetime-picker-start"></div>
                                                     <input type="hidden" id="startTime" name="startTime">
                                                 </div>
                                             </div>
                                             <div class="row g-3">
                                                 <div class="col-md">
-                                                    <div id="end-picker"></div>
+                                                    <div id="end-picker" class="datetime-picker-end"></div>
                                                     <input type="hidden" id="endTime" name="endTime">
                                                 </div>
                                             </div>
@@ -842,6 +892,8 @@
     <script src="node_modules/aos/dist/aos.js"></script>
     <!-- Custom DateTime Picker -->
     <script src="assets/js/datetime_picker.js"></script>
+    <!-- Booking Edit Functionality -->
+    <script src="assets/js/booking-edit.js"></script>
 
     <script>
         // Function to format date for ColdFusion - placed in global scope for accessibility
@@ -952,6 +1004,47 @@
                 endHour: 16,     // 16:00 local time (8-hour window)
                 workDays: [1,2,3,4,5] // Mon–Fri; 0=Sun .. 6=Sat
             };
+            const BUSINESS_DAY_MINUTES = (BUSINESS_HOURS.endHour - BUSINESS_HOURS.startHour) * 60;
+
+            function formatDuration(minutes) {
+                if (!minutes || minutes < 0) return '';
+                const hours = Math.floor(minutes / 60);
+                const remaining = minutes % 60;
+                const parts = [];
+                if (hours > 0) parts.push(hours + ' hour' + (hours !== 1 ? 's' : ''));
+                if (remaining > 0) parts.push(remaining + ' minute' + (remaining !== 1 ? 's' : ''));
+                return parts.join(' ');
+            }
+
+            function formatSummaryDisplay(date) {
+                if (!(date instanceof Date) || isNaN(date)) return '--';
+                return date.toLocaleString('en-US', {
+                    month: 'short',
+                    day: '2-digit',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+            }
+
+            function setTimeValidationMessage(text, stateClass) {
+                const $message = $('#timeValidationMessage');
+                if (!$message.length) return;
+                $message.removeClass('text-muted text-danger text-warning text-success');
+                $message.addClass(stateClass);
+                $message.text(text);
+            }
+
+            function setConnectorProgress(minutes) {
+                const $progress = $('.connector-progress');
+                if (!$progress.length) return;
+                if (!minutes || minutes <= 0) {
+                    $progress.css('width', '0%');
+                    return;
+                }
+                const ratio = BUSINESS_DAY_MINUTES > 0 ? Math.min(100, Math.round((minutes / BUSINESS_DAY_MINUTES) * 100)) : 100;
+                $progress.css('width', ratio + '%');
+            }
 
             // compute business minutes between two datetimes
             function computeBusinessMinutes(startDate, endDate) {
@@ -1002,29 +1095,44 @@
                 const endISO = $('#endTime').val();
                 const $duration = $('#bookingDuration');
 
-                if (!startISO || !endISO) {
+                const startDate = startISO ? new Date(startISO) : null;
+                const endDate = endISO ? new Date(endISO) : null;
+
+                $('#startTimeSummary').text(formatSummaryDisplay(startDate));
+                $('#endTimeSummary').text(formatSummaryDisplay(endDate));
+
+                if (!startDate || isNaN(startDate) || !endDate || isNaN(endDate)) {
                     $duration.text('');
+                    setTimeValidationMessage('Select start and end times to calculate duration.', 'text-muted');
+                    setConnectorProgress(0);
                     return;
                 }
 
-                const startDate = new Date(startISO);
-                const endDate = new Date(endISO);
+                if (endDate <= startDate) {
+                    $duration.text('');
+                    setTimeValidationMessage('End time must be after start time.', 'text-danger');
+                    setConnectorProgress(0);
+                    return;
+                }
+
                 const totalMinutes = computeBusinessMinutes(startDate, endDate);
+                const actualMinutes = Math.round((endDate - startDate) / 60000);
+
+                setConnectorProgress(totalMinutes);
 
                 if (isNaN(totalMinutes) || totalMinutes <= 0) {
                     $duration.text('');
+                    setTimeValidationMessage('Selected range falls outside business hours.', 'text-warning');
                     return;
                 }
 
-                const hours = Math.floor(totalMinutes / 60);
-                const minutes = totalMinutes % 60;
+                const businessDuration = formatDuration(totalMinutes);
+                const actualDuration = formatDuration(actualMinutes);
+                const durationText = businessDuration ? '(' + businessDuration + ' in business hours)' : '(0 minutes)';
+                $duration.text(durationText);
 
-                const parts = [];
-                if (hours > 0) parts.push(hours + ' hour' + (hours !== 1 ? 's' : ''));
-                if (minutes > 0) parts.push(minutes + ' minute' + (minutes !== 1 ? 's' : ''));
-
-                // e.g., (2 business hours 15 minutes)
-                $duration.text(parts.length ? '(' + parts.join(' ') + ' in business hours)' : '(0 minutes)');
+                const validationText = actualDuration ? 'Business hours counted: ' + businessDuration + '. Actual duration: ' + actualDuration + '.' : 'Business hours counted: 0 minutes.';
+                setTimeValidationMessage(validationText, 'text-success');
             }
 
             // Initialize the datetime pickers when the booking modal is shown
@@ -1034,7 +1142,7 @@
                     label: 'Starting On',
                     dateFormat: 'MM/DD/YYYY, h:mm A',
                     defaultDate: new Date(),
-                    minuteInterval: 5,
+                    minuteInterval: 15,
                     onChange: function (date) {
                         $('#startTime').val(date.toISOString());
                         // Update end picker min date/time
@@ -1050,6 +1158,9 @@
                             if (endTimePicker && typeof endTimePicker.clear === 'function') {
                                 endTimePicker.clear();
                             }
+                            setTimeValidationMessage('End time must be after start time.', 'text-danger');
+                            setConnectorProgress(0);
+                            $('#endTimeSummary').text('--');
                             updateBookingDuration();
                             return;
                         }
@@ -1063,7 +1174,7 @@
                     label: 'Ending On',
                     dateFormat: 'MM/DD/YYYY, h:mm A',
                     defaultDate: defaultEndTime,
-                    minuteInterval: 5,
+                    minuteInterval: 15,
                     onChange: function (date) {
                         var startVal = $('#startTime').val();
                         if (startVal && new Date(date) <= new Date(startVal)) {
@@ -1076,6 +1187,10 @@
                             if (endTimePicker && typeof endTimePicker.clear === 'function') {
                                 endTimePicker.clear();
                             }
+                            setTimeValidationMessage('End time must be after start time.', 'text-danger');
+                            setConnectorProgress(0);
+                            $('#endTimeSummary').text('--');
+                            $('#bookingDuration').text('');
                             updateBookingDuration();
                             return;
                         }
@@ -1084,9 +1199,59 @@
                     }
                 });
 
+                $('#start-picker').off('datetime:change.booking').on('datetime:change.booking', function (event, date) {
+                    if (date instanceof Date && !isNaN(date)) {
+                        $('#startTime').val(date.toISOString());
+                        if (endTimePicker && typeof endTimePicker.setMinDate === 'function') {
+                            endTimePicker.setMinDate(date);
+                        }
+                    } else {
+                        $('#startTime').val('');
+                    }
+                    updateBookingDuration();
+                });
+
+                $('#end-picker').off('datetime:change.booking').on('datetime:change.booking', function (event, date) {
+                    const startVal = $('#startTime').val();
+                    if (date instanceof Date && !isNaN(date)) {
+                        if (startVal && date <= new Date(startVal)) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Invalid Time Range',
+                                text: 'End time must be after start time.'
+                            });
+                            $('#endTime').val('');
+                            setTimeValidationMessage('End time must be after start time.', 'text-danger');
+                            setConnectorProgress(0);
+                            $('#endTimeSummary').text('--');
+                            $('#bookingDuration').text('');
+                        } else {
+                            $('#endTime').val(date.toISOString());
+                        }
+                    } else {
+                        $('#endTime').val('');
+                    }
+                    updateBookingDuration();
+                });
+
                 // Set initial values
-                $('#startTime').val(new Date().toISOString());
-                $('#endTime').val(defaultEndTime.toISOString());
+                if (startTimePicker && typeof startTimePicker.getDate === 'function') {
+                    const initialStart = startTimePicker.getDate();
+                    if (initialStart instanceof Date && !isNaN(initialStart)) {
+                        $('#startTime').val(initialStart.toISOString());
+                    }
+                } else {
+                    $('#startTime').val(new Date().toISOString());
+                }
+
+                if (endTimePicker && typeof endTimePicker.getDate === 'function') {
+                    const initialEnd = endTimePicker.getDate();
+                    if (initialEnd instanceof Date && !isNaN(initialEnd)) {
+                        $('#endTime').val(initialEnd.toISOString());
+                    }
+                } else {
+                    $('#endTime').val(defaultEndTime.toISOString());
+                }
                 updateBookingDuration();
             });
 
@@ -1168,6 +1333,10 @@
                 $('#titleContainer').addClass('d-none');
                 $('#bookingTitle').prop('required', false);
                 $('#bookingDuration').text('');
+                $('#startTimeSummary').text('--');
+                $('#endTimeSummary').text('--');
+                setTimeValidationMessage('Select start and end times to calculate duration.', 'text-muted');
+                setConnectorProgress(0);
             });
 
             const bookingManager = {
@@ -1550,8 +1719,6 @@
         let endTimePicker = null;
 
         document.addEventListener('DOMContentLoaded', function () {
-            let selectedRoomId = '';
-
             // Load top navigation based on user role
             if (sessionStorage.getItem('ROLE') === 'Admin' || sessionStorage.getItem('ROLE') === 'Site Admin') {
                 $('#topNav').load('topNav-Admin.html', function () {
@@ -1561,6 +1728,12 @@
             } else {
                 $('#topNav').load('topNav-User.html');
             }
+
+            // Initialize filtering variables
+            let selectedRoomId = '';
+            let selectedStatus = '';
+            let myBookingsOnlyFlag = false;
+            let searchQuery = '';
 
             // Function to populate room filter dropdown
             function populateRoomFilter() {
@@ -1595,6 +1768,35 @@
                 globalCalendar.refetchEvents();
             });
 
+            // Handle status filter change
+            $('#statusFilter').on('change', function () {
+                selectedStatus = $(this).val();
+                globalCalendar.refetchEvents();
+            });
+
+            // Handle my bookings only toggle
+            $('#myBookingsOnly').on('change', function () {
+                myBookingsOnlyFlag = $(this).is(':checked');
+                globalCalendar.refetchEvents();
+            });
+
+            // Handle search input (with debouncing)
+            let searchTimeout;
+            $('#calendarSearch').on('input', function () {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchQuery = $(this).val().trim();
+                    globalCalendar.refetchEvents();
+                }, 300);
+            });
+
+            // Handle clear search button
+            $('#clearSearch').on('click', function () {
+                $('#calendarSearch').val('');
+                searchQuery = '';
+                globalCalendar.refetchEvents();
+            });
+
             // Initialize FullCalendar
             var calendarEl = document.getElementById('upcomingBookings');
             if (calendarEl) {
@@ -1603,7 +1805,12 @@
                     headerToolbar: {
                         left: 'prev,next today',
                         center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                    },
+                    views: {
+                        listWeek: {
+                            titleFormat: { year: 'numeric', month: 'short', day: 'numeric' }
+                        }
                     },
                     height: 'auto',
                     nowIndicator: true,
@@ -1624,8 +1831,40 @@
                             success: function (response) {
                                 console.log('Calendar events response:', response);
                                 if (response.status === 'success' && Array.isArray(response.BOOKINGS)) {
+                                    const currentUserId = getCurrentUserId();
                                     var events = response.BOOKINGS
-                                        .filter(booking => !selectedRoomId || parseInt(booking.ROOM_ID) === parseInt(selectedRoomId))
+                                        .filter(booking => {
+                                            // Room filter
+                                            if (selectedRoomId && parseInt(booking.ROOM_ID) !== parseInt(selectedRoomId)) {
+                                                return false;
+                                            }
+
+                                            // Status filter
+                                            if (selectedStatus && booking.STATUS.toLowerCase() !== selectedStatus.toLowerCase()) {
+                                                return false;
+                                            }
+
+                                            // My bookings only filter
+                                            if (myBookingsOnlyFlag && booking.USERID != currentUserId) {
+                                                return false;
+                                            }
+
+                                            // Search filter
+                                            if (searchQuery) {
+                                                const query = searchQuery.toLowerCase();
+                                                const roomName = (booking.NAME || '').toLowerCase();
+                                                const userName = `${booking.FIRSTNAME} ${booking.LASTNAME}`.toLowerCase();
+                                                const comments = (booking.COMMENTS || '').toLowerCase();
+
+                                                if (!roomName.includes(query) &&
+                                                    !userName.includes(query) &&
+                                                    !comments.includes(query)) {
+                                                    return false;
+                                                }
+                                            }
+
+                                            return true;
+                                        })
                                         .map(function (booking) {
                                             // Parse start time components
                                             var startParts = booking.STARTTIME.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -1667,7 +1906,11 @@
                                                     roomName: booking.NAME,
                                                     description: booking.DESCRIPTION || 'No description available',
                                                     status: booking.STATUS || 'Pending',
-                                                    userId: booking.USERID
+                                                    userId: booking.USERID,
+                                                    comments: booking.COMMENTS || '',
+                                                    requesterName: `${booking.FIRSTNAME} ${booking.LASTNAME}`,
+                                                    isModified: booking.IS_MODIFIED === 'Y',
+                                                    revisionNumber: booking.REVISION_NUMBER || 0
                                                 },
                                                 className: [
                                                     `room-${(booking.ID % 10) + 1}`,
@@ -1687,26 +1930,58 @@
                     },
                     eventContent: function (info) {
                         const roomClass = info.event.classNames.find(className => className.startsWith('room-'));
+                        const meetingTitle = info.event.extendedProps.comments;
+                        const isModified = info.event.extendedProps.isModified;
+                        const status = info.event.extendedProps.status.toLowerCase();
+
+                        // Status badge colors
+                        const statusColors = {
+                            'pending': 'warning',
+                            'approved': 'success',
+                            'confirmed': 'primary',
+                            'rejected': 'danger',
+                            'cancelled': 'secondary'
+                        };
+                        const badgeColor = statusColors[status] || 'secondary';
+
                         return {
                             html: `
                                 <div class="fc-event-main ${roomClass}">
-                                    <div class="fc-event-time">${info.timeText}</div>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="fc-event-time">${info.timeText}</div>
+                                        ${isModified ? '<span class="badge bg-warning text-dark" style="font-size: 0.65rem;"><i class="fas fa-edit"></i></span>' : ''}
+                                    </div>
                                     <div class="fc-event-title">
-                                        <span class="status-dot status-dot-${info.event.extendedProps.status.toLowerCase()}"></span>
+                                        <span class="badge bg-${badgeColor}" style="font-size: 0.65rem; margin-right: 4px;">${status}</span>
                                         ${info.event.title}
                                     </div>
+                                    ${meetingTitle ? `<div class="fc-event-meeting-title" style="font-size: 0.85rem; margin-top: 2px; font-style: italic;"><i class="fas fa-calendar-alt" style="font-size: 0.7rem;"></i> ${meetingTitle}</div>` : ''}
                                 </div>
                             `
                         };
                     },
                     eventDidMount: function (info) {
-                        // change Format dates to not include seconds in format and date format to mm/dd/yyyy 
+                        // change Format dates to not include seconds in format and date format to mm/dd/yyyy
                         const startStr = new Date(info.event.start).toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
                         const endStr = new Date(info.event.end).toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                        const meetingTitle = info.event.extendedProps.comments;
+                        const status = info.event.extendedProps.status;
+                        const isModified = info.event.extendedProps.isModified;
+
+                        // Build tooltip content
+                        let tooltipContent = `
+                            <strong>${info.event.extendedProps.requesterName}</strong><br>
+                            <strong>Room:</strong> ${info.event.extendedProps.roomName}<br>
+                            <strong>Status:</strong> <span class="text-capitalize">${status}</span><br>
+                            ${meetingTitle ? `<strong>Title:</strong> ${meetingTitle}<br>` : ''}
+                            ${isModified ? '<span class="badge bg-warning text-dark"><i class="fas fa-edit"></i> Modified</span><br>' : ''}
+                            <strong>From:</strong> ${startStr}<br>
+                            <strong>Until:</strong> ${endStr}
+                        `;
 
                         // Add tooltip
                         $(info.el).tooltip({
-                            title: `${info.event.title}<br>From: ${startStr}<br>Until: ${endStr}`,
+                            title: tooltipContent,
                             placement: 'top',
                             container: 'body',
                             html: true
@@ -1724,6 +1999,44 @@
                         const isAdmin = userRole === 'Admin' || userRole === 'Site Admin';
 
 
+                        // Build custom buttons for the modal
+                        const buttons = {};
+
+                        // Add Edit button if user can edit (creator or admin, and booking hasn't started)
+                        const bookingStartTime = new Date(info.event.start);
+                        const canEdit = (isCreator || isAdmin) && bookingStartTime > new Date();
+
+                        if (canEdit) {
+                            buttons.edit = {
+                                text: '<i class="fas fa-edit me-2"></i>Edit Booking',
+                                value: 'edit',
+                                className: 'btn btn-primary'
+                            };
+                        }
+
+                        // Add Cancel button if user can cancel
+                        if (isCreator || isAdmin) {
+                            buttons.cancel = {
+                                text: '<i class="fas fa-times me-2"></i>Cancel Booking',
+                                value: 'cancel',
+                                className: 'btn btn-danger'
+                            };
+                        }
+
+                        // Add Revision History button
+                        buttons.history = {
+                            text: '<i class="fas fa-history me-2"></i>History',
+                            value: 'history',
+                            className: 'btn btn-info'
+                        };
+
+                        // Add Close button
+                        buttons.close = {
+                            text: 'Close',
+                            value: 'close',
+                            className: 'btn btn-secondary'
+                        };
+
                         Swal.fire({
                             title: `Booking Details (ID: ${info.event.id})`,
                             html: `
@@ -1735,25 +2048,63 @@
                                     <p class="text-capitalize"><strong>Status:</strong> ${info.event.extendedProps.status}</p>
                                 </div>
                             `,
-                            showCancelButton: true,
-                            showConfirmButton: isCreator || isAdmin,
-                            confirmButtonText: 'Cancel Booking',
-                            cancelButtonText: 'Close',
-                            showLoaderOnConfirm: true,
-                            preConfirm: () => {
-                                return new Promise((resolve, reject) => {
-                                    if (!info.event.id) {
-                                        reject('No booking ID found');
-                                        return;
-                                    }
-                                    if (!isCreator && !isAdmin) {
-                                        reject('You do not have permission to cancel this booking');
-                                        return;
-                                    }
-                                    cancelBooking(info.event.id)
-                                        .then(resolve)
-                                        .catch(reject);
-                                });
+                            showCancelButton: false,
+                            showConfirmButton: false,
+                            showDenyButton: false,
+                            showCloseButton: true,
+                            customClass: {
+                                actions: 'd-flex gap-2 flex-wrap justify-content-center'
+                            },
+                            didOpen: () => {
+                                const actionsContainer = Swal.getActions();
+                                actionsContainer.innerHTML = '';
+
+                                // Add Edit button
+                                if (canEdit) {
+                                    const editBtn = document.createElement('button');
+                                    editBtn.className = 'btn btn-primary';
+                                    editBtn.innerHTML = '<i class="fas fa-edit me-2"></i>Edit Booking';
+                                    editBtn.onclick = () => {
+                                        Swal.close();
+                                        initEditBooking(info.event.id);
+                                    };
+                                    actionsContainer.appendChild(editBtn);
+                                }
+
+                                // Add Cancel button
+                                if (isCreator || isAdmin) {
+                                    const cancelBtn = document.createElement('button');
+                                    cancelBtn.className = 'btn btn-danger';
+                                    cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Cancel Booking';
+                                    cancelBtn.onclick = () => {
+                                        Swal.close();
+                                        cancelBooking(info.event.id).then(() => {
+                                            globalCalendar.refetchEvents();
+                                            checkPendingApprovals();
+                                            Swal.fire('Cancelled!', 'The booking has been cancelled.', 'success');
+                                        }).catch((error) => {
+                                            Swal.fire('Error', 'Failed to cancel booking', 'error');
+                                        });
+                                    };
+                                    actionsContainer.appendChild(cancelBtn);
+                                }
+
+                                // Add History button
+                                const historyBtn = document.createElement('button');
+                                historyBtn.className = 'btn btn-info';
+                                historyBtn.innerHTML = '<i class="fas fa-history me-2"></i>History';
+                                historyBtn.onclick = () => {
+                                    Swal.close();
+                                    getBookingRevisionHistory(info.event.id);
+                                };
+                                actionsContainer.appendChild(historyBtn);
+
+                                // Add Close button
+                                const closeBtn = document.createElement('button');
+                                closeBtn.className = 'btn btn-secondary';
+                                closeBtn.textContent = 'Close';
+                                closeBtn.onclick = () => Swal.close();
+                                actionsContainer.appendChild(closeBtn);
                             }
                         }).then((result) => {
                             if (result.isConfirmed) {

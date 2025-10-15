@@ -1,20 +1,21 @@
 /* DateTime Picker CSS */
+
 .datetime-picker-dropdown {
-    width: 320px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    border-radius: 0.5rem;
+    width: 360px;
+    box-shadow: 0 12px 30px rgba(13, 110, 253, 0.08);
+    border-radius: 0.75rem;
     position: absolute;
     background-color: #fff;
     z-index: 1000;
     display: none;
+    border: 1px solid rgba(13, 110, 253, 0.2);
 }
 
 .datetime-picker-header {
-    background-color: #0d6efd;
     color: white;
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
-    padding: 10px 15px;
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+    padding: 12px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -35,27 +36,80 @@
     background-color: rgba(255, 255, 255, 0.2);
 }
 
+
 .datetime-picker-body {
-    padding: 15px;
+    padding: 18px;
+    background: linear-gradient(180deg, rgba(13, 110, 253, 0.05) 0%, rgba(255, 255, 255, 0.9) 40%);
+}
+
+.datetime-picker-body-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px dashed rgba(13, 110, 253, 0.25);
+    margin-bottom: 16px;
+}
+
+.datetime-picker-body-summary .summary-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(13, 110, 253, 0.1);
+    color: #0d6efd;
+    font-size: 1.1rem;
+}
+
+.datetime-picker-body-summary .summary-text {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #0d2a6b;
+}
+
+.time-shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.time-shortcut {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.time-shortcut:focus,
+.time-shortcut:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(13, 110, 253, 0.1);
 }
 
 .datetime-picker-footer {
-    padding: 10px 15px;
-    border-top: 1px solid #dee2e6;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(13, 110, 253, 0.15);
     text-align: right;
+    background-color: #f8f9ff;
+    border-bottom-left-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
 }
 
 .day-cell,
 .hour-cell,
 .minute-cell {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     border-radius: 50%;
     position: relative;
+    font-weight: 600;
 }
 
 .day-cell:hover,
@@ -70,6 +124,7 @@
     background-color: #0d6efd;
     color: white;
     z-index: 10;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
 }
 
 .weekday-header {
@@ -88,7 +143,7 @@
 .time-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
+    gap: 6px;
 }
 
 .time-container {
@@ -101,22 +156,26 @@
 }
 
 .time-header {
-    font-weight: 500;
-    color: #6c757d;
-    margin-bottom: 10px;
+    font-weight: 600;
+    color: #0d2a6b;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
 }
 
 .ampm-btn {
-    width: 48px;
+    width: 52px;
     text-align: center;
-    border-radius: 0.5rem;
-    margin-bottom: 5px;
+    border-radius: 0.6rem;
+    margin-bottom: 6px;
     cursor: pointer;
+    font-weight: 600;
+    padding: 6px 0;
 }
 
 .ampm-btn.selected {
     background-color: #0d6efd;
     color: white;
+    box-shadow: 0 6px 12px rgba(13, 110, 253, 0.2);
 }
 
 .form-floating>.form-control-plaintext~label,
@@ -129,17 +188,18 @@
 .month-nav {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 15px;
+    margin-bottom: 18px;
 }
 
 /* Add subtle hover effect for buttons */
 .datetime-picker-footer .btn:hover {
-    opacity: 0.9;
+    opacity: 0.94;
 }
 
 /* Today's date style */
 .day-cell.today {
     border: 1px solid #0d6efd;
+    font-weight: 700;
 }
 
 /* Focus outline for accessibility */
@@ -147,4 +207,40 @@
 .datetime-toggle:focus {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     outline: 0;
+}
+
+.datetime-theme-primary .datetime-picker-header {
+    background-color: #0d6efd;
+}
+
+.datetime-theme-success .datetime-picker-header {
+    background-color: #198754;
+}
+
+.datetime-theme-success .datetime-picker-body-summary {
+    border-color: rgba(25, 135, 84, 0.25);
+}
+
+.datetime-picker-start .datetime-input,
+.datetime-picker-end .datetime-input {
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-left: 4px solid transparent;
+    padding-left: 1rem;
+}
+
+.datetime-picker-start .datetime-input {
+    border-color: #0d6efd;
+}
+
+.datetime-picker-end .datetime-input {
+    border-color: #198754;
+}
+
+.datetime-picker-start .summary-icon {
+    color: #0d6efd;
+}
+
+.datetime-picker-end .summary-icon {
+    color: #198754;
 }

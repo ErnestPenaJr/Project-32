@@ -12,7 +12,9 @@
             dateFormat: 'MM/DD/YYYY, h:mm A',
             defaultDate: new Date(),
             minuteInterval: 5,
-            onChange: null
+            onChange: null,
+            theme: 'primary',
+            endOfDayHour: 17
         };
 
         // Merge user options with defaults
@@ -22,16 +24,28 @@
         return this.each(function () {
             const $container = $(this);
             let pickerHtml = '';
-            let selectedDate = new Date(settings.defaultDate);
-            let currentDate = new Date(settings.defaultDate);
+            function roundToInterval(date) {
+                const rounded = new Date(date);
+                rounded.setSeconds(0, 0);
+                const minutes = rounded.getMinutes();
+                const remainder = minutes % settings.minuteInterval;
+                if (remainder !== 0) {
+                    rounded.setMinutes(minutes + (settings.minuteInterval - remainder));
+                }
+                return rounded;
+            }
+
+            let selectedDate = roundToInterval(new Date(settings.defaultDate));
+            let currentDate = new Date(selectedDate);
             let activeTab = 'date';
             let pickerId = 'datetime-picker-' + Math.floor(Math.random() * 1000000);
 
             // Generate picker HTML
             function createPickerHtml() {
+                const shortcutButtonClass = `btn btn-sm time-shortcut btn-outline-${settings.theme}`;
                 pickerHtml = `
           <div class="form-floating position-relative mb-3">
-            <input type="text" class="form-control datetime-input" id="datetime-${pickerId}" placeholder=" " readonly>
+            <input type="text" class="form-control datetime-input" id="datetime-${pickerId}" placeholder=" " readonly data-bs-toggle="tooltip" data-bs-placement="top" title="${settings.label}">
             <label for="datetime-${pickerId}">${
                     settings.label
                 }</label>
@@ -43,7 +57,7 @@
           </div>
             
           <!-- DateTimePicker Dropdown -->
-          <div class="datetime-picker-dropdown" id="${pickerId}">
+          <div class="datetime-picker-dropdown datetime-theme-${settings.theme}" id="${pickerId}">
             <!-- Header -->
             <div class="datetime-picker-header">
               <button type="button" class="btn datetime-picker-date-btn">
@@ -63,6 +77,10 @@
             
             <!-- Body -->
             <div class="datetime-picker-body">
+              <div class="datetime-picker-body-summary">
+                <div class="summary-icon"><i class="fas fa-clock"></i></div>
+                <div class="summary-text">${formatDate(roundToInterval(selectedDate))}</div>
+              </div>
               <!-- Date Tab Content -->
               <div class="date-tab tab-content">
                 <div class="month-nav">
@@ -94,21 +112,27 @@
               
               <!-- Time Tab Content -->
               <div class="time-tab tab-content" style="display: none;">
+                <div class="time-shortcuts">
+                  <button type="button" class="${shortcutButtonClass}" data-shortcut="now" title="Set to current time">Now</button>
+                  <button type="button" class="${shortcutButtonClass}" data-shortcut="plus60" title="Add one hour">In 1 Hour</button>
+                  <button type="button" class="${shortcutButtonClass}" data-shortcut="plus120" title="Add two hours">In 2 Hours</button>
+                  <button type="button" class="${shortcutButtonClass}" data-shortcut="closeOfBusiness" title="Set to end of business day">End of Business Day</button>
+                </div>
                 <div class="time-container">
                   <div class="time-column">
-                    <div class="time-header">Hour</div>
+                    <div class="time-header"><i class="fas fa-hourglass-half me-1"></i>Hour</div>
                     <div class="time-grid hour-grid">
                       <!-- Hours will be populated with JavaScript -->
                     </div>
                   </div>
                   <div class="time-column">
-                    <div class="time-header">Minute</div>
+                    <div class="time-header"><i class="fas fa-stopwatch me-1"></i>Minute</div>
                     <div class="time-grid minute-grid">
                       <!-- Minutes will be populated with JavaScript -->
                     </div>
                   </div>
                   <div class="time-column">
-                    <div class="time-header">AM/PM</div>
+                    <div class="time-header"><i class="fas fa-adjust me-1"></i>AM/PM</div>
                     <div class="ampm-buttons">
                       <div class="ampm-btn am-btn">AM</div>
                       <div class="ampm-btn pm-btn">PM</div>
@@ -126,6 +150,16 @@
           </div>`;
 
                 $container.html(pickerHtml);
+
+                const $tooltipInputs = $container.find('.datetime-input');
+                const initialTooltip = formatDate(selectedDate);
+                $tooltipInputs.attr('data-bs-original-title', initialTooltip);
+                $tooltipInputs.attr('title', initialTooltip);
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    $tooltipInputs.each(function () {
+                        bootstrap.Tooltip.getOrCreateInstance(this);
+                    });
+                }
             }
 
             // Initialize the picker
@@ -146,12 +180,33 @@
             }
 
             function updateInputValue() {
-                $container.find('.datetime-input').val(formatDate(selectedDate));
+                const formatted = formatDate(selectedDate);
+                $container.find('.datetime-input').val(formatted);
+                const $summaryText = $container.find('.datetime-picker-body-summary .summary-text');
+                if ($summaryText.length) {
+                    $summaryText.text(formatted);
+                }
+
+                const $tooltipInputs = $container.find('.datetime-input');
+                $tooltipInputs.attr('data-bs-original-title', formatted);
+                $tooltipInputs.attr('title', formatted);
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    $tooltipInputs.each(function () {
+                        const instance = bootstrap.Tooltip.getInstance(this);
+                        if (instance && typeof instance.setContent === 'function') {
+                            instance.setContent({ '.tooltip-inner': formatted });
+                        } else if (instance && typeof instance.update === 'function') {
+                            instance.update();
+                        }
+                    });
+                }
 
                 // Fire callback if defined
                 if (typeof settings.onChange === 'function') {
                     settings.onChange(selectedDate);
                 }
+
+                $container.trigger('datetime:change', [new Date(selectedDate)]);
             }
 
             // Update the calendar
@@ -268,8 +323,13 @@
 
                         const newDate = new Date(selectedDate);
                         const isPM = selectedDate.getHours() >= 12;
-                        const newHour = isPM ? i + 12 : i;
-                        newDate.setHours(newHour === 24 ? 12 : newHour);
+                        const newHour = isPM ? (i % 12) + 12 : i % 12;
+                        if (newHour === 24) {
+                            newDate.setHours(12);
+                        } else {
+                            newDate.setHours(newHour === 0 ? 0 : newHour);
+                        }
+                        newDate = roundToInterval(newDate);
                         selectedDate = newDate;
 
                         updateInputValue();
@@ -314,6 +374,43 @@
                     $container.find('.am-btn').removeClass('selected');
                     $container.find('.pm-btn').addClass('selected');
                 }
+            }
+
+            function applyShortcut(type) {
+                const now = new Date();
+                let newDate = new Date(selectedDate);
+                switch (type) {
+                    case 'now':
+                        newDate = roundToInterval(now);
+                        break;
+                    case 'plus60':
+                        newDate = roundToInterval(new Date(now.getTime() + 60 * 60 * 1000));
+                        break;
+                    case 'plus120':
+                        newDate = roundToInterval(new Date(now.getTime() + 120 * 60 * 1000));
+                        break;
+                    case 'closeOfBusiness':
+                        {
+                            const eod = new Date(selectedDate);
+                            eod.setHours(settings.endOfDayHour, 0, 0, 0);
+                            newDate = roundToInterval(eod);
+                            if (newDate < now) {
+                                const todayEod = new Date();
+                                todayEod.setHours(settings.endOfDayHour, 0, 0, 0);
+                                newDate = roundToInterval(todayEod <= now ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), settings.endOfDayHour, 0, 0, 0) : todayEod);
+                            }
+                        }
+                        break;
+                    default:
+                        return;
+                }
+
+                selectedDate = newDate;
+                currentDate = new Date(selectedDate);
+                showTab('time');
+                updateInputValue();
+                updateTimePicker();
+                updateCalendar();
             }
 
             // Toggle between date and time tabs
@@ -378,6 +475,13 @@
                 e.preventDefault();
                 e.stopPropagation();
                 showTab('time');
+            });
+
+            $container.on('click', '.time-shortcut', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const shortcutType = $(this).data('shortcut');
+                applyShortcut(shortcutType);
             });
 
             // Month navigation
@@ -459,10 +563,22 @@
                     return new Date(selectedDate);
                 },
                 setDate: function (date) {
-                    selectedDate = new Date(date);
+                    selectedDate = roundToInterval(new Date(date));
                     updateInputValue();
                     updateCalendar();
                     updateTimePicker();
+                    return this;
+                },
+                setMinDate: function (date) {
+                    if (date instanceof Date && !isNaN(date.getTime())) {
+                        const minDate = roundToInterval(date);
+                        if (selectedDate < minDate) {
+                            selectedDate = new Date(minDate);
+                            updateInputValue();
+                            updateTimePicker();
+                            updateCalendar();
+                        }
+                    }
                     return this;
                 },
                 show: function () {

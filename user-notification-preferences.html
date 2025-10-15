@@ -12,37 +12,269 @@
     <link href="assets/DataTables-2.1.8/datatables.css" rel="stylesheet">
     <link href="assets/css/styles.css" rel="stylesheet">
     <style>
-        .preference-card {
-            border: 1px solid #dee2e6;
+        /* World-Class UI Variables */
+        :root {
+            --primary-gradient: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-bg-solid: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --text-primary: #212529;
+            --text-secondary: #495057;
+            --text-muted: #6c757d;
+            --shadow-soft: 0 8px 32px rgba(31, 38, 135, 0.15);
+            --shadow-hover: 0 12px 48px rgba(31, 38, 135, 0.25);
+            --animation-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --animation-spring: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            --border-radius-modern: 16px;
+            --border-radius-small: 12px;
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --md-danger: #dc3545;
+        }
+
+        /* Modern Layout Container */
+        .preferences-container {
+            min-height: 100vh;
+            position: relative;
+            background-image: url('assets/images/medical-background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .frosted-glass {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-radius: 8px;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
+            position: relative;
+            min-height: 100vh;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+        
+        /* Container width fixes */
+        .preferences-container .container {
+            max-width: 1200px;
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
 
-        .preference-card:hover {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        /* Glass Morphism Header */
+        .preferences-header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            color: white;
         }
 
-        .preference-card.disabled {
-            opacity: 0.6;
-            background-color: #f8f9fa;
+        .preferences-title {
+            color: white;
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin: 0;
+            text-align: center;
         }
 
-        .preference-card.system-override {
-            border-left: 4px solid #ffc107;
-            background-color: #fff3cd;
+        .preferences-subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            margin-top: var(--spacing-sm);
         }
 
-        .preference-card.system-disabled {
-            border-left: 4px solid #dc3545;
-            background-color: #f8d7da;
+        /* Modern Action Bar */
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+            flex-wrap: wrap;
         }
 
+        .btn-modern {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 8px;
+            border: none;
+            padding: var(--spacing-md) var(--spacing-lg);
+            font-weight: 600;
+            transition: all 0.3s var(--animation-smooth);
+            position: relative;
+            overflow: hidden;
+            color: white;
+        }
+
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-modern:hover::before {
+            left: 100%;
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .btn-primary-modern {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+        }
+
+        /* Enhanced System Status Banner */
+        .system-status-banner {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 8px;
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-lg);
+            position: relative;
+            overflow: hidden;
+            color: white;
+        }
+
+        .system-status-banner::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .system-status-banner.normal::before {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .system-status-banner.maintenance::before {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+
+        .system-status-banner.disabled::before {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+        }
+
+        .status-content {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .status-icon {
+            font-size: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Modern Personal Settings Cards */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .settings-card {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: var(--spacing-xl);
+            transition: all 0.3s var(--animation-smooth);
+            position: relative;
+            overflow: hidden;
+            color: white;
+        }
+
+        .settings-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+            border-radius: var(--border-radius-modern) var(--border-radius-modern) 0 0;
+        }
+
+        .settings-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .quiet-hours-card {
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+        }
+
+        .quiet-hours-card::before {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-md);
+            display: block;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .card-description {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* Enhanced Form Controls */
+        .form-control-modern {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-small);
+            padding: var(--spacing-md);
+            font-weight: 500;
+            color: var(--text-primary);
+            transition: all 0.3s var(--animation-smooth);
+        }
+
+        .form-control-modern:focus {
+            background: white;
+            border-color: var(--md-primary);
+            box-shadow: 0 0 0 0.2rem rgba(var(--md-primary-rgb), 0.25);
+            outline: none;
+        }
+
+        /* Modern Toggle Switch */
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 60px;
-            height: 34px;
+            width: 64px;
+            height: 36px;
         }
 
         .toggle-switch input {
@@ -58,88 +290,688 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+            transition: all 0.4s var(--animation-smooth);
+            border-radius: 36px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .slider:before {
             position: absolute;
             content: "";
-            height: 26px;
-            width: 26px;
+            height: 28px;
+            width: 28px;
             left: 4px;
             bottom: 4px;
-            background-color: white;
-            transition: .4s;
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            transition: all 0.4s var(--animation-spring);
             border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
-        input:checked+.slider {
-            background-color: #2196F3;
+        input:checked + .slider {
+            background: var(--primary-gradient);
+            box-shadow: 0 0 20px rgba(var(--md-primary-rgb), 0.3);
         }
 
-        input:checked+.slider:before {
-            transform: translateX(26px);
+        input:checked + .slider:before {
+            transform: translateX(28px);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
         }
 
-        input:disabled+.slider {
-            background-color: #ccc;
+        input:disabled + .slider {
+            background: #e9ecef;
             cursor: not-allowed;
         }
 
-        .system-status-banner {
-            margin-bottom: 2rem;
-            padding: 15px;
+        input:disabled + .slider:before {
+            background: #dee2e6;
+        }
+
+        /* Enhanced Notification Categories */
+        .notification-categories {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-radius: 8px;
-            border-left: 5px solid;
-        }
-
-        .system-status-banner.normal {
-            background-color: #d4edda;
-            border-left-color: #28a745;
-            color: #155724;
-        }
-
-        .system-status-banner.maintenance {
-            background-color: #fff3cd;
-            border-left-color: #ffc107;
-            color: #856404;
-        }
-
-        .system-status-banner.disabled {
-            background-color: #f8d7da;
-            border-left-color: #dc3545;
-            color: #721c24;
-        }
-
-        .quiet-hours-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
             color: white;
-            border: none;
         }
 
         .category-header {
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-            margin-bottom: 1rem;
-            padding: 1rem;
-            border-radius: 8px 8px 0 0;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            background-image: var(--primary-gradient);
+            background-clip: padding-box;
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-lg) 0;
+            position: relative;
         }
 
+        .category-header::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary-gradient);
+            border-radius: 2px;
+        }
+
+        .category-title {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        /* Enhanced Preference Cards */
+        .preference-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 8px;
+            margin-bottom: var(--spacing-md);
+            transition: all 0.3s var(--animation-smooth);
+            position: relative;
+            overflow: hidden;
+            color: white;
+        }
+
+        .preference-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--primary-gradient);
+            transform: scaleY(0);
+            transition: transform 0.3s var(--animation-smooth);
+        }
+
+        .preference-card:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .preference-card:hover::before {
+            transform: scaleY(1);
+        }
+
+        .preference-card.system-override {
+            border-left: 4px solid #ffc107;
+            background: rgba(255, 243, 205, 0.8);
+        }
+
+        .preference-card.system-disabled {
+            border-left: 4px solid #dc3545;
+            background: rgba(248, 215, 218, 0.8);
+            opacity: 0.7;
+        }
+
+        /* Enhanced Range Slider */
+        .form-range {
+            background: transparent;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #e9ecef, #e9ecef);
+            outline: none;
+        }
+
+        .form-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(var(--md-primary-rgb), 0.4);
+        }
+
+        .form-range::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(var(--md-primary-rgb), 0.4);
+        }
+
+        /* Enhanced Preview Section */
+        .preview-section {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 8px;
+            overflow: hidden;
+            color: white;
+        }
+
+        .preview-header {
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: var(--spacing-lg);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .notification-summary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius-small);
+            padding: var(--spacing-lg);
+        }
+
+        .summary-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .summary-stat:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .summary-value {
+            font-weight: 700;
+            color: white !important;
+            font-size: 1.1rem;
+        }
+
+        /* Save Indicator Enhancement */
         .save-indicator {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1050;
+            transform: translateX(100%);
+            transition: transform 0.3s var(--animation-spring);
+            display: none;
         }
 
-        .notification-preview {
-            background-color: #f8f9fa;
-            border: 1px dashed #dee2e6;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
+        .save-indicator.show {
+            transform: translateX(0);
+            display: block;
+        }
+
+        .alert-success-modern {
+            background: linear-gradient(135deg, #28a745, #20c997) !important;
+            border: none !important;
+            color: white !important;
+            border-radius: var(--border-radius-small) !important;
+            box-shadow: var(--shadow-soft) !important;
+        }
+        
+        .alert-success-modern .btn-close-white {
+            filter: brightness(0) invert(1) !important;
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .preferences-container {
+                padding: var(--spacing-md) 0;
+            }
+
+            .preferences-header {
+                padding: var(--spacing-lg);
+                margin-bottom: var(--spacing-lg);
+            }
+
+            .preferences-title {
+                font-size: 2rem;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-lg);
+            }
+
+            .action-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn-modern {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        /* Additional enhancements for new features */
+        
+        .cursor-pointer {
+            cursor: pointer;
+        }
+        
+        .category-chevron {
+            transition: transform 0.3s ease;
+        }
+        
+        .category-chevron.rotated {
+            transform: rotate(180deg);
+        }
+        
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            width: 20px;
+            height: 20px;
+            animation: ripple-animation 0.6s linear;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        
+        .search-container .form-control:focus {
+            border-color: var(--md-primary);
+            box-shadow: 0 0 0 0.2rem rgba(var(--md-primary-rgb), 0.25);
+        }
+        
+        .toggle-label {
+            flex-grow: 1;
+        }
+        
+        .toggle-group {
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius-small);
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-group:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .notification-toggles {
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 1rem;
+        }
+        
+        /* Accessibility improvements */
+        
+        .toggle-switch input:focus + .slider {
+            box-shadow: 0 0 0 3px rgba(var(--md-primary-rgb), 0.3);
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+        }
+        
+        .btn-modern:focus {
+            outline: 2px solid var(--md-primary);
+            outline-offset: 2px;
+        }
+        
+        .category-header:focus {
+            outline: 2px solid var(--md-primary);
+            outline-offset: 2px;
+            border-radius: var(--border-radius-small);
+        }
+        
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --glass-bg: rgba(255, 255, 255, 1);
+                --glass-border: rgba(0, 0, 0, 0.3);
+                --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.3);
+            }
+            
+            .preference-card {
+                border: 2px solid var(--md-primary);
+            }
+            
+            .toggle-switch .slider {
+                border: 2px solid var(--md-primary);
+            }
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            ::before,
+            ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+        
+        /* Dark mode support preparation */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --glass-bg: rgba(30, 30, 30, 0.95);
+                --glass-border: rgba(255, 255, 255, 0.1);
+            }
+        }
+        
+        /* Loading state enhancements */
+        .loading-spinner {
+            border: 3px solid rgba(var(--md-primary-rgb), 0.1);
+            border-top: 3px solid var(--md-primary);
+        }
+        
+        /* Enhanced scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* SweetAlert2 Custom Styling */
+        .swal-modern {
+            font-family: 'Montserrat', sans-serif !important;
+            border-radius: var(--border-radius-modern) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+        }
+        
+        .swal2-popup.swal-modern {
+            background: var(--glass-bg-solid) !important;
+            border: 1px solid var(--glass-border) !important;
+            box-shadow: var(--shadow-soft) !important;
+            color: var(--text-primary) !important;
+        }
+        
+        .swal2-title {
+            color: var(--text-primary) !important;
+        }
+        
+        .swal2-content {
+            color: var(--text-secondary) !important;
+        }
+        
+        /* Fix text visibility in quiet hours card */
+        .quiet-hours-card .form-label {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+        
+        .quiet-hours-card .form-control-modern {
+            background: rgba(255, 255, 255, 0.95) !important;
+            color: var(--text-primary) !important;
+        }
+        
+        /* Fix card text visibility */
+        .card-text {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        /* Fix loading text */
+        .text-center h5.text-muted,
+        .text-center p.text-muted {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        /* Fix category section styling */
+        .category-section {
+            color: white !important;
+        }
+        
+        .category-title {
+            color: white !important;
+        }
+        
+        /* Fix category description text */
+        .notification-categories p.text-muted {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        /* Fix toggle labels */
+        .toggle-label {
+            color: white !important;
+        }
+        
+        .toggle-label small {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        /* Fix button text */
+        .btn-modern {
+            color: white !important;
+        }
+        
+        .btn-primary-modern {
+            color: white !important;
+            background: var(--primary-gradient) !important;
+        }
+        
+        /* Fix form labels */
+        .form-label {
+            color: white !important;
+            font-weight: 600;
+        }
+        
+        /* Fix small text */
+        small, .small {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        /* Fix search input - frosted glass style with proper alignment */
+        .search-container {
+            position: relative;
+        }
+        
+        .search-container .input-group {
+            display: flex;
+            align-items: stretch;
+        }
+        
+        .search-container .form-control {
+            background: rgba(255, 255, 255, 0.15) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            color: white !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            height: 48px !important;
+            padding: 12px 16px !important;
+            font-size: 1rem !important;
+        }
+        
+        .search-container .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        .search-container .form-control:focus {
+            background: rgba(255, 255, 255, 0.25) !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
+            box-shadow: none !important;
+            color: white !important;
+            outline: none !important;
+        }
+        
+        .search-container .input-group-text {
+            background: rgba(255, 255, 255, 0.15) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-right: none !important;
+            color: white !important;
+            border-radius: 8px 0 0 8px !important;
+            height: 48px !important;
+            width: 48px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+        
+        .search-container .input-group-text i {
+            font-size: 1.1rem !important;
+            color: white !important;
+        }
+        
+        /* Fix search close button - completely custom with broader selectors */
+        .search-container .btn-close,
+        .search-container button[type="button"],
+        .notification-categories .btn-close,
+        .notification-categories button[type="button"] {
+            background: rgba(255, 255, 255, 0.15) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-left: none !important;
+            border-radius: 0 8px 8px 0 !important;
+            height: 48px !important;
+            width: 48px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            opacity: 0.8 !important;
+            box-sizing: border-box !important;
+            background-image: none !important;
+            filter: none !important;
+            position: relative !important;
+            -webkit-appearance: none !important;
+            appearance: none !important;
+        }
+        
+        .search-container .btn-close::before,
+        .search-container .btn-close::after,
+        .search-container button[type="button"]::before,
+        .search-container button[type="button"]::after,
+        .notification-categories .btn-close::before,
+        .notification-categories .btn-close::after,
+        .notification-categories button[type="button"]::before,
+        .notification-categories button[type="button"]::after {
+            content: '' !important;
+            position: absolute !important;
+            width: 16px !important;
+            height: 2px !important;
+            background-color: white !important;
+            border-radius: 1px !important;
+        }
+        
+        .search-container .btn-close::before,
+        .search-container button[type="button"]::before,
+        .notification-categories .btn-close::before,
+        .notification-categories button[type="button"]::before {
+            transform: rotate(45deg) !important;
+        }
+        
+        .search-container .btn-close::after,
+        .search-container button[type="button"]::after,
+        .notification-categories .btn-close::after,
+        .notification-categories button[type="button"]::after {
+            transform: rotate(-45deg) !important;
+        }
+        
+        .search-container .btn-close:hover,
+        .search-container button[type="button"]:hover,
+        .notification-categories .btn-close:hover,
+        .notification-categories button[type="button"]:hover {
+            background: rgba(255, 255, 255, 0.25) !important;
+            opacity: 1 !important;
+        }
+        
+        .search-container .btn-close:hover::before,
+        .search-container .btn-close:hover::after,
+        .search-container button[type="button"]:hover::before,
+        .search-container button[type="button"]:hover::after,
+        .notification-categories .btn-close:hover::before,
+        .notification-categories .btn-close:hover::after,
+        .notification-categories button[type="button"]:hover::before,
+        .notification-categories button[type="button"]:hover::after {
+            background-color: white !important;
+        }
+        
+        /* Fix layout overflow issues */
+        body {
+            overflow-x: hidden;
+        }
+        
+        /* Responsive grid improvements */
+        @media (max-width: 992px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .preferences-header {
+                padding: var(--spacing-lg);
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                gap: var(--spacing-sm);
+            }
+            
+            .btn-modern {
+                width: 100%;
+                max-width: 280px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .preferences-container {
+                padding: var(--spacing-md) 0;
+            }
+            
+            .container {
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+            }
+            
+            .notification-categories,
+            .preview-section,
+            .settings-card,
+            .preferences-header,
+            .system-status-banner {
+                margin-left: 0;
+                margin-right: 0;
+                border-radius: var(--border-radius-small);
+            }
         }
     </style>
 </head>
@@ -149,151 +981,246 @@
     <div id="topNav"></div>
 
     <!-- Save Indicator -->
-    <div id="saveIndicator" class="save-indicator" style="display: none;">
-        <div class="alert alert-success alert-dismissible">
-            <i class="bi bi-check-circle-fill"></i> Changes saved automatically
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div id="saveIndicator" class="save-indicator">
+        <div class="alert alert-success-modern alert-dismissible">
+            <i class="fas fa-check-circle me-2"></i>
+            <span>Changes saved automatically</span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
         </div>
     </div>
 
-    <div class="container mt-4">
-        <!-- Header -->
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h1><i class="bi bi-bell-fill"></i> My Notification Preferences</h1>
-                        <p class="text-muted">Customize how and when you receive notifications</p>
-                    </div>
-                    <div>
-                        <button class="btn btn-outline-primary me-2" onclick="resetToDefaults()">
-                            <i class="bi bi-arrow-clockwise"></i> Reset to Defaults
-                        </button>
-                        <button class="btn btn-success" onclick="saveAllPreferences()">
-                            <i class="bi bi-save"></i> Save All Changes
-                        </button>
+    <div class="preferences-container">
+        <div class="container frosted-glass">
+            <!-- Modern Header -->
+            <div class="preferences-header" data-aos="fade-down" data-aos-duration="800">
+                <h1 class="preferences-title">
+                    <i class="fas fa-bell me-3"></i>
+                    Notification Preferences
+                </h1>
+                <p class="preferences-subtitle">
+                    Customize your notification experience with intelligent controls
+                </p>
+                
+                <div class="action-bar">
+                    <button class="btn btn-modern" onclick="resetToDefaults()" data-aos="fade-up" data-aos-delay="100">
+                        <i class="fas fa-undo me-2"></i>
+                        Reset to Defaults
+                    </button>
+                    <button class="btn btn-modern btn-primary-modern" onclick="saveAllPreferences()" data-aos="fade-up" data-aos-delay="200">
+                        <i class="fas fa-save me-2"></i>
+                        Save All Changes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Enhanced System Status Banner -->
+            <div id="systemStatusBanner" class="system-status-banner normal" style="display: none;" data-aos="fade-in" data-aos-duration="600">
+                <div class="status-content">
+                    <i id="statusIcon" class="fas fa-info-circle status-icon"></i>
+                    <div class="flex-grow-1">
+                        <h5 id="bannerTitle" class="mb-1 fw-bold">System Status</h5>
+                        <p id="bannerMessage" class="mb-0 opacity-75">Loading system status...</p>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- System Status Banner -->
-        <div class="row">
-            <div class="col-12">
-                <div id="systemStatusBanner" class="system-status-banner normal" style="display: none;">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-info-circle-fill me-2"></i>
+            <!-- Modern Personal Settings -->
+            <div class="settings-grid">
+                <div class="settings-card quiet-hours-card" data-aos="fade-right" data-aos-duration="600" data-aos-delay="100">
+                    <i class="fas fa-moon card-icon"></i>
+                    <h3 class="card-title">Quiet Hours</h3>
+                    <p class="card-description">
+                        Set your personal quiet hours when you don't want to receive non-critical notifications
+                    </p>
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label for="quietHoursStart" class="form-label fw-semibold">Start Time</label>
+                            <input type="time" class="form-control form-control-modern" id="quietHoursStart" value="22:00">
+                        </div>
+                        <div class="col-6">
+                            <label for="quietHoursEnd" class="form-label fw-semibold">End Time</label>
+                            <input type="time" class="form-control form-control-modern" id="quietHoursEnd" value="08:00">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex align-items-center justify-content-between mt-4">
+                        <label for="enableQuietHours" class="form-label mb-0 fw-semibold">
+                            Enable quiet hours
+                        </label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="enableQuietHours" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-card" data-aos="fade-left" data-aos-duration="600" data-aos-delay="200">
+                    <i class="fas fa-tachometer-alt card-icon" style="color: var(--md-primary);"></i>
+                    <h3 class="card-title">Notification Frequency</h3>
+                    <p class="card-description">
+                        Control how often you receive notifications throughout the day
+                    </p>
+                    
+                    <div class="mb-4">
+                        <label for="maxDailyNotifications" class="form-label fw-semibold">
+                            Maximum daily notifications
+                        </label>
+                        <input type="range" class="form-range" id="maxDailyNotifications" min="5" max="100" value="50" step="5">
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted fw-medium">5</small>
+                            <div class="text-center">
+                                <div id="maxDailyValue" class="fw-bold" style="color: var(--md-primary); font-size: 1.5rem;">50</div>
+                                <small class="text-muted">per day</small>
+                            </div>
+                            <small class="text-muted fw-medium">100</small>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <strong id="bannerTitle">System Status</strong>
-                            <div id="bannerMessage">Loading system status...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Personal Settings -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card quiet-hours-card">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-moon-stars"></i> Quiet Hours
-                        </h5>
-                        <p class="card-text">Set your personal quiet hours when you don't want to receive non-critical
-                            notifications</p>
-                        <div class="row">
-                            <div class="col-6">
-                                <label for="quietHoursStart" class="form-label">Start Time</label>
-                                <input type="time" class="form-control" id="quietHoursStart" value="22:00">
-                            </div>
-                            <div class="col-6">
-                                <label for="quietHoursEnd" class="form-label">End Time</label>
-                                <input type="time" class="form-control" id="quietHoursEnd" value="08:00">
-                            </div>
-                        </div>
-                        <div class="form-check mt-3">
-                            <input class="form-check-input" type="checkbox" id="enableQuietHours" checked>
-                            <label class="form-check-label" for="enableQuietHours">
-                                Enable quiet hours
+                            <label for="digestMode" class="form-label mb-0 fw-semibold">
+                                Daily digest mode
                             </label>
+                            <small class="d-block text-muted">
+                                Combine similar notifications
+                            </small>
                         </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="digestMode">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-speedometer2"></i> Notification Frequency
-                        </h5>
-                        <p class="card-text">Control how often you receive notifications</p>
-                        <div class="mb-3">
-                            <label for="maxDailyNotifications" class="form-label">Maximum daily notifications</label>
-                            <input type="range" class="form-range" id="maxDailyNotifications" min="5" max="100"
-                                value="50" step="5">
-                            <div class="d-flex justify-content-between">
-                                <small class="text-muted">5</small>
-                                <small id="maxDailyValue" class="text-primary fw-bold">50</small>
-                                <small class="text-muted">100</small>
-                            </div>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="digestMode">
-                            <label class="form-check-label" for="digestMode">
-                                Daily digest mode (combine similar notifications)
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Notification Types by Category -->
-        <div class="row mt-4">
-            <div class="col-12">
+                <div class="settings-card" data-aos="fade-up" data-aos-duration="600" data-aos-delay="300">
+                    <i class="fas fa-check-double card-icon" style="color: var(--md-secondary);"></i>
+                    <h3 class="card-title">Approval Notifications</h3>
+                    <p class="card-description">
+                        Choose how you want to be notified when new bookings require your approval
+                    </p>
+
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div>
+                            <label for="approvalNotificationsToggle" class="form-label mb-0 fw-semibold">
+                                Enable approval notifications
+                            </label>
+                            <small class="d-block text-muted">Receive alerts for pending booking requests</small>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="approvalNotificationsToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="approvalNotificationMode" class="form-label fw-semibold">
+                            Delivery preference
+                        </label>
+                        <select class="form-select form-control-modern" id="approvalNotificationMode">
+                            <option value="immediate">Immediate notification</option>
+                            <option value="digest">Daily digest summary</option>
+                        </select>
+                        <small class="text-muted d-block mt-2">
+                            Immediate sends alerts as bookings arrive. Daily digest emails a morning summary.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Notification Categories -->
+            <div class="notification-categories" data-aos="fade-up" data-aos-duration="600" data-aos-delay="300">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div>
+                        <h2 class="category-title mb-1">
+                            <i class="fas fa-cog me-2"></i>
+                            Notification Types
+                        </h2>
+                        <p class="text-muted mb-0">Fine-tune your notification preferences by category</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <button class="btn btn-modern btn-sm" onclick="expandAll()">
+                            <i class="fas fa-expand-alt me-1"></i>
+                            Expand All
+                        </button>
+                        <button class="btn btn-modern btn-sm" onclick="collapseAll()">
+                            <i class="fas fa-compress-alt me-1"></i>
+                            Collapse All
+                        </button>
+                    </div>
+                </div>
+                
                 <div id="notificationCategories">
                     <!-- Categories will be loaded here -->
                     <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                        <div class="d-flex flex-column align-items-center">
+                            <div class="loading-spinner mb-3"></div>
+                            <h5 class="text-muted">Loading your notification preferences</h5>
+                            <p class="text-muted mb-0">Please wait while we fetch your settings...</p>
                         </div>
-                        <p class="mt-2">Loading your notification preferences...</p>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Preview Section -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="bi bi-eye"></i> Preview & Test</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Test Notifications</h6>
-                                <p class="text-muted">Send yourself a test notification to see how it will appear</p>
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-outline-primary btn-sm" onclick="sendTestEmail()">
-                                        <i class="bi bi-envelope"></i> Test Email
-                                    </button>
-                                    <button class="btn btn-outline-success btn-sm" onclick="sendTestInApp()">
-                                        <i class="bi bi-app-indicator"></i> Test In-App
-                                    </button>
-                                </div>
+            <!-- Enhanced Preview & Test Section -->
+            <div class="preview-section" data-aos="fade-up" data-aos-duration="600" data-aos-delay="400">
+                <div class="preview-header">
+                    <i class="fas fa-eye me-2"></i>
+                    Preview & Test Your Settings
+                </div>
+                <div class="p-4">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h5 class="fw-bold mb-3">
+                                <i class="fas fa-paper-plane me-2 text-primary"></i>
+                                Test Notifications
+                            </h5>
+                            <p class="text-muted mb-4">
+                                Send yourself a test notification to verify your settings are working correctly
+                            </p>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-modern d-flex align-items-center justify-content-center" onclick="sendTestEmail()">
+                                    <i class="fas fa-envelope me-2"></i>
+                                    <span>Send Test Email</span>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-external-link-alt opacity-50"></i>
+                                    </div>
+                                </button>
+                                <button class="btn btn-modern d-flex align-items-center justify-content-center" onclick="sendTestInApp()">
+                                    <i class="fas fa-bell me-2"></i>
+                                    <span>Send Test In-App Notification</span>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-mobile-alt opacity-50"></i>
+                                    </div>
+                                </button>
                             </div>
-                            <div class="col-md-6">
-                                <h6>Notification Summary</h6>
-                                <div id="notificationSummary" class="notification-preview">
-                                    <p class="mb-1"><strong>Email Notifications:</strong> <span id="emailCount">0</span>
-                                        types enabled</p>
-                                    <p class="mb-1"><strong>In-App Notifications:</strong> <span
-                                            id="inAppCount">0</span> types enabled</p>
-                                    <p class="mb-0"><strong>System Overrides:</strong> <span id="overrideCount">0</span>
-                                        types</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="fw-bold mb-3">
+                                <i class="fas fa-chart-pie me-2 text-primary"></i>
+                                Notification Summary
+                            </h5>
+                            <div class="notification-summary">
+                                <div class="summary-stat">
+                                    <span class="summary-label">
+                                        <i class="fas fa-envelope me-2"></i>
+                                        Email Notifications
+                                    </span>
+                                    <span class="summary-value" id="emailCount">0</span>
+                                </div>
+                                <div class="summary-stat">
+                                    <span class="summary-label">
+                                        <i class="fas fa-mobile-alt me-2"></i>
+                                        In-App Notifications
+                                    </span>
+                                    <span class="summary-value" id="inAppCount">0</span>
+                                </div>
+                                <div class="summary-stat">
+                                    <span class="summary-label">
+                                        <i class="fas fa-shield-alt me-2"></i>
+                                        System Overrides
+                                    </span>
+                                    <span class="summary-value" id="overrideCount">0</span>
                                 </div>
                             </div>
                         </div>

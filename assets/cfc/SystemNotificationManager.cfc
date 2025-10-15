@@ -782,9 +782,12 @@
           ============================ --->
 
     <!--- Get user notification settings --->
-    <cffunction name="getUserNotificationSettings" access="remote" returntype="query" returnformat="json">
+    <cffunction name="getUserNotificationSettings" access="remote" returntype="struct" returnformat="json">
         <cfargument name="user_id" type="numeric" required="true">
-        
+
+        <cfset var result = { success = false, settings = [], message = "" }>
+        <cfset var qUserSettings = "">
+
         <cftry>
             <cfquery name="qUserSettings" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT 
@@ -797,15 +800,96 @@
                 WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
                 ORDER BY SETTING_NAME
             </cfquery>
-            
-            <cfreturn qUserSettings>
-            
+
+            <cfloop query="qUserSettings">
+                <cfset arrayAppend(result.settings, {
+                    name = qUserSettings.SETTING_NAME,
+                    value = qUserSettings.SETTING_VALUE,
+                    type = qUserSettings.SETTING_TYPE,
+                    createdAt = qUserSettings.CREATED_AT,
+                    updatedAt = qUserSettings.UPDATED_AT
+                })>
+            </cfloop>
+
+            <cfset result.success = true>
+            <cfset result.count = arrayLen(result.settings)>
+
         <cfcatch>
-            <!--- Return empty query if table doesn't exist --->
-            <cfset local.emptySettings = queryNew("SETTING_NAME,SETTING_VALUE,SETTING_TYPE,CREATED_AT,UPDATED_AT", "varchar,varchar,varchar,timestamp,timestamp")>
-            <cfreturn local.emptySettings>
+            <cfset result.success = false>
+            <cfset result.message = "Error retrieving user notification settings: " & cfcatch.message>
         </cfcatch>
         </cftry>
+
+        <cfreturn result>
+    </cffunction>
+
+    <cffunction name="getUserNotificationSetting" access="remote" returntype="struct" returnformat="json">
+        <cfargument name="user_id" type="numeric" required="true">
+        <cfargument name="setting_name" type="string" required="true">
+
+        <cfset var result = { success = false, data = {}, settingName = arguments.setting_name, settingType = "" }>
+
+        <cftry>
+            <cfquery name="qSetting" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT SETTING_VALUE, SETTING_TYPE
+                FROM #this.DBSCHEMA#.USER_NOTIFICATION_SETTINGS
+                WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                AND SETTING_NAME = <cfqueryparam value="#arguments.setting_name#" cfsqltype="cf_sql_varchar">
+            </cfquery>
+
+            <cfif qSetting.recordCount>
+                <cfset var storedValue = qSetting.SETTING_VALUE>
+                <cfset result.settingType = qSetting.SETTING_TYPE>
+
+                <cfif qSetting.SETTING_TYPE EQ "JSON">
+                    <cftry>
+                        <cfset storedValue = deserializeJSON(storedValue)>
+                    <cfcatch>
+                        <cfset storedValue = {}>
+                    </cfcatch>
+                    </cftry>
+                </cfif>
+
+                <cfset result.success = true>
+                <cfset result.data = storedValue>
+            <cfelse>
+                <cfset result.data = {}>
+            </cfif>
+
+        <cfcatch>
+            <cfset result.success = false>
+            <cfset result.message = "Error retrieving user notification setting: " & cfcatch.message>
+        </cfcatch>
+        </cftry>
+
+        <cfreturn result>
+    </cffunction>
+
+    <cffunction name="getApprovalNotificationPreferences" access="public" returntype="struct" output="false">
+        <cfargument name="user_id" type="numeric" required="true">
+        <cfargument name="default_enabled" type="boolean" required="false" default="true">
+        <cfargument name="default_mode" type="string" required="false" default="immediate">
+
+        <cfset var result = {
+            enabled = arguments.default_enabled,
+            mode = arguments.default_mode
+        }>
+
+        <cfset var prefSetting = getUserNotificationSetting(
+            user_id = arguments.user_id,
+            setting_name = "APPROVAL_NOTIFICATIONS"
+        )>
+
+        <cfif prefSetting.success AND isStruct(prefSetting.data)>
+            <cfif structKeyExists(prefSetting.data, "enabled")>
+                <cfset result.enabled = prefSetting.data.enabled>
+            </cfif>
+            <cfif structKeyExists(prefSetting.data, "mode") AND len(trim(prefSetting.data.mode))>
+                <cfset result.mode = lcase(prefSetting.data.mode)>
+            </cfif>
+        </cfif>
+
+        <cfreturn result>
     </cffunction>
 
     <!--- Update user notification setting --->

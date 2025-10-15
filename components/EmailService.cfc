@@ -7,15 +7,27 @@ component {
     property name="emailFrom" default="roomreservation@mdanderson.org";
     property name="emailFromName" default="MD Anderson Room Reservation";
 
-    // Initialize email settings
-    public void function init() {
-        // Load email configuration from Application settings
-        variables.smtpServer = application.config.email.smtpServer ?: variables.smtpServer;
-        variables.smtpPort = application.config.email.smtpPort ?: variables.smtpPort;
-        variables.useSSL = application.config.email.useSSL ?: variables.useSSL;
-        variables.useTLS = application.config.email.useTLS ?: variables.useTLS;
-        variables.emailFrom = application.config.email.from ?: variables.emailFrom;
-        variables.emailFromName = application.config.email.fromName ?: variables.emailFromName;
+    // Constructor - automatically initialize when component is created
+    public function init() {
+        // Set default values first
+        variables.smtpServer = "smtp.office365.com";
+        variables.smtpPort = "587";
+        variables.useSSL = "true";
+        variables.useTLS = "true";
+        variables.emailFrom = "roomreservation@mdanderson.org";
+        variables.emailFromName = "MD Anderson Room Reservation";
+        
+        // Override with Application settings if available
+        if (structKeyExists(application, "config") AND structKeyExists(application.config, "email")) {
+            variables.smtpServer = application.config.email.smtpServer ?: variables.smtpServer;
+            variables.smtpPort = application.config.email.smtpPort ?: variables.smtpPort;
+            variables.useSSL = application.config.email.useSSL ?: variables.useSSL;
+            variables.useTLS = application.config.email.useTLS ?: variables.useTLS;
+            variables.emailFrom = application.config.email.from ?: variables.emailFrom;
+            variables.emailFromName = application.config.email.fromName ?: variables.emailFromName;
+        }
+        
+        return this;
     }
 
     // Send booking confirmation email
@@ -94,8 +106,166 @@ component {
         );
     }
 
+    // Send booking revision notification email
+    public boolean function sendBookingRevisionNotification(required numeric bookingId) {
+        try {
+            // Get database configuration
+            if (listFirst(CGI.SERVER_NAME, '.') EQ 'cmapps') {
+                var DBSERVER = "inside2_docmp";
+                var DBUSER = "CONFROOM_USER";
+                var DBPASS = "1DOCMAU4CNFRM6";
+                var DBSCHEMA = "CONFROOM";
+            } else if (listFirst(CGI.SERVER_NAME, '.') EQ 's-cmapps') {
+                var DBSERVER = "inside2_docms";
+                var DBUSER = "CONFROOM";
+                var DBPASS = "1DOCMOA4CNFRM3";
+                var DBSCHEMA = "CONFROOM";
+            } else {
+                var DBSERVER = "inside2_docmd";
+                var DBUSER = "CONFROOM";
+                var DBPASS = "1DOCMOA4CNFRM3";
+                var DBSCHEMA = "CONFROOM";
+            }
+
+            // Get the current booking details
+            var qGetBooking = queryExecute("
+                SELECT
+                    b.BOOKING_ID,
+                    b.USER_ID,
+                    b.ROOM_ID,
+                    b.START_TIME,
+                    b.END_TIME,
+                    b.COMMENTS,
+                    b.STATUS,
+                    b.REVISION_NUMBER,
+                    b.REVISION_DATE,
+                    b.MODIFIED_BY,
+                    u.FIRST_NAME as USER_FIRST_NAME,
+                    u.LAST_NAME as USER_LAST_NAME,
+                    u.EMAIL as USER_EMAIL,
+                    r.ROOM_NAME,
+                    r.BUILDING,
+                    r.ROOM_NUMBER,
+                    m.FIRST_NAME as MODIFIER_FIRST_NAME,
+                    m.LAST_NAME as MODIFIER_LAST_NAME
+                FROM #DBSCHEMA#.BOOKINGS b
+                JOIN #DBSCHEMA#.USERS u ON b.USER_ID = u.USER_ID
+                JOIN #DBSCHEMA#.ROOMS r ON b.ROOM_ID = r.ROOM_ID
+                LEFT JOIN #DBSCHEMA#.USERS m ON b.MODIFIED_BY = m.USER_ID
+                WHERE b.BOOKING_ID = :bookingId
+            ", {
+                bookingId = {value = arguments.bookingId, cfsqltype = "cf_sql_numeric"}
+            }, {
+                datasource = DBSERVER,
+                username = DBUSER,
+                password = DBPASS
+            });
+
+            if (qGetBooking.recordCount EQ 0) {
+                writeLog(
+                    type = "error",
+                    text = "Booking not found for revision notification: #arguments.bookingId#",
+                    application = "yes"
+                );
+                return false;
+            }
+
+            // Get the original booking details from revision history or previous state
+            // For now, we'll use a simple approach - in a full implementation, you'd query revision history
+            var qGetOriginal = queryExecute("
+                SELECT
+                    b.BOOKING_ID,
+                    b.ROOM_ID,
+                    b.START_TIME,
+                    b.END_TIME,
+                    b.COMMENTS,
+                    r.ROOM_NAME,
+                    r.BUILDING,
+                    r.ROOM_NUMBER
+                FROM #DBSCHEMA#.BOOKINGS b
+                JOIN #DBSCHEMA#.ROOMS r ON b.ROOM_ID = r.ROOM_ID
+                WHERE b.BOOKING_ID = :bookingId
+                AND b.REVISION_NUMBER = :revisionNum
+            ", {
+                bookingId = {value = arguments.bookingId, cfsqltype = "cf_sql_numeric"},
+                revisionNum = {value = max(0, qGetBooking.REVISION_NUMBER - 1), cfsqltype = "cf_sql_numeric"}
+            }, {
+                datasource = DBSERVER,
+                username = DBUSER,
+                password = DBPASS
+            });
+
+            // If no previous revision exists, use current values as fallback
+            if (qGetOriginal.recordCount EQ 0) {
+                qGetOriginal = qGetBooking;
+            }
+
+            // Prepare email data structures
+            var booking = {
+                bookingId = qGetBooking.BOOKING_ID,
+                roomId = qGetBooking.ROOM_ID,
+                roomName = qGetBooking.ROOM_NAME,
+                building = qGetBooking.BUILDING,
+                roomNumber = qGetBooking.ROOM_NUMBER,
+                startTime = qGetBooking.START_TIME,
+                endTime = qGetBooking.END_TIME,
+                comments = qGetBooking.COMMENTS,
+                status = qGetBooking.STATUS,
+                revisionNumber = qGetBooking.REVISION_NUMBER,
+                revisionDate = qGetBooking.REVISION_DATE
+            };
+
+            var original = {
+                roomId = qGetOriginal.ROOM_ID,
+                roomName = qGetOriginal.ROOM_NAME,
+                building = qGetOriginal.BUILDING,
+                roomNumber = qGetOriginal.ROOM_NUMBER,
+                startTime = qGetOriginal.START_TIME,
+                endTime = qGetOriginal.END_TIME,
+                comments = qGetOriginal.COMMENTS
+            };
+
+            var user = {
+                firstName = qGetBooking.USER_FIRST_NAME,
+                lastName = qGetBooking.USER_LAST_NAME,
+                email = qGetBooking.USER_EMAIL
+            };
+
+            var modifiedBy = {
+                firstName = qGetBooking.MODIFIER_FIRST_NAME ?: "System",
+                lastName = qGetBooking.MODIFIER_LAST_NAME ?: "Administrator"
+            };
+
+            var subject = "Booking Revision Notice - #booking.roomName# (Revision ###booking.revisionNumber#)";
+            var template = "views/emails/booking-revision.cfm";
+
+            var emailArgs = {
+                booking = booking,
+                original = original,
+                user = user,
+                modifiedBy = modifiedBy
+            };
+
+            return sendEmail(
+                to = user.email,
+                toName = user.firstName & " " & user.lastName,
+                subject = subject,
+                template = template,
+                args = emailArgs
+            );
+        }
+        catch (any e) {
+            writeLog(
+                type = "error",
+                text = "Error sending booking revision notification for booking #arguments.bookingId#: #e.message# #e.detail#",
+                application = "yes"
+            );
+            return false;
+        }
+    }
+
     // Send test email
-    remote boolean function sendTestEmail(required string recipient, string type = "system_test") {
+    remote struct function sendTestEmail(required string recipient, string type = "system_test") returnformat="json" {
         try {
             var subject = "Test Email - DoCM Room Reservation System";
             var testContent = "
@@ -128,7 +298,13 @@ component {
                 application = "yes"
             );
             
-            return true;
+            return {
+                "success" = true,
+                "message" = "Test email sent successfully",
+                "recipient" = arguments.recipient,
+                "type" = arguments.type,
+                "timestamp" = now()
+            };
         }
         catch (any e) {
             // Log error
@@ -138,7 +314,14 @@ component {
                 application = "yes"
             );
             
-            return false;
+            return {
+                "success" = false,
+                "message" = "Error sending test email: " & e.message,
+                "detail" = e.detail,
+                "recipient" = arguments.recipient,
+                "type" = arguments.type,
+                "timestamp" = now()
+            };
         }
     }
 
@@ -153,7 +336,7 @@ component {
         try {
             // Generate email content from template
             savecontent variable="emailContent" {
-                include template=arguments.template;
+                include arguments.template;
             }
 
             // Send email using ColdFusion mail

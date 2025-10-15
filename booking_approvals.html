@@ -80,6 +80,7 @@
                                     <tr class="table-dark">
                                         <th>Booking ID</th>
                                         <th>Reserved By</th>
+                                        <th>Meeting Title</th>
                                         <th>Room Name</th>
                                         <th>Location</th>
                                         <th>Start Date</th>
@@ -225,10 +226,14 @@
                     success: function (response) {
                         if (response.SUCCESS) {
                             const bookingDetails = response.BOOKING;
+                            const meetingTitleHtml = bookingDetails.MEETING_TITLE && bookingDetails.MEETING_TITLE.trim() !== ''
+                                ? `<p><strong><i class="fas fa-calendar-alt me-2 text-primary"></i>Meeting Title:</strong> <span class="text-primary fw-semibold">${bookingDetails.MEETING_TITLE}</span></p>`
+                                : `<p><strong><i class="fas fa-calendar-alt me-2 text-muted"></i>Meeting Title:</strong> <span class="text-muted fst-italic">No title provided</span></p>`;
                             const detailsHtml = `
                                 <div class="d-flex justify-content-start align-items-start flex-column">
                                     <p><strong>Booking ID:</strong> ${bookingDetails.BOOKING_ID}</p>
                                     <p><strong>Reserved By:</strong> ${bookingDetails.FULL_NAME}</p>
+                                    ${meetingTitleHtml}
                                     <p><strong>Room:</strong> ${bookingDetails.ROOM_NAME}</p>
                                     <p><strong>Location:</strong> ${bookingDetails.LOCATION}</p>
                                     <p><strong>Date Booked:</strong> ${bookingDetails.DATE}</p>
@@ -325,6 +330,16 @@
                         }
                     },
                     { data: 'USER_NAME' },
+                    {
+                        data: 'MEETING_TITLE',
+                        render: function (data, type, row) {
+                            if (data && data.trim() !== '') {
+                                return `<span class="text-primary fw-semibold"><i class="fas fa-calendar-alt me-1"></i>${data}</span>`;
+                            } else {
+                                return `<span class="text-muted fst-italic"><i class="fas fa-minus-circle me-1"></i>No title</span>`;
+                            }
+                        }
+                    },
                     { data: 'ROOM_NAME' },
                     { data: 'LOCATION' },
                     { data: 'START_DATE' },

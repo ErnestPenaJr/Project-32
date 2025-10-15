@@ -827,7 +827,8 @@
                     u.FIRST_NAME,
                     u.LAST_NAME,
                     TO_CHAR(b.START_TIME, 'YYYY-MM-DD HH24:MI:SS') AS START_TIME,
-                    TO_CHAR(b.END_TIME, 'YYYY-MM-DD HH24:MI:SS') AS END_TIME
+                    TO_CHAR(b.END_TIME, 'YYYY-MM-DD HH24:MI:SS') AS END_TIME,
+                    b.COMMENTS
                 FROM 
                     #this.DBSCHEMA#.BOOKINGS b
                 JOIN 
@@ -839,6 +840,37 @@
 
             <cfset startTime = ParseDateTime(qryGetBooking.START_TIME)>
             <cfset endTime = ParseDateTime(qryGetBooking.END_TIME)>
+
+            <cfset var bookingDetails = {
+                bookingId = qryGetBooking.BOOKING_ID,
+                requesterId = qryGetBooking.USER_ID,
+                requesterName = trim(qryGetBooking.FIRST_NAME & " " & qryGetBooking.LAST_NAME),
+                requesterEmail = qryGetBooking.EMAIL,
+                roomId = qryGetBooking.ROOM_ID,
+                roomName = qryGetBooking.ROOM_NAME,
+                location = qryGetBooking.LOCATION,
+                startTime = startTime,
+                endTime = endTime,
+                meetingTitle = qryGetBooking.COMMENTS,
+                submittedAt = now()
+            }>
+
+            <cftry>
+                <cfset var approvalNotificationService = createObject("component", "components.ApprovalNotification").init(this.DBSERVER)>
+                <cfset var approvalNotificationResult = approvalNotificationService.sendPendingApprovalAlert(bookingDetails = bookingDetails)>
+                <cfif NOT approvalNotificationResult.success>
+                    <cfset arrayAppend(warnings, {
+                        message = "Approval notification dispatch partially failed",
+                        detail = serializeJSON(approvalNotificationResult)
+                    })>
+                </cfif>
+            <cfcatch>
+                <cfset arrayAppend(warnings, {
+                    message = "Approval notification dispatch error",
+                    detail = cfcatch.message
+                })>
+            </cfcatch>
+            </cftry>
 
             <!-- Generate ICS file -->
             <cfset var icsContent = [
@@ -916,32 +948,12 @@
                 
                 <!--- Only send email if user has email notifications enabled for booking confirmations --->
                 <cfif userPreferences.email>
-                    <!--- Get admins who should receive this notification --->
-                    <cfset qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CONFIRMATION", "email") />
-                    
-                    <!--- Build list of admin emails --->
-                    <cfset adminEmails = "">
-                    <cfloop query="qryAdminsToNotify">
-                        <cfset adminEmails = ListAppend(adminEmails, qryAdminsToNotify.EMAIL)>
-                    </cfloop>
-                    
-                    <!--- Send email to requester and CC admins who want notifications --->
-                    <cfif len(trim(adminEmails))>
-                        <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
-                                subject="Office Space Reservation - Pending Approval" type="html" cc="#adminEmails#">
-                            <cfmailpart type="text/html">
-                                <cfoutput>#emailBody#</cfoutput>
-                            </cfmailpart>
-                        </cfmail>
-                    <cfelse>
-                        <!--- If no admins to CC, just send to requester --->
                         <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
                                 subject="Office Space Reservation - Pending Approval" type="html">
                             <cfmailpart type="text/html">
                                 <cfoutput>#emailBody#</cfoutput>
                             </cfmailpart>
                         </cfmail>
-                    </cfif>
                 </cfif>
             <cfcatch type="any">
                 <!--- Do not fail booking if ICS or email fails; collect warning --->

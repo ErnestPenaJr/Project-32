@@ -25,9 +25,10 @@
         
         <cftry>
             <cfquery name="qGetPending" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT 
+                SELECT
                     b.BOOKING_ID as ID,
                     u.FIRST_NAME || ' ' || u.LAST_NAME as USER_NAME,
+                    b.COMMENTS as MEETING_TITLE,
                     r.ROOM_NAME,
                     r.BUILDING as BUILDING,
                     r.ROOM_NUMBER as ROOM_NUMBER,
@@ -70,6 +71,7 @@
                 <cfset arrayAppend(result.DATA, {
                     "ID" = ID,
                     "USER_NAME" = USER_NAME,
+                    "MEETING_TITLE" = MEETING_TITLE,
                     "ROOM_NAME" = ROOM_NAME,
                     "LOCATION" = "#BUILDING#-#ROOM_NUMBER#",
                     "CAPACITY" = CAPACITY,
@@ -99,9 +101,10 @@
         
         <cftry>
             <cfquery name="qryDetails" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT 
+                SELECT
                     b.BOOKING_ID,
                     u.FIRST_NAME || ' ' || u.LAST_NAME AS FULL_NAME,
+                    b.COMMENTS AS MEETING_TITLE,
                     r.ROOM_NAME,
                     TO_CHAR(b.CREATED_AT, 'FMDay, FMMonth DD, YYYY') as DATEBOOKED,
                     TO_CHAR(b.START_TIME, 'HH12:MI AM') || ' - ' || TO_CHAR(b.END_TIME, 'HH12:MI AM') as TIME,
@@ -133,6 +136,7 @@
                 "BOOKING" = {
                     "BOOKING_ID" = qryDetails.BOOKING_ID,
                     "FULL_NAME" = qryDetails.FULL_NAME,
+                    "MEETING_TITLE" = qryDetails.MEETING_TITLE,
                     "ROOM_NAME" = qryDetails.ROOM_NAME,
                     "LOCATION" = "#qryDetails.BUILDING#.#qryDetails.ROOM_NUMBER#",
                     "CAPACITY" = qryDetails.CAPACITY,
