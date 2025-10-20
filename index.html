@@ -2189,9 +2189,9 @@
                                         cancelBooking(info.event.id).then(() => {
                                             globalCalendar.refetchEvents();
                                             checkPendingApprovals();
-                                            Swal.fire('Cancelled!', 'The booking has been cancelled.', 'success');
                                         }).catch((error) => {
-                                            Swal.fire('Error', 'Failed to cancel booking', 'error');
+                                            // Error is already shown by cancelBooking function
+                                            console.error('Cancel booking error:', error);
                                         });
                                     };
                                     actionsContainer.appendChild(cancelBtn);
@@ -2344,8 +2344,12 @@
                         $('#bookingModal .modal-title').html('<i class="fas fa-calendar-check me-2"></i>Reserve a Focus Room');
                         $('#saveBooking').html('<i class="fas fa-check me-1"></i>Book Room');
 
-                        // First hide the modal
-                        $('#bookingModal').modal('hide');
+                        // First hide the modal using Bootstrap 5 syntax
+                        const modalElement = document.getElementById('bookingModal');
+                        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
 
                         // Reset the form inputs
                         $('#bookingForm')[0].reset();

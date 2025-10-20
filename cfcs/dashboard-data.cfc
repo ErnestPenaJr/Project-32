@@ -560,11 +560,19 @@
             </cfoutput>
         ">
             <!--- Check if user should receive booking cancellation email --->
-            <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications") />
-            <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CANCELLATION") />
-            
+            <cfset var sendEmail = true />
+            <cftry>
+                <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications") />
+                <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CANCELLATION") />
+                <cfset sendEmail = (isDefined("userPreferences.email") AND isBoolean(userPreferences.email) AND userPreferences.email) />
+            <cfcatch>
+                <!--- If notification service fails, default to sending email --->
+                <cfset sendEmail = true />
+            </cfcatch>
+            </cftry>
+
             <!--- Only send email if user has email notifications enabled for booking cancellations --->
-            <cfif userPreferences.email>
+            <cfif sendEmail>
                 <!--- Get admins who should receive this notification --->
                 <cfset qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CANCELLATION", "email") />
                 
