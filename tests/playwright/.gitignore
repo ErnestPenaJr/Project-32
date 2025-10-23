@@ -1,0 +1,29 @@
+# Playwright Test Artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Node modules
+node_modules/
+
+# Screenshots (optional - you may want to commit these)
+# screenshots/
+
+# Test results
+test-results.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp

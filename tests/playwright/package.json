@@ -1,0 +1,28 @@
+{
+  "name": "docm-room-reservation-playwright-tests",
+  "version": "1.0.0",
+  "description": "Playwright automated tests for DoCM Room Reservation System TODO.md features",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:phase1": "playwright test --grep \"Phase 1\"",
+    "test:phase2": "playwright test --grep \"Phase 2\"",
+    "test:phase3": "playwright test --grep \"Phase 3\"",
+    "test:comprehensive": "playwright test --grep \"Comprehensive\"",
+    "test:report": "playwright show-report",
+    "test:codegen": "playwright codegen http://localhost:8500/DoCMRoomReservation/index.html"
+  },
+  "keywords": [
+    "playwright",
+    "testing",
+    "automation",
+    "e2e"
+  ],
+  "author": "DoCM Development Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}

@@ -904,14 +904,107 @@
                                             <div class="row g-2">
                                                 <div class="col-md-12">
                                                     <div id="recurringDetailsContainer">
-                                                        <label for="recurringDetails" class="form-label mb-1">Recurring
-                                                            Schedule</label>
+                                                        <label for="recurringDetails" class="form-label mb-1">
+                                                            <i class="fas fa-redo me-1"></i>Recurring Schedule
+                                                        </label>
                                                         <select class="form-select" id="recurringDetails">
                                                             <option value="">No recurring</option>
-                                                            <option value="daily">Daily</option>
-                                                            <option value="weekly">Weekly</option>
-                                                            <option value="monthly">Monthly</option>
+                                                            <option value="DAILY">Daily</option>
+                                                            <option value="WEEKLY">Weekly</option>
+                                                            <option value="MONTHLY">Monthly</option>
                                                         </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Recurring Pattern Configuration (Hidden by default) -->
+                                            <div id="recurringPatternContainer" class="card border-0 shadow-sm mt-3 d-none">
+                                                <div class="card-body p-3">
+                                                    <h6 class="card-title mb-3">
+                                                        <i class="fas fa-calendar-alt me-2"></i>Recurring Pattern Configuration
+                                                    </h6>
+
+                                                    <!-- Repeat Every N intervals -->
+                                                    <div class="mb-3">
+                                                        <label for="recurringInterval" class="form-label fw-medium">
+                                                            Repeat Every
+                                                        </label>
+                                                        <div class="input-group">
+                                                            <input type="number" class="form-control" id="recurringInterval"
+                                                                   value="1" min="1" max="12">
+                                                            <span class="input-group-text" id="intervalLabel">day(s)</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Days of Week Selection (for WEEKLY only) -->
+                                                    <div id="weeklyDaysContainer" class="mb-3 d-none">
+                                                        <label class="form-label fw-medium">Repeat On</label>
+                                                        <div class="d-flex flex-wrap gap-2">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="day_1" value="1">
+                                                                <label class="form-check-label" for="day_1">Mon</label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="day_2" value="2">
+                                                                <label class="form-check-label" for="day_2">Tue</label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="day_3" value="3">
+                                                                <label class="form-check-label" for="day_3">Wed</label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="day_4" value="4">
+                                                                <label class="form-check-label" for="day_4">Thu</label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="day_5" value="5">
+                                                                <label class="form-check-label" for="day_5">Fri</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- End Type Selection -->
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-medium">Ends</label>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="endType"
+                                                                   id="endByDate" value="date" checked>
+                                                            <label class="form-check-label" for="endByDate">
+                                                                On Date
+                                                            </label>
+                                                        </div>
+                                                        <div class="ms-4 mt-2" id="endDateContainer">
+                                                            <input type="date" class="form-control" id="recurringEndDate">
+                                                        </div>
+
+                                                        <div class="form-check mt-2">
+                                                            <input class="form-check-input" type="radio" name="endType"
+                                                                   id="endByOccurrences" value="occurrences">
+                                                            <label class="form-check-label" for="endByOccurrences">
+                                                                After Number of Occurrences
+                                                            </label>
+                                                        </div>
+                                                        <div class="ms-4 mt-2 d-none" id="occurrencesContainer">
+                                                            <div class="input-group">
+                                                                <input type="number" class="form-control" id="recurringOccurrences"
+                                                                       value="10" min="1" max="52">
+                                                                <span class="input-group-text">occurrence(s)</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Preview Button -->
+                                                    <button type="button" class="btn btn-sm btn-outline-primary w-100"
+                                                            id="previewRecurringDates">
+                                                        <i class="fas fa-eye me-1"></i>Preview Recurring Dates
+                                                    </button>
+
+                                                    <!-- Preview Results Container -->
+                                                    <div id="recurringPreviewContainer" class="mt-3 d-none">
+                                                        <div class="alert alert-info">
+                                                            <strong><i class="fas fa-calendar-check me-1"></i>Preview:</strong>
+                                                            <div id="recurringPreviewList" class="mt-2 small"></div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -994,6 +1087,8 @@
     <script src="assets/js/datetime_picker.js"></script>
     <!-- Booking Edit Functionality -->
     <script src="assets/js/booking-edit.js"></script>
+    <!-- Recurring Booking Functionality -->
+    <script src="assets/js/recurring-booking.js"></script>
 
     <script>
         // Function to format date for ColdFusion - placed in global scope for accessibility
@@ -2018,7 +2113,9 @@
                                                     comments: booking.COMMENTS || '',
                                                     requesterName: `${booking.FIRSTNAME} ${booking.LASTNAME}`,
                                                     isModified: booking.IS_MODIFIED === 'Y',
-                                                    revisionNumber: booking.REVISION_NUMBER || 0
+                                                    revisionNumber: booking.REVISION_NUMBER || 0,
+                                                    isRecurring: booking.IS_RECURRING === 'Y',
+                                                    seriesInstanceNumber: booking.SERIES_INSTANCE_NUMBER || null
                                                 },
                                                 className: [
                                                     `room-${(booking.ID % 10) + 1}`,
@@ -2040,6 +2137,7 @@
                         const roomClass = info.event.classNames.find(className => className.startsWith('room-'));
                         const meetingTitle = info.event.extendedProps.comments;
                         const isModified = info.event.extendedProps.isModified;
+                        const isRecurring = info.event.extendedProps.isRecurring;
                         const status = info.event.extendedProps.status.toLowerCase();
 
                         // Status badge colors
@@ -2052,12 +2150,21 @@
                         };
                         const badgeColor = statusColors[status] || 'secondary';
 
+                        // Build badges HTML
+                        let badges = '';
+                        if (isModified) {
+                            badges += '<span class="badge bg-warning text-dark" style="font-size: 0.65rem; margin-left: 4px;"><i class="fas fa-edit"></i></span>';
+                        }
+                        if (isRecurring) {
+                            badges += '<span class="badge bg-info" style="font-size: 0.65rem; margin-left: 4px;"><i class="fas fa-redo"></i></span>';
+                        }
+
                         return {
                             html: `
                                 <div class="fc-event-main ${roomClass}">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="fc-event-time">${info.timeText}</div>
-                                        ${isModified ? '<span class="badge bg-warning text-dark" style="font-size: 0.65rem;"><i class="fas fa-edit"></i></span>' : ''}
+                                        ${badges}
                                     </div>
                                     <div class="fc-event-title">
                                         <span class="badge bg-${badgeColor}" style="font-size: 0.65rem; margin-right: 4px;">${status}</span>
@@ -2075,6 +2182,8 @@
                         const meetingTitle = info.event.extendedProps.comments;
                         const status = info.event.extendedProps.status;
                         const isModified = info.event.extendedProps.isModified;
+                        const isRecurring = info.event.extendedProps.isRecurring;
+                        const seriesInstanceNumber = info.event.extendedProps.seriesInstanceNumber;
 
                         // Build tooltip content
                         let tooltipContent = `
@@ -2082,7 +2191,8 @@
                             <strong>Room:</strong> ${info.event.extendedProps.roomName}<br>
                             <strong>Status:</strong> <span class="text-capitalize">${status}</span><br>
                             ${meetingTitle ? `<strong>Title:</strong> ${meetingTitle}<br>` : ''}
-                            ${isModified ? '<span class="badge bg-warning text-dark"><i class="fas fa-edit"></i> Modified</span><br>' : ''}
+                            ${isModified ? '<span class="badge bg-warning text-dark"><i class="fas fa-edit"></i> Modified</span> ' : ''}
+                            ${isRecurring ? `<span class="badge bg-info"><i class="fas fa-redo"></i> Recurring${seriesInstanceNumber ? ' (#' + seriesInstanceNumber + ')' : ''}</span><br>` : ''}
                             <strong>From:</strong> ${startStr}<br>
                             <strong>Until:</strong> ${endStr}
                         `;

@@ -17,43 +17,50 @@ function initRecurringBooking() {
         recurringEnabled = (selectedValue !== '');
 
         if (recurringEnabled) {
-            $('#recurringDetailsContainer').slideDown();
-            // Set default values
-            $('#recurringInterval').val('1');
-            $('#recurringEndType').val('occurrences');
-            updateEndTypeFields();
+            // Show the recurring pattern container
+            $('#recurringPatternContainer').removeClass('d-none').slideDown();
+
+            // Update interval label based on frequency
+            updateFrequencyOptions(selectedValue);
+
+            // Set default end date to 3 months from now
+            const defaultEndDate = new Date();
+            defaultEndDate.setMonth(defaultEndDate.getMonth() + 3);
+            $('#recurringEndDate').val(defaultEndDate.toISOString().split('T')[0]);
         } else {
-            $('#recurringDetailsContainer').slideUp();
+            $('#recurringPatternContainer').slideUp(function() {
+                $(this).addClass('d-none');
+            });
             clearRecurringPreview();
         }
     });
 
-    // Handle frequency change
-    $('#recurringDetails').on('change', function() {
-        const frequency = $(this).val();
-        updateFrequencyOptions(frequency);
-    });
-
-    // Handle end type change
-    $('#recurringEndType').on('change', function() {
-        updateEndTypeFields();
-    });
-
-    // Handle preview button
-    $('#previewRecurring').on('click', function() {
-        generateRecurringPreview();
-    });
-
-    // Handle interval/end value changes to update preview
-    $('#recurringInterval, #recurringEndValue, #recurringEndDate').on('change', function() {
-        if ($('#recurringPreview').is(':visible')) {
-            generateRecurringPreview();
+    // Handle end type radio buttons
+    $('input[name="endType"]').on('change', function() {
+        const endType = $(this).val();
+        if (endType === 'date') {
+            $('#endDateContainer').removeClass('d-none');
+            $('#occurrencesContainer').addClass('d-none');
+        } else {
+            $('#endDateContainer').addClass('d-none');
+            $('#occurrencesContainer').removeClass('d-none');
         }
     });
 
-    // Handle days of week checkboxes
-    $('.recurring-day-checkbox').on('change', function() {
-        if ($('#recurringPreview').is(':visible')) {
+    // Handle preview button
+    $('#previewRecurringDates').on('click', function() {
+        generateRecurringPreview();
+    });
+
+    // Handle interval changes to update label
+    $('#recurringInterval').on('input', function() {
+        const frequency = $('#recurringDetails').val();
+        updateIntervalLabel(frequency, parseInt($(this).val()));
+    });
+
+    // Handle days of week checkboxes for auto-preview update
+    $('input[id^="day_"]').on('change', function() {
+        if ($('#recurringPreviewContainer').is(':visible')) {
             generateRecurringPreview();
         }
     });
@@ -63,13 +70,41 @@ function initRecurringBooking() {
  * Update UI based on selected frequency
  */
 function updateFrequencyOptions(frequency) {
-    const $daysOfWeekContainer = $('#daysOfWeekContainer');
+    const $weeklyDaysContainer = $('#weeklyDaysContainer');
 
-    if (frequency === 'weekly') {
-        $daysOfWeekContainer.slideDown();
+    // Update interval label
+    updateIntervalLabel(frequency, parseInt($('#recurringInterval').val()) || 1);
+
+    // Show/hide weekly days selection
+    if (frequency === 'WEEKLY') {
+        $weeklyDaysContainer.removeClass('d-none');
     } else {
-        $daysOfWeekContainer.slideUp();
+        $weeklyDaysContainer.addClass('d-none');
     }
+}
+
+/**
+ * Update interval label based on frequency and value
+ */
+function updateIntervalLabel(frequency, intervalValue) {
+    let labelText = '';
+    const plural = intervalValue > 1 ? 's' : '';
+
+    switch (frequency) {
+        case 'DAILY':
+            labelText = `day${plural}`;
+            break;
+        case 'WEEKLY':
+            labelText = `week${plural}`;
+            break;
+        case 'MONTHLY':
+            labelText = `month${plural}`;
+            break;
+        default:
+            labelText = 'interval(s)';
+    }
+
+    $('#intervalLabel').text(labelText);
 }
 
 /**
@@ -95,12 +130,17 @@ function updateEndTypeFields() {
 function generateRecurringPreview() {
     const frequency = $('#recurringDetails').val();
     const interval = parseInt($('#recurringInterval').val()) || 1;
-    const endType = $('#recurringEndType').val();
+    const endType = $('input[name="endType"]:checked').val();
     const startTime = $('#startTime').val();
     const endTime = $('#endTime').val();
 
     if (!frequency || !startTime || !endTime) {
-        showToast('Please select frequency and date/time before previewing', 'warning');
+        Swal.fire({
+            icon: 'warning',
+            title: 'Missing Information',
+            text: 'Please select frequency and date/time before previewing',
+            confirmButtonClass: 'btn btn-primary'
+        });
         return;
     }
 
@@ -113,21 +153,36 @@ function generateRecurringPreview() {
     let endByDate;
 
     if (endType === 'date') {
-        endByDate = new Date($('#recurringEndDate').val());
+        const endDateValue = $('#recurringEndDate').val();
+        if (!endDateValue) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing End Date',
+                text: 'Please select an end date for the recurring series',
+                confirmButtonClass: 'btn btn-primary'
+            });
+            return;
+        }
+        endByDate = new Date(endDateValue);
         maxDates = 100; // Safety limit
     } else {
-        maxDates = parseInt($('#recurringEndValue').val()) || 10;
+        maxDates = parseInt($('#recurringOccurrences').val()) || 10;
     }
 
     // Get days of week for weekly patterns
     let selectedDays = [];
-    if (frequency === 'weekly') {
-        $('.recurring-day-checkbox:checked').each(function() {
-            selectedDays.push($(this).val());
+    if (frequency === 'WEEKLY') {
+        $('input[id^="day_"]:checked').each(function() {
+            selectedDays.push(parseInt($(this).val()));
         });
 
         if (selectedDays.length === 0) {
-            showToast('Please select at least one day of the week', 'warning');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Select Days',
+                text: 'Please select at least one day of the week',
+                confirmButtonClass: 'btn btn-primary'
+            });
             return;
         }
     }
@@ -153,8 +208,8 @@ function generateDates(startDate, duration, frequency, interval, endType, endByD
         }
 
         // For weekly patterns, check if current day matches selected days
-        if (frequency === 'weekly') {
-            const dayOfWeek = getDayAbbreviation(currentDate.getDay());
+        if (frequency === 'WEEKLY') {
+            const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
             if (selectedDays.includes(dayOfWeek)) {
                 const instanceEnd = new Date(currentDate.getTime() + duration);
@@ -184,9 +239,9 @@ function generateDates(startDate, duration, frequency, interval, endType, endByD
             count++;
 
             // Calculate next occurrence
-            if (frequency === 'daily') {
+            if (frequency === 'DAILY') {
                 currentDate.setDate(currentDate.getDate() + interval);
-            } else if (frequency === 'monthly') {
+            } else if (frequency === 'MONTHLY') {
                 currentDate.setMonth(currentDate.getMonth() + interval);
             }
         }
@@ -199,57 +254,73 @@ function generateDates(startDate, duration, frequency, interval, endType, endByD
  * Display recurring preview
  */
 function displayRecurringPreview(dates) {
-    const $preview = $('#recurringPreview');
+    const $preview = $('#recurringPreviewContainer');
     const $list = $('#recurringPreviewList');
 
     $list.empty();
 
     if (dates.length === 0) {
-        $list.append('<li class="list-group-item text-muted">No dates generated</li>');
+        $list.html('<p class="text-muted mb-0">No dates generated</p>');
     } else {
         // Show first 10 dates
         const displayDates = dates.slice(0, 10);
+        let html = '<ul class="list-group list-group-flush">';
 
         displayDates.forEach(function(date, index) {
             const startStr = formatDateTime(date.start);
             const endStr = formatDateTime(date.end);
 
-            $list.append(`
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>Instance #${date.instanceNumber}</strong><br>
-                        <small>${startStr} - ${endStr}</small>
-                    </div>
-                    <span class="badge bg-primary rounded-pill">${getFormattedDuration(date.start, date.end)}</span>
+            html += `
+                <li class="list-group-item py-1 px-2">
+                    <strong>#${date.instanceNumber}:</strong>
+                    <small>${startStr} - ${endStr}</small>
                 </li>
-            `);
+            `;
         });
 
         if (dates.length > 10) {
-            $list.append(`
-                <li class="list-group-item text-center text-muted">
+            html += `
+                <li class="list-group-item text-center text-muted py-1 px-2">
                     ... and ${dates.length - 10} more occurrence(s)
                 </li>
-            `);
+            `;
         }
 
-        $list.append(`
-            <li class="list-group-item text-center bg-light">
+        html += `
+            <li class="list-group-item text-center bg-light py-1 px-2">
                 <strong>Total Occurrences: ${dates.length}</strong>
             </li>
-        `);
+        `;
+        html += '</ul>';
+
+        $list.html(html);
     }
 
-    $preview.slideDown();
+    $preview.removeClass('d-none').slideDown();
 }
 
 /**
  * Clear recurring preview
  */
 function clearRecurringPreview() {
-    $('#recurringPreview').slideUp();
+    $('#recurringPreviewContainer').slideUp(function() {
+        $(this).addClass('d-none');
+    });
     $('#recurringPreviewList').empty();
     recurringPreviewDates = [];
+}
+
+/**
+ * Format date/time for display
+ */
+function formatDateTime(date) {
+    return date.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+    });
 }
 
 /**
