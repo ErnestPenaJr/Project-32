@@ -300,7 +300,7 @@
                         <cfset temp["AUTHORIZED_USER"] = false />
                         <cfset temp["ISADMIN"] = 0 />
 
-                    <cfelse>
+                    <cfelseif getNewUser.RecordCount == 1>
                         
                          <cfquery username="#this.DBUSER#" password="#this.DBPASS#" datasource="#this.DBSERVER#">
                             INSERT INTO #this.DBSCHEMA#.USERS (EMPLID, FIRST_NAME, LAST_NAME, EMAIL, ROLE_ID, STATUS, DATEENTERED, ENTEREDBYID)

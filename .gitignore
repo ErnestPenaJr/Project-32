@@ -49,5 +49,13 @@ dist/
 build/
 out/
 
+# .NET specific
+*.csproj
+*.sln
+bin/
+obj/
+appsettings.json
+appsettings.*.json
+
 # windsurf rules
 .windsurfrules

@@ -1,9 +1,9 @@
-## Authur
+## Author
 - Ernest Pena Jr
 
-## Hotel Management System
+## DoCM Room Reservation System
 
-A comprehensive office reservation management system built with ColdFusion, JavaScript, and modern CSS frameworks.
+A comprehensive office reservation management system built for MD Anderson Cancer Center using ColdFusion, JavaScript, and modern CSS frameworks.
 
 ## Features
 
@@ -18,120 +18,153 @@ A comprehensive office reservation management system built with ColdFusion, Java
 
 ## Technology Stack
 
-- ColdFusion 2021
-- JavaScript
-- HTML
-- CSS
-- Bootstrap
-- jQuery
-- Font Awesome
-- Oracle Database
+### Backend
+- **ColdFusion 2021**: Server-side language for business logic and database interactions
+- **Oracle Database**: Main data store with comprehensive schema
+
+### Frontend
+- **HTML5/CSS3**: Standard markup and styling
+- **JavaScript/jQuery 3.7.0**: Client-side interactivity and AJAX
+- **Bootstrap 5**: CSS framework for responsive design
+- **TailwindCSS**: Utility-first CSS framework (compiled via npm)
+- **FontAwesome Pro 5.15.4**: Icon library
+- **FullCalendar 6.1.15**: Interactive calendar for booking management
+- **SweetAlert2**: Enhanced alert dialogs
+- **DataTables**: Advanced table functionality
+
+### Build Tools
+- **npm**: Package management and build processes
+- **PostCSS**: CSS processing with autoprefixer
 
 ## Project Structure
 
-The project follows a modular architecture with separate directories for:
-- Assets (CSS, JavaScript, Images, Fonts)
-- Components (Reusable HTML components)
-- Pages (Main application pages)
-- Services (JavaScript services)
-- CFCs (ColdFusion Components) database management
-- API (REST API endpoints)
-- Config (Configuration files)
+```
+/assets/cfc/          # ColdFusion Components (data access layer)
+/components/          # Reusable ColdFusion components
+/config/              # Configuration files (database, settings)
+/api/                 # REST API endpoints (.cfm files)
+/assets/js/           # JavaScript files and libraries
+/assets/css/          # Compiled CSS and stylesheets
+/assets/sql/          # Database schema and migration scripts
+/pages/               # Individual page templates
+/views/emails/        # Email templates
+/src/                 # Source files (input.css for TailwindCSS)
+```
+
+### Key Components
+- `assets/cfc/functions.cfc` - Core utility functions and database queries
+- `components/Room.cfc` - Room management and availability checking
+- `components/User.cfc` - User authentication and management
+- `components/Booking.cfc` - Booking creation and management
+- `components/Notification.cfc` - Notification system
 
 ## Setup Instructions
 
-1. Clone the repository
-2. Configure your ColdFusion server
-3. Set up the database using the provided scripts
-4. Update the database configuration in `/config/database.cfc`
-5. Start the ColdFusion server
-6. Access the application through your web browser
+### Prerequisites
+- ColdFusion 2021 server
+- Oracle database access
+- Node.js and npm (for frontend build tools)
+
+### Installation Steps
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd DoCMRoomReservation
+   ```
+
+2. **Install frontend dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure database connection**
+   - Update `/config/database.cfc` with your Oracle database credentials
+   - Environment-specific settings (dev/staging/prod) are auto-detected
+
+4. **Set up the database**
+   - Run the SQL scripts in `/assets/sql/` to create the schema
+   - Ensure proper permissions for the database user
+
+5. **Build CSS assets**
+   ```bash
+   npm run build:css
+   ```
+   Or for development with watch mode:
+   ```bash
+   npm run watch:css
+   ```
+
+6. **Configure ColdFusion server**
+   - Set the web root to the project directory
+   - Ensure ColdFusion has proper database datasource configuration
+
+7. **Access the application**
+   - Navigate to `http://localhost:<port>/` in your browser
+   - Login with your credentials
 
 ## Development
 
-Please follow the established coding standards and guidelines when contributing to this project.
+### CSS Development
+- CSS is compiled from `/src/input.css` to `/assets/css/styles.css`
+- Use Bootstrap 5 classes for responsive design
+- Use FontAwesome Pro for icons
+- Follow the style guide in `styleguide.html`
 
-Project Overview
-Project Name: DoCM Room Reservation System
+### ColdFusion Best Practices
+- Use parameterized queries (`cfqueryparam`) to prevent SQL injection
+- Implement proper error handling with try/catch blocks
+- Log errors to `/assets/logs/` directory
+- Use `remote access="remote"` for AJAX-callable functions
 
-Purpose
-Develop a modern, efficient, and user-friendly room reservation system tailored for the MD Anderson Cancer Center. The system aims to streamline the management of conference rooms, improve booking efficiency, and enhance user experience for both administrators and staff.
+### API Development
+- All API endpoints are ColdFusion files (.cfm) in the `/api/` directory
+- Return JSON for AJAX calls using `returnformat="json"`
+- Implement authentication checks for protected endpoints
 
-Objectives
-Simplify Room Booking: Provide an intuitive interface for users to search for and reserve conference rooms.
-Enhance Management Capabilities: Equip administrators with tools to monitor room utilization, manage users, and schedule maintenance.
-Integrate with Existing Systems: Sync with Office 365 calendars for seamless scheduling.
-Improve Communication: Implement notification systems for bookings, reminders, and maintenance alerts.
-Key Features
-Room Management
+For detailed development guidelines, see `CLAUDE.md`.
 
-Detailed room listings with capacity, amenities, and availability.
-Real-time updates on room status.
-Support for multiple buildings and floors.
-Amenities tracking (projector, whiteboard, video conferencing).
-Maintenance status tracking.
-Booking System
+## Purpose
 
-Interactive calendar with multiple views (monthly, weekly, daily).
-Conflict detection and real-time booking updates.
-Support for recurring reservations.
-Office 365 calendar integration.
-Booking confirmation notifications.
-User Management
+Develop a modern, efficient, and user-friendly room reservation system tailored for the MD Anderson Cancer Center. The system streamlines conference room management, improves booking efficiency, and enhances user experience for both administrators and staff.
 
-Role-based access control (Admins and Users).
-Department-based organization.
-User account status tracking and booking history.
-Customizable notification preferences.
-Notifications
+## Key Objectives
 
-Booking confirmations and reminders.
-Maintenance alerts and status updates.
-In-app notification center.
-Admin Dashboard
+- **Simplify Room Booking**: Intuitive interface for searching and reserving conference rooms
+- **Enhance Management**: Tools for monitoring room utilization, managing users, and scheduling maintenance
+- **System Integration**: Office 365 calendar synchronization for seamless scheduling
+- **Improve Communication**: Comprehensive notification system for bookings, reminders, and alerts
 
-Overview of all bookings and room utilization statistics.
-User management interface.
-System logs for activity monitoring.
-Tools for scheduling and managing maintenance.
-Technology Stack
+## Special Features
 
-## Frontend
-ColdFusion 2021: Server-side language for building dynamic web applications.
-JavaScript: Client-side scripting language for dynamic behavior.
-Bootstrap: CSS framework for responsive and mobile-friendly web design.
-jQuery: JavaScript library for simplifying DOM manipulation and event handling.
-Font Awesome: Icon library for adding icons to web pages.
-CSS: Cascading Style Sheets for styling web pages.
-HTML: Markup language for structuring web pages.
+### Office 365 Integration
+- Calendar synchronization capabilities
+- Authentication callback handling
 
-## Backend
-ColdFusion 2021: Server-side language for database interaction only.
-jQuery: Client-side scripting language for dynamic behavior.
-Oracle Database: Relational database for data storage and retrieval.
-CSS: Cascading Style Sheets for styling web pages.
-HTML: Markup language for structuring web pages.
+### Notification System
+- In-app notifications with read/unread status
+- Email notifications for bookings and reminders
+- User preference management for notification types
 
-## File Structure
-root/
-├─ index.html               # Main application page
-├─ login.html               # Login page
-├─ logout.html              # Logout page
-├─ README.md                # Project documentation
-├─ WORKFLOW.md              # Project workflow
-├─ assets/
-│  ├─ cfc/                  # ColdFusion Components
-│  │  ├─ functions.cfc
-│  ├─ css/
-│  │  └─ styles.css          # Main CSS file
-│  ├─ js/
-│  │  └─ app.js             # Main JavaScript file
-│  ├─ images/               # Image files
-│  ├─ json/                 # JSON files
-│  ├─ database/
-│  │  └─ schema.sql
-│  ├─ fonts/                # Font files
-│  │  └─ fontawesome/
-│  └─ temp/                 # Temporary upload directory
-├─ documents/               # Processed document storage
-└─ node_modules/            # Node.js dependencies
+### Maintenance Management
+- Room maintenance status tracking
+- Scheduling system for maintenance windows
+- Impact tracking on room availability
+
+### Recurring Bookings
+- Support for recurring reservation patterns
+- Conflict detection across series
+- Bulk management of recurring events
+
+## Environment Configuration
+
+The system automatically detects the environment based on server hostname:
+- **Production**: `cmapps.mdanderson.org`
+- **Staging**: `s-cmapps.mdanderson.org`
+- **Development**: Local/other hostnames
+
+Database connections and credentials are environment-specific.
+
+## License
+
+© MD Anderson Cancer Center. All rights reserved.
