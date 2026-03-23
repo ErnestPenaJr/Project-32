@@ -266,6 +266,10 @@ component {
 
     // Send test email
     remote struct function sendTestEmail(required string recipient, string type = "system_test") returnformat="json" {
+        // Ensure init() has been called (remote invocations skip the constructor)
+        if (!structKeyExists(variables, "emailFrom")) {
+            init();
+        }
         try {
             var subject = "Test Email - DoCM Room Reservation System";
             var testContent = "

@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoCM Room Reservation - Architecture Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #c9d1d9;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: 1fr auto;
+    height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: #161b22;
+    border-right: 1px solid #30363d;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    grid-row: 1 / 3;
+  }
+
+  .sidebar h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8b949e;
+    padding: 16px 16px 8px;
+  }
+
+  .sidebar h3 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #484f58;
+    padding: 12px 16px 6px;
+  }
+
+  /* Presets */
+  .preset-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 16px 8px;
+  }
+
+  .preset-btn {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { background: #30363d; border-color: #484f58; }
+  .preset-btn.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+
+  /* Layer toggles */
+  .layer-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.1s;
+  }
+  .layer-toggle:hover { background: #1c2128; }
+
+  .layer-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .layer-toggle input { display: none; }
+  .layer-toggle .check {
+    width: 16px; height: 16px;
+    border: 1px solid #484f58;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .layer-toggle input:checked + .check {
+    background: #1f6feb;
+    border-color: #1f6feb;
+    color: #fff;
+  }
+
+  /* Connection toggles */
+  .conn-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 16px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .conn-toggle:hover { background: #1c2128; }
+  .conn-toggle input { display: none; }
+  .conn-toggle .check {
+    width: 16px; height: 16px;
+    border: 1px solid #484f58;
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; flex-shrink: 0; transition: all 0.15s;
+  }
+  .conn-toggle input:checked + .check {
+    border-color: var(--conn-color);
+    background: var(--conn-color);
+    color: #fff;
+  }
+
+  .conn-line {
+    width: 20px;
+    height: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Comments section */
+  .comments-section {
+    border-top: 1px solid #30363d;
+    flex-shrink: 0;
+  }
+
+  .comment-count {
+    background: #30363d;
+    color: #c9d1d9;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+  }
+
+  .comment-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .comment-item {
+    padding: 8px 16px;
+    border-bottom: 1px solid #21262d;
+    font-size: 12px;
+  }
+
+  .comment-item .target {
+    color: #58a6ff;
+    font-weight: 600;
+    font-size: 11px;
+  }
+
+  .comment-item .file {
+    color: #484f58;
+    font-size: 10px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .comment-item .text {
+    color: #c9d1d9;
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  .comment-item .delete-btn {
+    float: right;
+    background: none;
+    border: none;
+    color: #484f58;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+  }
+  .comment-item .delete-btn:hover { color: #f85149; }
+
+  .no-comments {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #484f58;
+    font-style: italic;
+  }
+
+  /* Canvas area */
+  .canvas-area {
+    position: relative;
+    overflow: hidden;
+    background: #0d1117;
+  }
+
+  .zoom-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+    z-index: 10;
+  }
+
+  .zoom-btn {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .zoom-btn:hover { background: #30363d; }
+
+  .zoom-level {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  svg:active { cursor: grabbing; }
+
+  /* SVG node styles */
+  .node-rect {
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+  .node-rect:hover { filter: brightness(1.15); }
+
+  .node-label {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    fill: #e6edf3;
+    pointer-events: none;
+  }
+
+  .node-subtitle {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 9px;
+    fill: #8b949e;
+    pointer-events: none;
+  }
+
+  .node-commented {
+    stroke: #f0883e !important;
+    stroke-width: 2.5 !important;
+    stroke-dasharray: none !important;
+  }
+
+  .connection-path {
+    fill: none;
+    stroke-width: 1.5;
+    transition: opacity 0.2s;
+  }
+
+  .connection-label {
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 9px;
+    fill: #8b949e;
+    pointer-events: none;
+  }
+
+  /* Legend */
+  .legend {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    z-index: 10;
+    font-size: 11px;
+  }
+
+  .legend-title {
+    font-weight: 600;
+    color: #8b949e;
+    margin-bottom: 6px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 3px 0;
+    color: #8b949e;
+  }
+
+  .legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+  }
+
+  .legend-line {
+    width: 22px;
+    height: 2px;
+  }
+
+  /* Prompt output */
+  .prompt-area {
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    padding: 12px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .prompt-text {
+    flex: 1;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    min-height: 40px;
+  }
+
+  .copy-btn {
+    background: #238636;
+    border: 1px solid #2ea043;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .copy-btn:hover { background: #2ea043; }
+  .copy-btn.copied { background: #1f6feb; border-color: #388bfd; }
+
+  /* Comment modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    width: 420px;
+    max-width: 90vw;
+    padding: 20px;
+  }
+
+  .modal h3 {
+    color: #e6edf3;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .modal .modal-file {
+    color: #8b949e;
+    font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    margin-bottom: 12px;
+  }
+
+  .modal textarea {
+    width: 100%;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    padding: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+    margin-bottom: 12px;
+  }
+  .modal textarea:focus { outline: none; border-color: #1f6feb; }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .modal-actions button {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid #30363d;
+  }
+
+  .btn-cancel { background: #21262d; color: #c9d1d9; }
+  .btn-cancel:hover { background: #30363d; }
+  .btn-save { background: #238636; border-color: #2ea043; color: #fff; }
+  .btn-save:hover { background: #2ea043; }
+
+  /* Title bar */
+  .title-bar {
+    padding: 12px 16px;
+    border-bottom: 1px solid #30363d;
+  }
+
+  .title-bar h1 {
+    font-size: 15px;
+    color: #e6edf3;
+    font-weight: 700;
+  }
+
+  .title-bar p {
+    font-size: 11px;
+    color: #484f58;
+    margin-top: 2px;
+  }
+
+  /* Node tooltip */
+  .tooltip {
+    position: fixed;
+    background: #1c2128;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #c9d1d9;
+    pointer-events: none;
+    z-index: 50;
+    max-width: 260px;
+    display: none;
+    line-height: 1.4;
+  }
+
+  .tooltip .tt-label { font-weight: 600; color: #e6edf3; }
+  .tooltip .tt-file { color: #8b949e; font-family: monospace; font-size: 10px; }
+  .tooltip .tt-desc { margin-top: 4px; color: #8b949e; }
+  .tooltip .tt-hint { margin-top: 4px; color: #58a6ff; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="title-bar">
+      <h1>DoCM Architecture</h1>
+      <p>Room Reservation System - MD Anderson</p>
+    </div>
+
+    <h2>Views</h2>
+    <div class="preset-group" id="presets"></div>
+
+    <h2>Layers</h2>
+    <div id="layer-toggles"></div>
+
+    <h2>Connections</h2>
+    <div id="conn-toggles"></div>
+
+    <div class="comments-section">
+      <h2>Comments <span class="comment-count" id="comment-count">0</span></h2>
+      <div class="comment-list" id="comment-list">
+        <div class="no-comments" id="no-comments">Click a component to add feedback</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas-area">
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="zoomIn()">+</button>
+      <div class="zoom-level" id="zoom-level">100%</div>
+      <button class="zoom-btn" onclick="zoomOut()">&minus;</button>
+      <button class="zoom-btn" onclick="zoomReset()" title="Reset view">R</button>
+    </div>
+
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow-data" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/></marker>
+        <marker id="arrow-call" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#10b981"/></marker>
+        <marker id="arrow-event" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ef4444"/></marker>
+        <marker id="arrow-dep" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6b7280"/></marker>
+        <marker id="arrow-ext" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f97316"/></marker>
+      </defs>
+      <g id="canvas-group"></g>
+    </svg>
+
+    <div class="legend">
+      <div class="legend-title">Layers</div>
+      <div id="legend-layers"></div>
+      <div class="legend-title" style="margin-top:8px">Connections</div>
+      <div id="legend-conns"></div>
+    </div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="prompt-area">
+    <div class="prompt-text" id="prompt-output">Select a view preset or click components to add architecture feedback.</div>
+    <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">Copy Prompt</button>
+  </div>
+</div>
+
+<!-- Comment Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <div class="modal-file" id="modal-file"></div>
+    <textarea id="modal-text" placeholder="What changes or feedback do you have for this component?"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveComment()">Add Comment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ── State ──
+const state = {
+  activePreset: 'full',
+  layers: { frontend: true, api: true, business: true, data: true, external: true, config: true, database: true },
+  connections: { 'data-flow': true, 'function-call': true, 'event': true, 'dependency': true, 'external': true },
+  comments: [],
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  modalNode: null
+};
+
+// ── Layer Definitions ──
+const layers = [
+  { id: 'frontend',  label: 'Frontend (JS/HTML)',   color: '#3b82f6', fill: '#1e3a5f' },
+  { id: 'api',       label: 'API Endpoints',         color: '#f59e0b', fill: '#4a3520' },
+  { id: 'business',  label: 'Business Logic (CFC)',   color: '#8b5cf6', fill: '#3b2d5e' },
+  { id: 'data',      label: 'Data Access (CFC)',      color: '#10b981', fill: '#1a3d2e' },
+  { id: 'config',    label: 'Configuration',           color: '#6b7280', fill: '#2a2d32' },
+  { id: 'external',  label: 'External Services',       color: '#f97316', fill: '#4a2e1a' },
+  { id: 'database',  label: 'Database (Oracle)',        color: '#ec4899', fill: '#4a1e3a' }
+];
+
+// ── Connection Types ──
+const connTypes = [
+  { id: 'data-flow',     label: 'Data Flow',      color: '#3b82f6', dash: '' },
+  { id: 'function-call', label: 'Function Call',   color: '#10b981', dash: '6,3' },
+  { id: 'event',         label: 'Event / Async',   color: '#ef4444', dash: '4,4' },
+  { id: 'external',      label: 'External API',    color: '#f97316', dash: '8,4' },
+  { id: 'dependency',    label: 'Dependency',       color: '#6b7280', dash: '2,2' }
+];
+
+// ── Nodes ──
+const nodes = [
+  // Frontend
+  { id: 'main-js',         label: 'main.js',                subtitle: 'assets/js/main.js',                    x: 60,  y: 40,  w: 130, h: 44, layer: 'frontend', desc: 'Global utilities: formatDate, showLoading, showToast, validateForm' },
+  { id: 'topnav-js',       label: 'topNav.js',              subtitle: 'assets/js/topNav.js',                  x: 210, y: 40,  w: 130, h: 44, layer: 'frontend', desc: 'Session management, notification polling, logout' },
+  { id: 'booking-edit-js', label: 'booking-edit.js',        subtitle: 'assets/js/booking-edit.js',            x: 360, y: 40,  w: 140, h: 44, layer: 'frontend', desc: 'Edit booking modal, revision history display' },
+  { id: 'recurring-js',    label: 'recurring-booking.js',   subtitle: 'assets/js/recurring-booking.js',       x: 520, y: 40,  w: 165, h: 44, layer: 'frontend', desc: 'Recurring pattern UI: frequency, interval, preview dates' },
+  { id: 'notif-js',        label: 'notifications.js',       subtitle: 'assets/js/notifications.js',           x: 705, y: 40,  w: 145, h: 44, layer: 'frontend', desc: 'DataTables notification list, bulk send, filters' },
+  { id: 'admin-notif-js',  label: 'admin-notif-ctrl.js',    subtitle: 'assets/js/admin-notification-control.js', x: 870, y: 40, w: 155, h: 44, layer: 'frontend', desc: 'Admin notification management panel' },
+  { id: 'fullcalendar',    label: 'FullCalendar',           subtitle: 'node_modules/@fullcalendar',           x: 60,  y: 100, w: 130, h: 44, layer: 'frontend', desc: 'Interactive calendar (v6.1.15) for booking display' },
+  { id: 'flatpickr',       label: 'Flatpickr',             subtitle: 'node_modules/flatpickr',               x: 210, y: 100, w: 130, h: 44, layer: 'frontend', desc: 'Date/time picker for booking forms' },
+  { id: 'login-page',      label: 'Login Page',             subtitle: 'pages/login.html',                     x: 360, y: 100, w: 130, h: 44, layer: 'frontend', desc: 'User authentication, Office 365 SSO' },
+
+  // API Endpoints
+  { id: 'api-create',       label: 'Create Booking',        subtitle: 'api/bookings/create.cfm',              x: 60,  y: 190, w: 140, h: 44, layer: 'api', desc: 'POST: Create new booking, O365 calendar event' },
+  { id: 'api-edit',         label: 'Edit Booking',          subtitle: 'api/bookings/edit-booking.cfm',        x: 220, y: 190, w: 140, h: 44, layer: 'api', desc: 'POST: Update booking with revision tracking' },
+  { id: 'api-cancel',       label: 'Cancel Booking',        subtitle: 'api/bookings/cancel.cfm',              x: 380, y: 190, w: 140, h: 44, layer: 'api', desc: 'POST: Cancel booking, send notifications' },
+  { id: 'api-rooms',        label: 'Room List',             subtitle: 'api/rooms/list.cfm',                   x: 540, y: 190, w: 130, h: 44, layer: 'api', desc: 'GET: List rooms with capacity and amenities' },
+  { id: 'api-avail',        label: 'Room Availability',     subtitle: 'api/rooms/availability.cfm',           x: 690, y: 190, w: 145, h: 44, layer: 'api', desc: 'GET: Available time slots for room/date' },
+  { id: 'api-recurring',    label: 'Recurring Series',      subtitle: 'api/recurring/create-series.cfm',      x: 855, y: 190, w: 145, h: 44, layer: 'api', desc: 'POST: Create recurring booking series' },
+  { id: 'api-dashboard',    label: 'Dashboard Data',        subtitle: 'api/dashboard-data.cfm',               x: 60,  y: 250, w: 140, h: 44, layer: 'api', desc: 'GET: Stats, utilization, recent activity' },
+  { id: 'api-edit-get',     label: 'Get Booking Edit',      subtitle: 'api/bookings/get-booking-for-edit.cfm', x: 220, y: 250, w: 155, h: 44, layer: 'api', desc: 'GET: Booking details for edit modal' },
+  { id: 'api-revision',     label: 'Revision History',      subtitle: 'api/bookings/get-revision-history.cfm', x: 395, y: 250, w: 145, h: 44, layer: 'api', desc: 'GET: Booking revision trail' },
+  { id: 'api-o365-cb',      label: 'O365 Callback',         subtitle: 'api/auth/office365-callback.cfm',      x: 560, y: 250, w: 140, h: 44, layer: 'api', desc: 'OAuth callback handler for O365 auth' },
+  { id: 'api-scheduled',    label: 'Scheduled Digest',      subtitle: 'api/scheduled/pending-approval-digest.cfm', x: 720, y: 250, w: 150, h: 44, layer: 'api', desc: 'Scheduled task for approval notification digest' },
+
+  // Business Logic Components
+  { id: 'booking-cfc',       label: 'Booking.cfc',           subtitle: 'components/Booking.cfc',               x: 60,  y: 340, w: 140, h: 44, layer: 'business', desc: 'createBooking, getUserBookings, cancelBooking' },
+  { id: 'room-cfc',          label: 'Room.cfc',              subtitle: 'components/Room.cfc',                  x: 220, y: 340, w: 130, h: 44, layer: 'business', desc: 'getRoomById, searchRooms, checkAvailability' },
+  { id: 'user-cfc',          label: 'User.cfc',              subtitle: 'components/User.cfc',                  x: 370, y: 340, w: 130, h: 44, layer: 'business', desc: 'authenticate, getUserById, createUser' },
+  { id: 'notification-cfc',  label: 'Notification.cfc',      subtitle: 'components/Notification.cfc',          x: 520, y: 340, w: 150, h: 44, layer: 'business', desc: 'createNotification, getUserNotifications, markAsRead' },
+  { id: 'email-cfc',         label: 'EmailService.cfc',      subtitle: 'components/EmailService.cfc',          x: 690, y: 340, w: 150, h: 44, layer: 'business', desc: 'sendBookingConfirmation, sendCancellation' },
+  { id: 'recurring-cfc',     label: 'RecurringBooking.cfc',  subtitle: 'components/RecurringBooking.cfc',      x: 60,  y: 400, w: 165, h: 44, layer: 'business', desc: 'validatePattern, generateInstances, createSeries' },
+  { id: 'o365-cfc',          label: 'Office365Integration',  subtitle: 'components/Office365Integration.cfc',  x: 245, y: 400, w: 170, h: 44, layer: 'business', desc: 'createCalendarEvent, OAuth token management' },
+  { id: 'admin-cfc',         label: 'Admin.cfc',             subtitle: 'components/Admin.cfc',                 x: 435, y: 400, w: 130, h: 44, layer: 'business', desc: 'getDashboardStats, calculateUtilization' },
+  { id: 'scheduler-cfc',     label: 'AdminNotifScheduler',   subtitle: 'components/AdminNotificationScheduler.cfc', x: 585, y: 400, w: 170, h: 44, layer: 'business', desc: 'Scheduled checks: new users, bookings, status' },
+  { id: 'approval-cfc',      label: 'ApprovalNotification',  subtitle: 'components/ApprovalNotification.cfc',  x: 775, y: 400, w: 170, h: 44, layer: 'business', desc: 'Booking approval workflow notifications' },
+
+  // Data Access Layer
+  { id: 'dal-functions',  label: 'functions.cfc',         subtitle: 'assets/cfc/functions.cfc',              x: 60,  y: 490, w: 140, h: 44, layer: 'data', desc: 'Core queries: getRooms, getBookingHistory, Oracle SQL' },
+  { id: 'dal-booking',    label: 'booking.cfc (DAL)',     subtitle: 'assets/cfc/booking.cfc',                x: 220, y: 490, w: 145, h: 44, layer: 'data', desc: 'getAvailableRooms, createBooking, slot validation' },
+  { id: 'dal-notif',      label: 'notifications.cfc',    subtitle: 'assets/cfc/notifications.cfc',          x: 385, y: 490, w: 150, h: 44, layer: 'data', desc: 'Remote notification operations for AJAX polling' },
+  { id: 'dal-dashboard',  label: 'dashboard.cfc',        subtitle: 'assets/cfc/dashboard.cfc',              x: 555, y: 490, w: 140, h: 44, layer: 'data', desc: 'getTotalRooms, getTotalBookings, getMeetings' },
+  { id: 'sys-notif-mgr',  label: 'SysNotificationMgr',   subtitle: 'assets/cfc/SystemNotificationManager.cfc', x: 715, y: 490, w: 165, h: 44, layer: 'data', desc: 'Global notification gates, per-user prefs, analytics' },
+  { id: 'dal-user',       label: 'user.cfc (DAL)',       subtitle: 'assets/cfc/user.cfc',                   x: 60,  y: 550, w: 130, h: 44, layer: 'data', desc: 'getUserList, getUserDetails, searchUsers' },
+  { id: 'dal-room',       label: 'room.cfc (DAL)',       subtitle: 'assets/cfc/room.cfc',                   x: 210, y: 550, w: 130, h: 44, layer: 'data', desc: 'getRoomList, getRoomDetails, searchRooms' },
+  { id: 'dal-reports',    label: 'reporting.cfc',        subtitle: 'assets/cfc/reporting.cfc',               x: 360, y: 550, w: 140, h: 44, layer: 'data', desc: 'Report generation and analytics queries' },
+  { id: 'dal-approvals',  label: 'approvals.cfc',        subtitle: 'assets/cfc/approvals.cfc',              x: 520, y: 550, w: 140, h: 44, layer: 'data', desc: 'Booking approval workflow data operations' },
+  { id: 'dal-logger',     label: 'system-logger.cfc',    subtitle: 'assets/cfc/system-logger.cfc',          x: 680, y: 550, w: 150, h: 44, layer: 'data', desc: 'Error logging to /assets/logs/' },
+
+  // Configuration
+  { id: 'cfg-db',       label: 'database.cfc',          subtitle: 'config/database.cfc',                   x: 60,  y: 640, w: 140, h: 44, layer: 'config', desc: 'Datasource config, query execution wrapper' },
+  { id: 'cfg-settings', label: 'settings.cfc',          subtitle: 'config/settings.cfc',                   x: 220, y: 640, w: 140, h: 44, layer: 'config', desc: 'App settings: session 20min, rate limit 100/60s' },
+  { id: 'cfg-o365',     label: 'office365.cfm',         subtitle: 'config/office365.cfm',                  x: 380, y: 640, w: 140, h: 44, layer: 'config', desc: 'OAuth client ID, secret, redirect URI' },
+
+  // External Services
+  { id: 'ext-o365',     label: 'MS Graph API',          subtitle: 'graph.microsoft.com/v1.0',              x: 580, y: 640, w: 145, h: 44, layer: 'external', desc: 'Calendar sync, Calendars.ReadWrite scope' },
+  { id: 'ext-smtp',     label: 'Office 365 SMTP',       subtitle: 'smtp.office365.com:587',                x: 745, y: 640, w: 145, h: 44, layer: 'external', desc: 'Email delivery via TLS, roomreservation@' },
+
+  // Database
+  { id: 'db-users',      label: 'USERS',                subtitle: 'Oracle Table',                           x: 60,  y: 730, w: 110, h: 44, layer: 'database', desc: 'User accounts, roles, notification prefs' },
+  { id: 'db-rooms',      label: 'ROOMS',                subtitle: 'Oracle Table',                           x: 190, y: 730, w: 110, h: 44, layer: 'database', desc: 'Room inventory, capacity, maintenance status' },
+  { id: 'db-bookings',   label: 'BOOKINGS',             subtitle: 'Oracle Table',                           x: 320, y: 730, w: 120, h: 44, layer: 'database', desc: 'Reservations, status tracking, revisions' },
+  { id: 'db-amenities',  label: 'AMENITIES',            subtitle: 'Oracle Table',                           x: 460, y: 730, w: 120, h: 44, layer: 'database', desc: 'Room features: projectors, whiteboards' },
+  { id: 'db-notifs',     label: 'NOTIFICATIONS',        subtitle: 'Oracle Table',                           x: 600, y: 730, w: 140, h: 44, layer: 'database', desc: 'User notification queue, read/unread status' },
+  { id: 'db-recurring',  label: 'RECURRING_BOOKINGS',   subtitle: 'Oracle Table',                           x: 760, y: 730, w: 160, h: 44, layer: 'database', desc: 'Recurring series metadata and patterns' },
+  { id: 'db-settings',   label: 'SYSTEM_SETTINGS',      subtitle: 'Oracle Table',                           x: 60,  y: 790, w: 150, h: 44, layer: 'database', desc: 'Global config: setting_key/value pairs' },
+  { id: 'db-analytics',  label: 'NOTIF_ANALYTICS',      subtitle: 'Oracle Table',                           x: 230, y: 790, w: 150, h: 44, layer: 'database', desc: 'Notification tracking: sent, delivered, failed' },
+];
+
+// ── Connections ──
+const connections = [
+  // Frontend → API (data-flow)
+  { from: 'booking-edit-js', to: 'api-edit',      type: 'data-flow', label: 'AJAX POST' },
+  { from: 'booking-edit-js', to: 'api-edit-get',   type: 'data-flow', label: 'AJAX GET' },
+  { from: 'booking-edit-js', to: 'api-revision',   type: 'data-flow', label: 'AJAX GET' },
+  { from: 'recurring-js',    to: 'api-recurring',  type: 'data-flow', label: 'AJAX POST' },
+  { from: 'notif-js',        to: 'dal-notif',      type: 'data-flow', label: 'AJAX' },
+  { from: 'topnav-js',       to: 'dal-notif',      type: 'data-flow', label: 'Poll' },
+  { from: 'fullcalendar',    to: 'api-rooms',      type: 'data-flow', label: 'Fetch' },
+  { from: 'fullcalendar',    to: 'api-create',     type: 'data-flow', label: 'POST' },
+  { from: 'login-page',      to: 'api-o365-cb',    type: 'data-flow', label: 'OAuth' },
+
+  // API → Business Logic (function-call)
+  { from: 'api-create',    to: 'booking-cfc',      type: 'function-call', label: 'createBooking' },
+  { from: 'api-create',    to: 'room-cfc',         type: 'function-call', label: 'checkAvailability' },
+  { from: 'api-create',    to: 'notification-cfc', type: 'function-call', label: 'createNotification' },
+  { from: 'api-create',    to: 'o365-cfc',         type: 'function-call', label: 'createCalendarEvent' },
+  { from: 'api-edit',      to: 'booking-cfc',      type: 'function-call' },
+  { from: 'api-edit',      to: 'email-cfc',        type: 'function-call', label: 'sendRevisionNotif' },
+  { from: 'api-cancel',    to: 'booking-cfc',      type: 'function-call', label: 'cancelBooking' },
+  { from: 'api-cancel',    to: 'notification-cfc', type: 'function-call' },
+  { from: 'api-rooms',     to: 'room-cfc',         type: 'function-call', label: 'searchRooms' },
+  { from: 'api-avail',     to: 'room-cfc',         type: 'function-call', label: 'checkAvailability' },
+  { from: 'api-recurring', to: 'recurring-cfc',    type: 'function-call', label: 'createSeries' },
+  { from: 'api-dashboard', to: 'admin-cfc',        type: 'function-call', label: 'getDashboardStats' },
+  { from: 'api-o365-cb',   to: 'o365-cfc',         type: 'function-call', label: 'getAccessToken' },
+  { from: 'api-scheduled', to: 'scheduler-cfc',    type: 'function-call', label: 'runScheduled' },
+
+  // Business → Business (function-call)
+  { from: 'notification-cfc', to: 'email-cfc',       type: 'function-call', label: 'sendEmail' },
+  { from: 'notification-cfc', to: 'sys-notif-mgr',   type: 'function-call', label: 'shouldSend' },
+  { from: 'scheduler-cfc',    to: 'email-cfc',       type: 'function-call' },
+  { from: 'booking-cfc',      to: 'room-cfc',        type: 'function-call', label: 'checkAvailability' },
+  { from: 'admin-cfc',        to: 'room-cfc',        type: 'dependency' },
+  { from: 'admin-cfc',        to: 'booking-cfc',     type: 'dependency' },
+
+  // Business → Data Access (function-call)
+  { from: 'booking-cfc',     to: 'dal-booking',      type: 'function-call' },
+  { from: 'room-cfc',        to: 'dal-room',         type: 'function-call' },
+  { from: 'user-cfc',        to: 'dal-user',         type: 'function-call' },
+  { from: 'notification-cfc',to: 'dal-notif',        type: 'function-call' },
+  { from: 'recurring-cfc',   to: 'dal-booking',      type: 'function-call' },
+
+  // External (external)
+  { from: 'o365-cfc',  to: 'ext-o365',  type: 'external', label: 'Graph API' },
+  { from: 'email-cfc', to: 'ext-smtp',  type: 'external', label: 'SMTP TLS' },
+  { from: 'o365-cfc',  to: 'cfg-o365',  type: 'dependency', label: 'config' },
+
+  // Config dependencies
+  { from: 'dal-functions', to: 'cfg-db',      type: 'dependency', label: 'datasource' },
+  { from: 'dal-booking',   to: 'cfg-db',      type: 'dependency' },
+  { from: 'recurring-cfc', to: 'cfg-settings', type: 'dependency', label: 'settings' },
+
+  // Data → Database (data-flow)
+  { from: 'dal-booking',   to: 'db-bookings',  type: 'data-flow', label: 'CRUD' },
+  { from: 'dal-room',      to: 'db-rooms',     type: 'data-flow', label: 'SELECT' },
+  { from: 'dal-user',      to: 'db-users',     type: 'data-flow', label: 'CRUD' },
+  { from: 'dal-notif',     to: 'db-notifs',    type: 'data-flow', label: 'CRUD' },
+  { from: 'dal-functions', to: 'db-rooms',     type: 'data-flow' },
+  { from: 'dal-functions', to: 'db-bookings',  type: 'data-flow' },
+  { from: 'dal-functions', to: 'db-amenities', type: 'data-flow' },
+  { from: 'dal-dashboard', to: 'db-bookings',  type: 'data-flow' },
+  { from: 'dal-dashboard', to: 'db-rooms',     type: 'data-flow' },
+  { from: 'dal-approvals', to: 'db-bookings',  type: 'data-flow' },
+  { from: 'sys-notif-mgr', to: 'db-settings',  type: 'data-flow', label: 'Cache 5min' },
+  { from: 'sys-notif-mgr', to: 'db-analytics', type: 'data-flow', label: 'Track' },
+  { from: 'recurring-cfc', to: 'db-recurring', type: 'data-flow', label: 'CRUD' },
+
+  // Events
+  { from: 'api-scheduled', to: 'scheduler-cfc', type: 'event', label: 'CF Scheduler' },
+  { from: 'topnav-js',     to: 'dal-notif',     type: 'event', label: 'Poll 30s' },
+];
+
+// ── Presets ──
+const presets = {
+  full:     { label: 'Full System',    layers: { frontend: true, api: true, business: true, data: true, external: true, config: true, database: true }},
+  frontend: { label: 'Frontend',       layers: { frontend: true, api: true, business: false, data: false, external: false, config: false, database: false }},
+  backend:  { label: 'Backend',        layers: { frontend: false, api: true, business: true, data: true, external: false, config: true, database: true }},
+  booking:  { label: 'Booking Flow',   layers: { frontend: true, api: true, business: true, data: true, external: true, config: false, database: true }},
+  notif:    { label: 'Notifications',  layers: { frontend: true, api: false, business: true, data: true, external: true, config: false, database: true }}
+};
+
+// ── DOM refs ──
+const svg = document.getElementById('canvas');
+const group = document.getElementById('canvas-group');
+const tooltip = document.getElementById('tooltip');
+
+// ── Build sidebar controls ──
+function buildControls() {
+  // Presets
+  const presetEl = document.getElementById('presets');
+  Object.entries(presets).forEach(([id, p]) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (id === state.activePreset ? ' active' : '');
+    btn.textContent = p.label;
+    btn.dataset.id = id;
+    btn.onclick = () => applyPreset(id);
+    presetEl.appendChild(btn);
+  });
+
+  // Layers
+  const layerEl = document.getElementById('layer-toggles');
+  layers.forEach(l => {
+    const label = document.createElement('label');
+    label.className = 'layer-toggle';
+    label.innerHTML = `<input type="checkbox" ${state.layers[l.id] ? 'checked' : ''} data-layer="${l.id}"><span class="check">\u2713</span><span class="layer-dot" style="background:${l.color}"></span>${l.label}`;
+    label.querySelector('input').onchange = (e) => { state.layers[l.id] = e.target.checked; updateAll(); };
+    layerEl.appendChild(label);
+  });
+
+  // Connections
+  const connEl = document.getElementById('conn-toggles');
+  connTypes.forEach(c => {
+    const label = document.createElement('label');
+    label.className = 'conn-toggle';
+    label.style.setProperty('--conn-color', c.color);
+    label.innerHTML = `<input type="checkbox" ${state.connections[c.id] ? 'checked' : ''} data-conn="${c.id}"><span class="check">\u2713</span><span class="conn-line" style="background:${c.color};${c.dash ? `background:repeating-linear-gradient(90deg,${c.color} 0,${c.color} 3px,transparent 3px,transparent 5px)` : ''}"></span>${c.label}`;
+    label.querySelector('input').onchange = (e) => { state.connections[c.id] = e.target.checked; updateAll(); };
+    connEl.appendChild(label);
+  });
+
+  // Legend
+  const legendLayers = document.getElementById('legend-layers');
+  layers.forEach(l => {
+    legendLayers.innerHTML += `<div class="legend-item"><span class="legend-swatch" style="background:${l.fill};border:1px solid ${l.color}"></span>${l.label}</div>`;
+  });
+
+  const legendConns = document.getElementById('legend-conns');
+  connTypes.forEach(c => {
+    legendConns.innerHTML += `<div class="legend-item"><span class="legend-line" style="background:${c.color}${c.dash ? `;background:repeating-linear-gradient(90deg,${c.color} 0,${c.color} 3px,transparent 3px,transparent 5px)` : ''}"></span>${c.label}</div>`;
+  });
+}
+
+// ── Rendering ──
+function getLayerDef(id) { return layers.find(l => l.id === id); }
+function getConnTypeDef(id) { return connTypes.find(c => c.id === id); }
+function getNode(id) { return nodes.find(n => n.id === id); }
+
+function renderDiagram() {
+  group.innerHTML = '';
+  const visibleNodes = nodes.filter(n => state.layers[n.layer]);
+  const visibleIds = new Set(visibleNodes.map(n => n.id));
+
+  // Draw connections
+  connections.forEach(conn => {
+    if (!state.connections[conn.type]) return;
+    if (!visibleIds.has(conn.from) || !visibleIds.has(conn.to)) return;
+
+    const fromNode = getNode(conn.from);
+    const toNode = getNode(conn.to);
+    const ct = getConnTypeDef(conn.type);
+
+    const x1 = fromNode.x + fromNode.w / 2;
+    const y1 = fromNode.y + fromNode.h;
+    const x2 = toNode.x + toNode.w / 2;
+    const y2 = toNode.y;
+
+    // If nodes are on similar y level, connect side-to-side
+    let path;
+    if (Math.abs(fromNode.y - toNode.y) < 30) {
+      const fx = fromNode.x < toNode.x ? fromNode.x + fromNode.w : fromNode.x;
+      const tx = fromNode.x < toNode.x ? toNode.x : toNode.x + toNode.w;
+      const fy = fromNode.y + fromNode.h / 2;
+      const ty = toNode.y + toNode.h / 2;
+      const mx = (fx + tx) / 2;
+      path = `M${fx},${fy} C${mx},${fy} ${mx},${ty} ${tx},${ty}`;
+    } else {
+      const my = (y1 + y2) / 2;
+      path = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
+    }
+
+    const markerMap = { 'data-flow': 'arrow-data', 'function-call': 'arrow-call', 'event': 'arrow-event', 'dependency': 'arrow-dep', 'external': 'arrow-ext' };
+
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    pathEl.setAttribute('d', path);
+    pathEl.setAttribute('class', 'connection-path');
+    pathEl.setAttribute('stroke', ct.color);
+    pathEl.setAttribute('marker-end', `url(#${markerMap[conn.type]})`);
+    if (ct.dash) pathEl.setAttribute('stroke-dasharray', ct.dash);
+    pathEl.setAttribute('opacity', '0.5');
+    group.appendChild(pathEl);
+
+    // Connection label
+    if (conn.label) {
+      const labelEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      const lx = (x1 + x2) / 2;
+      const ly = Math.abs(fromNode.y - toNode.y) < 30 ? (fromNode.y + fromNode.h / 2) - 6 : (y1 + y2) / 2 - 4;
+      labelEl.setAttribute('x', lx);
+      labelEl.setAttribute('y', ly);
+      labelEl.setAttribute('text-anchor', 'middle');
+      labelEl.setAttribute('class', 'connection-label');
+      labelEl.textContent = conn.label;
+      group.appendChild(labelEl);
+    }
+  });
+
+  // Draw nodes
+  visibleNodes.forEach(node => {
+    const layerDef = getLayerDef(node.layer);
+    const hasComment = state.comments.some(c => c.target === node.id);
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', node.x);
+    rect.setAttribute('y', node.y);
+    rect.setAttribute('width', node.w);
+    rect.setAttribute('height', node.h);
+    rect.setAttribute('rx', 6);
+    rect.setAttribute('fill', layerDef.fill);
+    rect.setAttribute('stroke', layerDef.color);
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('class', 'node-rect' + (hasComment ? ' node-commented' : ''));
+    rect.onclick = () => openModal(node);
+    rect.onmouseenter = (e) => showTooltip(e, node);
+    rect.onmousemove = (e) => moveTooltip(e);
+    rect.onmouseleave = hideTooltip;
+    g.appendChild(rect);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', node.x + 10);
+    label.setAttribute('y', node.y + 18);
+    label.setAttribute('class', 'node-label');
+    label.textContent = node.label;
+    g.appendChild(label);
+
+    const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    sub.setAttribute('x', node.x + 10);
+    sub.setAttribute('y', node.y + 32);
+    sub.setAttribute('class', 'node-subtitle');
+    sub.textContent = node.subtitle.length > 28 ? '...' + node.subtitle.slice(-25) : node.subtitle;
+    g.appendChild(sub);
+
+    if (hasComment) {
+      const badge = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      badge.setAttribute('cx', node.x + node.w - 4);
+      badge.setAttribute('cy', node.y + 4);
+      badge.setAttribute('r', 5);
+      badge.setAttribute('fill', '#f0883e');
+      g.appendChild(badge);
+    }
+
+    group.appendChild(g);
+  });
+
+  applyTransform();
+}
+
+function applyTransform() {
+  group.setAttribute('transform', `translate(${state.panX},${state.panY}) scale(${state.zoom})`);
+  document.getElementById('zoom-level').textContent = Math.round(state.zoom * 100) + '%';
+}
+
+// ── Zoom & Pan ──
+function zoomIn()  { state.zoom = Math.min(state.zoom + 0.15, 3); applyTransform(); }
+function zoomOut() { state.zoom = Math.max(state.zoom - 0.15, 0.3); applyTransform(); }
+function zoomReset() { state.zoom = 1; state.panX = 0; state.panY = 0; applyTransform(); }
+
+let isPanning = false, panStart = {};
+svg.addEventListener('mousedown', (e) => {
+  if (e.target === svg || e.target.tagName === 'svg') {
+    isPanning = true;
+    panStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+  }
+});
+svg.addEventListener('mousemove', (e) => {
+  if (isPanning) {
+    state.panX = e.clientX - panStart.x;
+    state.panY = e.clientY - panStart.y;
+    applyTransform();
+  }
+});
+svg.addEventListener('mouseup', () => isPanning = false);
+svg.addEventListener('mouseleave', () => isPanning = false);
+svg.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (e.deltaY < 0) zoomIn(); else zoomOut();
+}, { passive: false });
+
+// ── Tooltip ──
+function showTooltip(e, node) {
+  tooltip.innerHTML = `<div class="tt-label">${node.label}</div><div class="tt-file">${node.subtitle}</div><div class="tt-desc">${node.desc}</div><div class="tt-hint">Click to add comment</div>`;
+  tooltip.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  tooltip.style.left = (e.clientX + 12) + 'px';
+  tooltip.style.top = (e.clientY + 12) + 'px';
+}
+function hideTooltip() { tooltip.style.display = 'none'; }
+
+// ── Modal ──
+function openModal(node) {
+  state.modalNode = node;
+  document.getElementById('modal-title').textContent = node.label;
+  document.getElementById('modal-file').textContent = node.subtitle;
+  document.getElementById('modal-text').value = '';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('modal-text').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  state.modalNode = null;
+}
+
+function saveComment() {
+  const text = document.getElementById('modal-text').value.trim();
+  if (!text || !state.modalNode) return;
+  state.comments.push({
+    id: Date.now(),
+    target: state.modalNode.id,
+    targetLabel: state.modalNode.label,
+    targetFile: state.modalNode.subtitle,
+    text
+  });
+  closeModal();
+  updateAll();
+}
+
+// Close modal on Escape or overlay click
+document.getElementById('modal').addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+// ── Comments ──
+function renderComments() {
+  const list = document.getElementById('comment-list');
+  const count = document.getElementById('comment-count');
+  const noComments = document.getElementById('no-comments');
+  count.textContent = state.comments.length;
+
+  if (state.comments.length === 0) {
+    list.innerHTML = '<div class="no-comments">Click a component to add feedback</div>';
+    return;
+  }
+
+  list.innerHTML = state.comments.map(c => `
+    <div class="comment-item">
+      <button class="delete-btn" onclick="deleteComment(${c.id})">&times;</button>
+      <div class="target">${c.targetLabel}</div>
+      <div class="file">${c.targetFile}</div>
+      <div class="text">${c.text}</div>
+    </div>
+  `).join('');
+}
+
+function deleteComment(id) {
+  state.comments = state.comments.filter(c => c.id !== id);
+  updateAll();
+}
+
+// ── Prompt ──
+function updatePrompt() {
+  const el = document.getElementById('prompt-output');
+  const visibleLayers = layers.filter(l => state.layers[l.id]).map(l => l.label);
+  const allVisible = visibleLayers.length === layers.length;
+
+  let text = `This is the DoCM Room Reservation System architecture (MD Anderson Cancer Center)`;
+  if (!allVisible) {
+    text += `, focusing on: ${visibleLayers.join(', ')}`;
+  }
+  text += '.\n';
+
+  if (state.comments.length > 0) {
+    text += '\nFeedback on specific components:\n';
+    state.comments.forEach(c => {
+      text += `\n**${c.targetLabel}** (${c.targetFile}):\n${c.text}\n`;
+    });
+  } else {
+    text += '\nNo component feedback yet. Click components in the diagram to add architectural feedback.';
+  }
+
+  el.textContent = text;
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-output').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Prompt'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── Presets ──
+function applyPreset(id) {
+  state.activePreset = id;
+  const preset = presets[id];
+  Object.entries(preset.layers).forEach(([k, v]) => { state.layers[k] = v; });
+
+  // Update checkbox states
+  document.querySelectorAll('[data-layer]').forEach(cb => {
+    cb.checked = state.layers[cb.dataset.layer];
+  });
+
+  // Update preset buttons
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.id === id);
+  });
+
+  updateAll();
+}
+
+// ── Update all ──
+function updateAll() {
+  renderDiagram();
+  renderComments();
+  updatePrompt();
+}
+
+// ── Init ──
+buildControls();
+updateAll();
+</script>
+</body>
+</html>
