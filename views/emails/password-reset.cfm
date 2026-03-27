@@ -52,7 +52,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="#application.config.baseUrl#/assets/images/mdacc-logo.png" alt="MD Anderson Logo" class="logo">
+        <img src="#application.config.baseUrl#/assets/images/mda-logo-black.png" alt="MD Anderson Logo" class="logo">
         <h1>Password Reset Request</h1>
     </div>
 

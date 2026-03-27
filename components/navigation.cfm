@@ -24,7 +24,7 @@
             </ul>
         </div>
         <a href="/index.cfm" class="btn btn-ghost normal-case text-xl">
-            <img src="/assets/images/mdacc-logo.png" alt="MD Anderson Logo" class="h-8">
+            <img src="/assets/images/mda-logo-black.png" alt="MD Anderson Logo" class="h-8">
             <span class="ml-2">Room Reservation</span>
         </a>
     </div>

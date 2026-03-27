@@ -62,7 +62,7 @@
             
             <cfloop query="bookings">
                 <cfmail to="#bookings.EMAIL#"
-                        from="conferenceroom@company.com"
+                        from="NO-REPLY@MDANDERSON.ORG"
                         subject="Reminder: Upcoming Room Booking in 1 Hour"
                         type="html">
                     <cfoutput>
@@ -72,8 +72,8 @@
                     <ul>
                         <li>Room: #bookings.ROOM_NAME#</li>
                         <li>Location: #bookings.BUILDING#.#bookings.ROOM_NUMBER#</li>
-                        <li>Date: #DateFormat(bookings.START_TIME, "dddd, mmmm dd, yyyy")#</li>
-                        <li>Time: #TimeFormat(bookings.START_TIME, "hh:mm tt")# - #TimeFormat(bookings.END_TIME, "hh:mm tt")#</li>
+                        <li>Date: #DateFormat(parseDateTime(bookings.START_TIME), "dddd, mmmm dd, yyyy")#</li>
+                        <li>Time: #TimeFormat(parseDateTime(bookings.START_TIME), "hh:mm tt")# - #TimeFormat(parseDateTime(bookings.END_TIME), "hh:mm tt")#</li>
                     </ul>
                     </cfoutput>
                 </cfmail>
@@ -199,7 +199,7 @@
 
             <cfloop query="adminList">
                 <cfmail to="#adminList.EMAIL#"
-                        from="conferenceroom@company.com"
+                        from="no-reply@mdanderson.org"
                         subject="Action Required: #pendingBookings.recordCount# Pending Room Reservation Request(s)"
                         type="html">
                     <cfoutput>
@@ -249,13 +249,13 @@
                                     </thead>
                                     <tbody>
                                         <cfloop query="pendingBookings">
-                                            <cfset var ageHours = Round(DateDiff("h", pendingBookings.CREATED_AT, now()))>
+                                            <cfset var ageHours = Round(DateDiff("h", parseDateTime(pendingBookings.CREATED_AT), now()))>
                                             <tr>
                                                 <td>#pendingBookings.BOOKING_ID#</td>
                                                 <td>#pendingBookings.FIRST_NAME# #pendingBookings.LAST_NAME#</td>
                                                 <td>#pendingBookings.ROOM_NAME# (#pendingBookings.BUILDING#.#pendingBookings.ROOM_NUMBER#)</td>
-                                                <td>#DateFormat(pendingBookings.START_TIME, "mm/dd/yyyy")# #TimeFormat(pendingBookings.START_TIME, "hh:mm tt")# - #TimeFormat(pendingBookings.END_TIME, "hh:mm tt")#</td>
-                                                <td>#DateFormat(pendingBookings.CREATED_AT, "mm/dd/yyyy")# #TimeFormat(pendingBookings.CREATED_AT, "hh:mm tt")#</td>
+                                                <td>#DateFormat(parseDateTime(pendingBookings.START_TIME), "mm/dd/yyyy")# #TimeFormat(parseDateTime(pendingBookings.START_TIME), "hh:mm tt")# - #TimeFormat(parseDateTime(pendingBookings.END_TIME), "hh:mm tt")#</td>
+                                                <td>#DateFormat(parseDateTime(pendingBookings.CREATED_AT), "mm/dd/yyyy")# #TimeFormat(parseDateTime(pendingBookings.CREATED_AT), "hh:mm tt")#</td>
                                                 <td>#ageHours#</td>
                                             </tr>
                                         </cfloop>
