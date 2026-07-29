@@ -148,7 +148,7 @@
     <!-- Scripts -->
     <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="node_modules/jquery/dist/jquery.min.js"></script>
-    <script src="assets/js/jquery.session-timeout.min.js"></script>
+    <script src="assets/js/jquery.session-timeout.min.js?v=2"></script>
     <script src="node_modules/aos/dist/aos.js"></script>
     <script src="node_modules/sweetalert2/dist/sweetalert2.all.min.js"></script>
     <script src="assets/DataTables-2.1.8/datatables.js"></script>
@@ -159,6 +159,30 @@
         let allNotificationTypes = {};
         let currentUserId = null;
         let hasUnsavedChanges = false;
+
+        /**
+         * Normalise a ColdFusion query response into an array of row objects.
+         *
+         * getUsersForNotification, getAllNotificationTypes and
+         * getUserNotificationPreferences all return returntype="query", which
+         * serialises as {"COLUMNS":[...],"DATA":[[...]]} — DATA holds arrays, not
+         * objects. Handing DATA straight to the render code passed
+         * Array.isArray() but left every named lookup (type.CATEGORY,
+         * type.TYPE_CODE, user.FIRST_NAME) undefined, so this page silently built
+         * a single "undefined" category and an "undefined undefined" user list
+         * without logging any error.
+         */
+        function normalizeQueryResult(payload) {
+            if (!payload) return [];
+            if (Array.isArray(payload.COLUMNS) && Array.isArray(payload.DATA)) {
+                return payload.DATA.map(function (row) {
+                    const obj = {};
+                    payload.COLUMNS.forEach(function (col, i) { obj[col] = row[i]; });
+                    return obj;
+                });
+            }
+            return Array.isArray(payload) ? payload : [];
+        }
 
         // Initialize when document is ready
         $(document).ready(function () {
@@ -194,7 +218,7 @@
                 type: 'GET',
                 dataType: 'json',
                 success: function (response) {
-                    populateUserSelect(response.DATA || response);
+                    populateUserSelect(normalizeQueryResult(response));
                 },
                 error: function (xhr, status, error) {
                     console.error('Error loading users:', error);
@@ -228,7 +252,7 @@
                 type: 'GET',
                 dataType: 'json',
                 success: function (response) {
-                    allNotificationTypes = response.DATA || response;
+                    allNotificationTypes = normalizeQueryResult(response);
                 },
                 error: function (xhr, status, error) {
                     console.error('Error loading notification types:', error);
@@ -255,7 +279,7 @@
                 data: { user_id: userId },
                 dataType: 'json',
                 success: function (response) {
-                    displayUserPreferences(response.DATA || response);
+                    displayUserPreferences(normalizeQueryResult(response));
                     $('#bulkActionsRow').show();
                 },
                 error: function (xhr, status, error) {

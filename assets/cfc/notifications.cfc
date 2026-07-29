@@ -62,20 +62,26 @@
                 </cfif>
             </cfif>
             
-            <cfquery datasource="#this.DBSERVER#">
-                INSERT INTO notifications (
-                    user_id,
-                    notification_type,
-                    notification_message,
-                    is_read,
-                    created_date,
-                    modified_date
+            <!--- This INSERT previously named columns that do not exist on
+                  CONFROOM.NOTIFICATIONS (notification_type, notification_message,
+                  is_read, created_date, modified_date) and omitted the schema
+                  qualifier and credentials that every other query here passes.
+                  Every call therefore threw, was swallowed by the cfcatch below,
+                  and returned false. The live table is
+                  (NOTIFICATION_ID, USER_ID, TYPE, CONTENT, STATUS, CREATED_AT),
+                  matching get_user_notifications. --->
+            <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                INSERT INTO #this.DBSCHEMA#.NOTIFICATIONS (
+                    USER_ID,
+                    TYPE,
+                    CONTENT,
+                    STATUS,
+                    CREATED_AT
                 ) VALUES (
                     <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">,
                     <cfqueryparam value="#arguments.notification_type#" cfsqltype="cf_sql_varchar">,
                     <cfqueryparam value="#arguments.notification_message#" cfsqltype="cf_sql_varchar">,
-                    0,
-                    CURRENT_TIMESTAMP,
+                    'Unread',
                     CURRENT_TIMESTAMP
                 )
             </cfquery>
@@ -428,7 +434,14 @@
                 n.TYPE,
                 n.CONTENT,
                 n.STATUS,
-                n.CREATED_AT,
+                <!--- CREATED_AT is an Oracle TIMESTAMP. Returned raw from a
+                      returntype="query" returnformat="json" method, the driver's
+                      oracle.sql.TIMESTAMP object cannot be serialised and the whole
+                      call fails with a 500. get_user_notifications sidesteps this by
+                      omitting the column from its SELECT while still ordering by it.
+                      Formatting with TO_CHAR keeps the column available to the admin
+                      screens and hands CF a plain string. --->
+                TO_CHAR(n.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
                 u.FIRST_NAME,
                 u.LAST_NAME,
                 u.EMAIL
@@ -515,7 +528,11 @@
                         <cfqueryparam value="#trim(userId)#" cfsqltype="cf_sql_numeric">,
                         <cfqueryparam value="#arguments.notification_type#" cfsqltype="cf_sql_varchar">,
                         <cfqueryparam value="#arguments.notification_message#" cfsqltype="cf_sql_varchar">,
-                        'UNREAD',
+                        <!--- NOTIFICATIONS.STATUS carries
+                              CHECK (STATUS IN ('Read','Unread')). 'UNREAD' violated
+                              it, so every bulk insert failed with
+                              "Error Executing Database Query." --->
+                        'Unread',
                         CURRENT_TIMESTAMP
                     )
                 </cfquery>
@@ -527,6 +544,13 @@
             <cfset local.result.created_count = local.createdCount>
             
         <cfcatch>
+            <!--- cfcatch.message for a query failure is only the generic
+                  "Error Executing Database Query." The ORA- code lives in
+                  .detail, and dropping it is what made this failure
+                  undiagnosable from the client. Log the detail; keep the
+                  response itself free of database internals. --->
+            <cflog type="error" file="roomReservation"
+                   text="createBulkNotification failed: #cfcatch.message# | detail: #cfcatch.detail#">
             <cfset local.result.message = "Error creating notifications: #cfcatch.message#">
         </cfcatch>
         </cftry>
@@ -609,16 +633,25 @@
         
         <cftry>
             <cfquery name="qPreferences" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT 
-                    np.NOTIFICATION_TYPE,
-                    np.EMAIL_ENABLED,
-                    np.IN_APP_ENABLED,
+                <!--- NOTIFICATION_TYPE and the two flags must come from the
+                      always-present side of the join. Selecting them from
+                      NOTIFICATION_PREFERENCES returned NULL for every type the
+                      user had not explicitly saved, so the client had no key to
+                      index by and fell back to showing nothing as configured.
+                      Driving from NOTIFICATION_TYPES with a LEFT JOIN, and
+                      falling back to each type's own defaults, gives one row per
+                      type with a usable key and a meaningful value. --->
+                SELECT
+                    nt.TYPE_CODE AS NOTIFICATION_TYPE,
+                    COALESCE(np.EMAIL_ENABLED, nt.DEFAULT_EMAIL_ENABLED) AS EMAIL_ENABLED,
+                    COALESCE(np.IN_APP_ENABLED, nt.DEFAULT_IN_APP_ENABLED) AS IN_APP_ENABLED,
                     nt.DISPLAY_NAME,
                     nt.DESCRIPTION,
                     nt.CATEGORY
-                FROM #this.DBSCHEMA#.NOTIFICATION_PREFERENCES np
-                RIGHT JOIN #this.DBSCHEMA#.NOTIFICATION_TYPES nt ON np.NOTIFICATION_TYPE = nt.TYPE_CODE
-                    AND np.USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+                FROM #this.DBSCHEMA#.NOTIFICATION_TYPES nt
+                LEFT JOIN #this.DBSCHEMA#.NOTIFICATION_PREFERENCES np
+                       ON np.NOTIFICATION_TYPE = nt.TYPE_CODE
+                      AND np.USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
                 ORDER BY nt.CATEGORY, nt.DISPLAY_NAME
             </cfquery>
             
@@ -1004,13 +1037,20 @@
         
         <cftry>
             <cfquery name="qSearch" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT 
+                SELECT
                     NOTIFICATION_ID,
                     USER_ID,
                     TYPE,
                     CONTENT,
                     STATUS,
-                    CREATED_AT
+                    <!--- CREATED_AT is an Oracle TIMESTAMP. The driver hands it to
+                          CF as oracle.sql.TIMESTAMP, which cannot be serialised by
+                          returnformat="json". Note the failure happened *after*
+                          cfreturn, during serialisation, so the cfcatch below never
+                          saw it and the caller got a raw 500 HTML error page instead
+                          of the intended empty query. TO_CHAR keeps the value a
+                          plain string. --->
+                    TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
                 FROM #this.DBSCHEMA#.NOTIFICATIONS
                 WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
                 AND (
@@ -1030,8 +1070,12 @@
             <cfreturn qSearch>
             
         <cfcatch>
-            <!--- Return empty query on error --->
-            <cfset local.emptySearch = queryNew("NOTIFICATION_ID,USER_ID,TYPE,CONTENT,STATUS,CREATED_AT", "numeric,numeric,varchar,varchar,varchar,timestamp")>
+            <!--- Return empty query on error. CREATED_AT is varchar here to match
+                  the TO_CHAR'd column above, so the failure shape is identical to
+                  the success shape for the caller. --->
+            <cflog type="error" file="roomReservation"
+                   text="searchNotifications failed: #cfcatch.message# | detail: #cfcatch.detail#">
+            <cfset local.emptySearch = queryNew("NOTIFICATION_ID,USER_ID,TYPE,CONTENT,STATUS,CREATED_AT", "numeric,numeric,varchar,varchar,varchar,varchar")>
             <cfreturn local.emptySearch>
         </cfcatch>
         </cftry>

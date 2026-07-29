@@ -8,6 +8,29 @@ let notificationsTable;
 let currentPage = 1;
 const pageSize = 25;
 
+/**
+ * Normalise a ColdFusion query response into an array of row objects.
+ *
+ * A CFC with returntype="query" returnformat="json" serialises as
+ * {"COLUMNS":["A","B"],"DATA":[[1,2],[3,4]]} — DATA is an array of *arrays*,
+ * not of objects. Passing DATA straight through therefore satisfies
+ * Array.isArray() and renders the right number of rows, but every named field
+ * lookup (row.FIRST_NAME, row.TYPE, ...) is undefined, which is why the table
+ * filled with "Unknown User" / "N/A" and the user dropdown came out blank.
+ */
+function normalizeQueryResult(payload) {
+    if (!payload) return [];
+    if (Array.isArray(payload.COLUMNS) && Array.isArray(payload.DATA)) {
+        return payload.DATA.map(function (row) {
+            const obj = {};
+            payload.COLUMNS.forEach(function (col, i) { obj[col] = row[i]; });
+            return obj;
+        });
+    }
+    // Already an array of objects, or an unrecognised shape.
+    return Array.isArray(payload) ? payload : [];
+}
+
 // Initialize when document is ready
 $(document).ready(function() {
     initializeNotificationManagement();
@@ -22,6 +45,7 @@ function initializeNotificationManagement() {
     
     // Load initial data
     loadNotificationStats();
+    loadNotificationTypeFilter();
     loadNotifications();
     loadUsersForBulkNotification();
     
@@ -117,6 +141,48 @@ function updateStatsDisplay(stats) {
 }
 
 /**
+ * Populate the Type filter from NOTIFICATION_TYPES.
+ *
+ * The markup shipped a hardcoded list (SYSTEM_ANNOUNCEMENT, MAINTENANCE_NOTICE,
+ * GENERAL) that does not correspond to any TYPE_CODE in the registry, while 11
+ * real types were absent — so filtering by type could only ever return nothing.
+ * Driving the options from the registry keeps them in step with the data.
+ */
+function loadNotificationTypeFilter() {
+    $.ajax({
+        url: 'assets/cfc/SystemNotificationManager.cfc?method=getAllNotificationTypesWithStatus',
+        type: 'POST',
+        dataType: 'json',
+        success: function (response) {
+            if (!response || !response.success || !Array.isArray(response.data)) return;
+
+            const sel = $('#filterType');
+            const current = sel.val();
+            sel.find('option:not([value=""])').remove();
+
+            response.data
+                .slice()
+                .sort(function (a, b) {
+                    return String(a.display_name || a.type_code)
+                        .localeCompare(String(b.display_name || b.type_code));
+                })
+                .forEach(function (t) {
+                    if (!t.type_code) return;
+                    sel.append(
+                        $('<option>').val(t.type_code).text(t.display_name || t.type_code)
+                    );
+                });
+
+            // Keep the admin's selection if it still exists after the refresh.
+            if (current) sel.val(current);
+        },
+        error: function (xhr, status, error) {
+            console.error('Error loading notification types for filter:', error);
+        }
+    });
+}
+
+/**
  * Load notifications with current filters
  */
 function loadNotifications() {
@@ -138,7 +204,7 @@ function loadNotifications() {
         data: params,
         dataType: 'json',
         success: function(response) {
-            populateNotificationsTable(response.DATA || response);
+            populateNotificationsTable(normalizeQueryResult(response));
         },
         error: function(xhr, status, error) {
             console.error('Error loading notifications:', error);
@@ -238,7 +304,7 @@ function loadUsersForBulkNotification() {
         type: 'GET',
         dataType: 'json',
         success: function(response) {
-            populateUserSelection(response.DATA || response);
+            populateUserSelection(normalizeQueryResult(response));
         },
         error: function(xhr, status, error) {
             console.error('Error loading users:', error);

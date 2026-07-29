@@ -288,17 +288,38 @@ class UserNotificationPreferences {
         }
     }
 
-    processUserPreferences(preferences) {
-        this.userPreferences = {};
-        
-        if (Array.isArray(preferences)) {
-            preferences.forEach(pref => {
-                this.userPreferences[pref.NOTIFICATION_TYPE] = {
-                    emailEnabled: pref.EMAIL_ENABLED === 1 || pref.EMAIL_ENABLED === true,
-                    inAppEnabled: pref.IN_APP_ENABLED === 1 || pref.IN_APP_ENABLED === true
-                };
+    /**
+     * A CFC returning returntype="query" serialises as
+     * {"COLUMNS":["A","B"],"DATA":[[1,2],[3,4]]}, not as an array of objects.
+     * This only ever tested Array.isArray(), so userPreferences stayed empty
+     * forever: every per-type toggle showed as unset and saveAllPreferences had
+     * nothing to persist. Normalise both shapes to an array of row objects.
+     */
+    static normalizeQueryResult(payload) {
+        if (Array.isArray(payload)) return payload;
+        if (payload && Array.isArray(payload.COLUMNS) && Array.isArray(payload.DATA)) {
+            return payload.DATA.map(row => {
+                const obj = {};
+                payload.COLUMNS.forEach((col, i) => { obj[col] = row[i]; });
+                return obj;
             });
         }
+        return [];
+    }
+
+    processUserPreferences(preferences) {
+        this.userPreferences = {};
+
+        const truthy = v => v === 1 || v === true || v === '1';
+
+        UserNotificationPreferences.normalizeQueryResult(preferences).forEach(pref => {
+            // Skip rows with no type code rather than creating a "null" key.
+            if (!pref.NOTIFICATION_TYPE) return;
+            this.userPreferences[pref.NOTIFICATION_TYPE] = {
+                emailEnabled: truthy(pref.EMAIL_ENABLED),
+                inAppEnabled: truthy(pref.IN_APP_ENABLED)
+            };
+        });
     }
 
     async loadUserSettings() {
@@ -902,12 +923,17 @@ class UserNotificationPreferences {
 
     async sendTestEmail() {
         try {
+            // CFC remote methods invoked as ?method=... read their arguments from
+            // form/URL scope. A JSON request body is never unpacked into
+            // `arguments`, so posting one made CF throw "The USER_IDS parameter
+            // ... is required but was not passed in" and return a 500 HTML error
+            // page, which then broke response.json(). Post form-encoded instead.
             const response = await fetch('assets/cfc/notifications.cfc?method=createBulkNotification', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
+                body: new URLSearchParams({
                     user_ids: this.currentUserId,
                     notification_type: 'TEST_EMAIL',
                     notification_message: 'This is a test email notification to verify your settings are working correctly.'
@@ -958,19 +984,32 @@ class UserNotificationPreferences {
 
     async sendTestInApp() {
         try {
+            // Form-encoded for the same reason as sendTestEmail: a JSON body is
+            // not unpacked into a CFC's `arguments` scope.
+            //
+            // force_create bypasses shouldSendNotification(). TEST_IN_APP is not
+            // a row in NOTIFICATION_TYPES, so the gate would return
+            // "Notification type not found" and silently drop a test the user
+            // explicitly asked for.
             const response = await fetch('assets/cfc/notifications.cfc?method=create_notification', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
+                body: new URLSearchParams({
                     user_id: this.currentUserId,
                     notification_type: 'TEST_IN_APP',
-                    notification_message: 'This is a test in-app notification to verify your settings are working correctly.'
+                    notification_message: 'This is a test in-app notification to verify your settings are working correctly.',
+                    force_create: 'true'
                 })
             });
 
-            if (response.ok) {
+            // create_notification returns a bare JSON boolean. A 200 with `false`
+            // means the insert failed, so response.ok alone would report a
+            // success that never happened.
+            const created = response.ok ? await response.json() : false;
+
+            if (created === true) {
                 Swal.fire({
                     title: 'In-App Test Created!',
                     text: 'A test in-app notification has been created successfully',

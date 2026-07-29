@@ -59,6 +59,85 @@
     <!-- Navigation -->
     <div id="topNav"></div>
 
+    <!-- Offcanvas help panel.
+         The Help button lives in topNav-Admin.html / topNav-User.html and targets
+         #offcanvasExample, but each page supplies its own panel. This page had
+         none, so Bootstrap resolved the target to null, BaseComponent returned
+         early leaving _config undefined, and _initializeBackDrop() threw
+         "Cannot read properties of undefined (reading 'backdrop')" — with no
+         panel shown. #downloadUserGuide must also exist in static markup here,
+         because the document-ready handler below binds its click directly. -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasExampleLabel">Booking Approvals</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-3 mt-0">
+                <button id="downloadUserGuide" class="btn btn-primary w-100 text-uppercase"><i
+                        class="fal fa-file-download"></i> Complete User
+                    Guide</button>
+            </div>
+            <div class="mb-3">
+                <h4>TABLE OF CONTENTS</h4>
+                <ul>
+                    <li><a href="#reviewingRequest">Reviewing a Request</a></li>
+                    <li><a href="#approvingRequest">Approving a Request</a></li>
+                    <li><a href="#rejectingRequest">Rejecting a Request</a></li>
+                    <li><a href="#searchingSorting">Searching and Sorting</a></li>
+                    <li><a href="#expiredRequests">Expired Requests</a></li>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <h4>ABOUT THIS PAGE</h4>
+                <p>This page lists every room reservation waiting on a decision, and lets you approve
+                    or reject each one.</p>
+            </div>
+            <hr>
+            <div id="reviewingRequest">
+                <h5>Reviewing a Request</h5>
+                <ul>
+                    <li>The table shows the booking ID, who reserved the room, the meeting title, the
+                        room and its location, and the start and end dates.</li>
+                    <li>Open a request to see its full details, including the room photo, the booked
+                        date and time, and the current status.</li>
+                </ul>
+            </div>
+            <div id="approvingRequest">
+                <h5>Approving a Request</h5>
+                <ul>
+                    <li>Click the approve action on the request you want to confirm.</li>
+                    <li>Confirm at the "Approve Booking Request?" prompt.</li>
+                    <li>The table and the pending count in the navigation bar both refresh once the
+                        approval is saved.</li>
+                </ul>
+            </div>
+            <div id="rejectingRequest">
+                <h5>Rejecting a Request</h5>
+                <ul>
+                    <li>Click the reject action on the request you want to decline.</li>
+                    <li>Enter a reason for the rejection when prompted — it is recorded with the
+                        decision.</li>
+                    <li>The table and the pending count refresh once the rejection is saved.</li>
+                </ul>
+            </div>
+            <div id="searchingSorting">
+                <h5>Searching and Sorting</h5>
+                <ul>
+                    <li>Use the search box to filter the requests by any column.</li>
+                    <li>Click a column heading to sort by it; click again to reverse the order.</li>
+                </ul>
+            </div>
+            <div id="expiredRequests">
+                <h5>Expired Requests</h5>
+                <ul>
+                    <li>Requests whose end date has already passed are hidden from this list.</li>
+                    <li>The list re-checks for newly expired requests about once a minute, so it can
+                        change while you are on the page.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="container mt-4">

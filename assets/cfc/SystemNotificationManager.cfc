@@ -790,24 +790,36 @@
 
         <cftry>
             <cfquery name="qUserSettings" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT 
+                SELECT
                     SETTING_NAME,
                     SETTING_VALUE,
                     SETTING_TYPE,
-                    CREATED_AT,
-                    UPDATED_AT
+                    TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
+                    TO_CHAR(UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS UPDATED_AT
                 FROM #this.DBSCHEMA#.USER_NOTIFICATION_SETTINGS
                 WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
                 ORDER BY SETTING_NAME
             </cfquery>
 
+            <!--- CREATED_AT and UPDATED_AT are Oracle TIMESTAMP columns. The Oracle
+                  driver hands them to CF as oracle.sql.TIMESTAMP, which the JSON
+                  serialiser emits as a bare "Bytes": key. The previous fix ran them
+                  through dateTimeFormat(), but that cannot coerce that class either
+                  and threw "The value class oracle.sql.TIMESTAMP cannot be converted
+                  to a date." — so this whole method returned success=false as soon as
+                  the user had any saved settings, and the page silently loaded none.
+                  Formatting with TO_CHAR in the query means CF only ever sees a
+                  string, which removes the conversion entirely.
+
+                  The SETTING_NAME / SETTING_VALUE keys match what the browser reads
+                  in applyUserSettings(); name/value alone were never picked up. --->
             <cfloop query="qUserSettings">
                 <cfset arrayAppend(result.settings, {
-                    name = qUserSettings.SETTING_NAME,
-                    value = qUserSettings.SETTING_VALUE,
-                    type = qUserSettings.SETTING_TYPE,
-                    createdAt = qUserSettings.CREATED_AT,
-                    updatedAt = qUserSettings.UPDATED_AT
+                    SETTING_NAME = qUserSettings.SETTING_NAME,
+                    SETTING_VALUE = qUserSettings.SETTING_VALUE,
+                    SETTING_TYPE = qUserSettings.SETTING_TYPE,
+                    CREATED_AT = qUserSettings.CREATED_AT,
+                    UPDATED_AT = qUserSettings.UPDATED_AT
                 })>
             </cfloop>
 
@@ -1209,15 +1221,23 @@
         
         <cftry>
             <cfquery name="qScheduled" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT 
+                SELECT
                     ns.SCHEDULE_ID,
                     ns.NOTIFICATION_TYPE,
                     ns.ACTION,
-                    ns.START_TIME,
-                    ns.END_TIME,
+                    <!--- START_TIME, END_TIME and CREATED_AT are Oracle TIMESTAMP
+                          columns. Returned raw from a returnformat="json" method the
+                          driver's oracle.sql.TIMESTAMP cannot be serialised, and
+                          because that happens after cfreturn the cfcatch below would
+                          not intercept it — the caller would get a 500 instead of an
+                          empty query. NOTIFICATION_SCHEDULES is currently empty, so
+                          nothing has hit this yet; TO_CHAR makes sure the first
+                          scheduled row does not break the endpoint. --->
+                    TO_CHAR(ns.START_TIME, 'YYYY-MM-DD HH24:MI:SS') AS START_TIME,
+                    TO_CHAR(ns.END_TIME,   'YYYY-MM-DD HH24:MI:SS') AS END_TIME,
                     ns.RECURRENCE_PATTERN,
                     ns.IS_ACTIVE,
-                    ns.CREATED_AT,
+                    TO_CHAR(ns.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
                     nt.DISPLAY_NAME,
                     u.FIRST_NAME || ' ' || u.LAST_NAME as CREATED_BY_NAME
                 FROM #this.DBSCHEMA#.NOTIFICATION_SCHEDULES ns
@@ -1233,8 +1253,12 @@
             <cfreturn qScheduled>
             
         <cfcatch>
-            <!--- Return empty query if table doesn't exist --->
-            <cfset local.emptyScheduled = queryNew("SCHEDULE_ID,NOTIFICATION_TYPE,ACTION,START_TIME,END_TIME,RECURRENCE_PATTERN,IS_ACTIVE,CREATED_AT,DISPLAY_NAME,CREATED_BY_NAME", "numeric,varchar,varchar,timestamp,timestamp,varchar,bit,timestamp,varchar,varchar")>
+            <!--- Return empty query if table doesn't exist. The three date columns
+                  are varchar to match the TO_CHAR'd columns above, so the failure
+                  shape matches the success shape for the caller. --->
+            <cflog type="error" file="roomReservation"
+                   text="getScheduledNotifications failed: #cfcatch.message# | detail: #cfcatch.detail#">
+            <cfset local.emptyScheduled = queryNew("SCHEDULE_ID,NOTIFICATION_TYPE,ACTION,START_TIME,END_TIME,RECURRENCE_PATTERN,IS_ACTIVE,CREATED_AT,DISPLAY_NAME,CREATED_BY_NAME", "numeric,varchar,varchar,varchar,varchar,varchar,bit,varchar,varchar,varchar")>
             <cfreturn local.emptyScheduled>
         </cfcatch>
         </cftry>
