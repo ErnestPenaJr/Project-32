@@ -1,4 +1,12 @@
 -- =============================================================================
+-- *** SUPERSEDED -- DO NOT RUN THIS FILE ***
+--
+-- Use assets/sql/DEPLOY_ALL_2026-07-30.sql instead. It contains everything
+-- below PLUS the notification-preference tables this script assumes already
+-- exist, which is what made section 3 here fail with ORA-00942 on staging.
+-- Kept only for history.
+-- =============================================================================
+--
 -- STAGING DEPLOYMENT SCRIPT
 -- Everything the reservation-improvements branch needs in the database.
 --
