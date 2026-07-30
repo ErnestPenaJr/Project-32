@@ -1,3 +1,25 @@
+<!---
+    NOT IN USE — 2026-07-29
+
+    No frontend code calls this endpoint; index.html cancels through
+    cfcs/dashboard-data.cfc?method=cancelBooking. Verified by grep.
+
+    It cannot currently work, for two reasons:
+      * It reads `session.userId` and `session.office365`, but this application
+        has no Application.cfc, so there is no session scope.
+      * Its Office 365 error path calls `application.errorLogger`, which does not
+        exist for the same reason.
+
+    Unlike api/cancel-booking.cfm this one is structurally sound -- it checks
+    permission via Booking.canUserModifyBooking() and delegates notification to
+    Notification.sendBookingCancellation() -- so it is left intact rather than
+    disabled. If sessions are ever enabled, decide deliberately whether this or
+    the dashboard-data path is canonical; running both would mean two
+    cancellation implementations with different behaviour (this one does not
+    record CANCELLED_BY / CANCELLATION_REASON).
+
+    Tracked in docs/reservation-improvements-progress.md.
+--->
 <cfscript>
 // Set content type to JSON
 getPageContext().getResponse().setContentType("application/json");

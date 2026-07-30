@@ -603,7 +603,7 @@ const nodes = [
   // API Endpoints
   { id: 'api-create',       label: 'Create Booking',        subtitle: 'api/bookings/create.cfm',              x: 60,  y: 190, w: 140, h: 44, layer: 'api', desc: 'POST: Create new booking, O365 calendar event' },
   { id: 'api-edit',         label: 'Edit Booking',          subtitle: 'api/bookings/edit-booking.cfm',        x: 220, y: 190, w: 140, h: 44, layer: 'api', desc: 'POST: Update booking with revision tracking' },
-  { id: 'api-cancel',       label: 'Cancel Booking',        subtitle: 'api/bookings/cancel.cfm',              x: 380, y: 190, w: 140, h: 44, layer: 'api', desc: 'POST: Cancel booking, send notifications' },
+  { id: 'api-cancel',       label: 'Cancel Booking',        subtitle: 'api/bookings/cancel.cfm (NOT IN USE)',  x: 380, y: 190, w: 140, h: 44, layer: 'api', desc: 'NOT IN USE. The live cancellation path is cfcs/dashboard-data.cfc?method=cancelBooking, which is what index.html calls. This endpoint depends on a session scope that does not exist. api/cancel-booking.cfm was a third implementation and is now disabled.' },
   { id: 'api-rooms',        label: 'Room List',             subtitle: 'api/rooms/list.cfm',                   x: 540, y: 190, w: 130, h: 44, layer: 'api', desc: 'GET: List rooms with capacity and amenities' },
   { id: 'api-avail',        label: 'Room Availability',     subtitle: 'api/rooms/availability.cfm',           x: 690, y: 190, w: 145, h: 44, layer: 'api', desc: 'GET: Available time slots for room/date' },
   { id: 'api-recurring',    label: 'Recurring Series',      subtitle: 'api/recurring/create-series.cfm',      x: 855, y: 190, w: 145, h: 44, layer: 'api', desc: 'POST: Create recurring booking series' },

@@ -17,8 +17,17 @@ component {
         variables.emailFrom = "roomreservation@mdanderson.org";
         variables.emailFromName = "MD Anderson Room Reservation";
         
-        // Override with Application settings if available
-        if (structKeyExists(application, "config") AND structKeyExists(application.config, "email")) {
+        // Override with Application settings if available.
+        //
+        // The isDefined("application") guard is required, not cosmetic: this
+        // application has no Application.cfc, so the application scope does not
+        // exist and a bare structKeyExists(application, ...) throws
+        // "Variable APPLICATION is undefined". That throw propagated up through
+        // ApprovalNotification.init() and silently killed every new-request
+        // approver notification. Falling through to the defaults above is
+        // correct -- with no server/port passed to cfmail, ColdFusion uses the
+        // mail server configured in the CF Administrator.
+        if (isDefined("application") AND structKeyExists(application, "config") AND structKeyExists(application.config, "email")) {
             variables.smtpServer = application.config.email.smtpServer ?: variables.smtpServer;
             variables.smtpPort = application.config.email.smtpPort ?: variables.smtpPort;
             variables.useSSL = application.config.email.useSSL ?: variables.useSSL;
@@ -330,7 +339,12 @@ component {
     }
 
     // Core email sending function
-    private boolean function sendEmail(
+    // Public because this component is used by composition, not inheritance:
+    // ApprovalNotification holds an EmailService instance and calls this
+    // directly. While it was private that call failed with "Neither the method
+    // sendEmail was found in component components.EmailService", so no approval
+    // email could ever be sent.
+    public boolean function sendEmail(
         required string to,
         required string toName,
         required string subject,
@@ -338,9 +352,27 @@ component {
         struct args = {}
     ) {
         try {
+            // Resolve the template against the application root. A bare relative
+            // include resolves against the *including* template's directory --
+            // that is components/, where views/emails/ does not exist -- so the
+            // include failed for every caller outside this directory.
+            var templatePath = arguments.template;
+            if (left(templatePath, 1) NEQ "/") {
+                templatePath = "/" & listFirst(cgi.script_name, "/") & "/" & templatePath;
+            }
+
+            if (!fileExists(expandPath(templatePath))) {
+                writeLog(
+                    type = "error",
+                    file = "approval_notifications",
+                    text = "Email template not found: #templatePath# (requested as '#arguments.template#')"
+                );
+                return false;
+            }
+
             // Generate email content from template
             savecontent variable="emailContent" {
-                include arguments.template;
+                include templatePath;
             }
 
             // Send email using ColdFusion mail

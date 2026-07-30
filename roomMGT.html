@@ -516,6 +516,10 @@
         function initializeDataTable() {
             var roomTable = $('#roomsTable').DataTable({
                 "ajax": {
+                    // DataTables defaults to cache:false, which makes jQuery append
+                    // a _=<timestamp> param. ColdFusion rejects URL params that are not
+                    // declared cfarguments, returning 500. Keep cache:true so it is not sent.
+                    cache: true,
                     url: 'assets/cfc/room.cfc?method=getRooms',
                     type: 'GET',
                     dataSrc: 'rooms'

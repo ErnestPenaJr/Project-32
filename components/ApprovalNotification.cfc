@@ -128,22 +128,48 @@ component {
                 NVL(np.EMAIL_ENABLED, t.DEFAULT_EMAIL_ENABLED) AS EMAIL_ENABLED,
                 NVL(np.IN_APP_ENABLED, t.DEFAULT_IN_APP_ENABLED) AS IN_APP_ENABLED
             FROM USERS u
+            JOIN ROLES ro ON ro.ROLE_ID = u.ROLE_ID
             JOIN NOTIFICATION_TYPES t ON t.TYPE_CODE = :typeCode
             LEFT JOIN NOTIFICATION_PREFERENCES np
               ON np.USER_ID = u.USER_ID
              AND np.NOTIFICATION_TYPE = t.TYPE_CODE
             WHERE UPPER(u.STATUS) = 'ACTIVE'
-              AND UPPER(u.ROLE) IN ('ADMIN','SITE ADMIN')
+              AND UPPER(ro.ROLE_NAME) IN ('ADMIN','SITE ADMIN')
         ";
 
         var params = {
             typeCode: { value = arguments.typeCode, cfsqltype = "cf_sql_varchar" }
         };
 
-        var qRecipients = queryExecute(sql, params, { datasource = variables.dsn });
+        var qRecipients = queryNew("");
+
+        try {
+            qRecipients = queryExecute(sql, params, { datasource = variables.dsn });
+        } catch (any e) {
+            // A recipient lookup that throws must not be mistaken for "nobody
+            // needs to be told". Log it so the missed approval alert is visible.
+            writeLog(
+                type = "error",
+                file = "approval_notifications",
+                text = "getApprovalRecipients failed for #arguments.typeCode#: #e.message# #e.detail#"
+            );
+            return recipients;
+        }
 
         for (var row in qRecipients) {
             arrayAppend(recipients, row);
+        }
+
+        if (!arrayLen(recipients)) {
+            // Silent when nobody matches was how the missing NOTIFICATION_TYPES
+            // row went unnoticed. Record it instead.
+            writeLog(
+                type = "warning",
+                file = "approval_notifications",
+                text = "No approval recipients resolved for #arguments.typeCode#. " &
+                       "Check that the NOTIFICATION_TYPES row exists and that at least " &
+                       "one Active user holds the Admin or Site Admin role."
+            );
         }
 
         return recipients;
@@ -191,17 +217,28 @@ component {
             " at " & timeFormat(arguments.bookingDetails.startTime, "h:nn tt");
     }
 
+    // Same guard as EmailService.init(): with no Application.cfc the application
+    // scope does not exist, so an unguarded structKeyExists(application, ...)
+    // throws rather than returning false. Falling back to a CGI-derived base URL
+    // keeps the links in the email usable.
+    private string function resolveBaseUrl() {
+        if (isDefined("application") AND structKeyExists(application, "config")
+            AND structKeyExists(application.config, "baseUrl")
+            AND len(trim(application.config.baseUrl))) {
+            return application.config.baseUrl;
+        }
+        if (len(cgi.SERVER_NAME)) {
+            return "https://" & cgi.SERVER_NAME & "/" & listFirst(cgi.SCRIPT_NAME, "/");
+        }
+        return "";
+    }
+
     private string function buildActionUrl(required numeric bookingId, required string action) {
-        var baseUrl = structKeyExists(application, "config") AND structKeyExists(application.config, "baseUrl")
-            ? application.config.baseUrl
-            : "";
-        return baseUrl & "/admin/booking-action.cfm?bookingId=" & arguments.bookingId & "&action=" & arguments.action;
+        return resolveBaseUrl() & "/admin/booking-action.cfm?bookingId=" & arguments.bookingId & "&action=" & arguments.action;
     }
 
     private string function buildDetailUrl(numeric bookingId) {
-        var baseUrl = structKeyExists(application, "config") AND structKeyExists(application.config, "baseUrl")
-            ? application.config.baseUrl
-            : "";
+        var baseUrl = resolveBaseUrl();
         if (structKeyExists(arguments, "bookingId") AND arguments.bookingId GT 0) {
             return baseUrl & "/admin/booking-details.cfm?bookingId=" & arguments.bookingId;
         }

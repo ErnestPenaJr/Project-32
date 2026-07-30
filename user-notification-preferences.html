@@ -39,7 +39,10 @@
         .preferences-container {
             min-height: 100vh;
             position: relative;
-            background-image: url('assets/images/medical-background.jpg');
+            /* medical-background.jpg was never present in assets/images and 404'd.
+               logoutBg.jpeg is the background this app already uses elsewhere and
+               is sized for the job (1920x1280, 296KB). */
+            background-image: url('assets/images/logoutBg.jpeg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;

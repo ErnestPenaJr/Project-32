@@ -307,6 +307,10 @@
             userTable = $('#usersTable').DataTable({
                 processing: true,
                 ajax: {
+                    // DataTables defaults to cache:false, which makes jQuery append
+                    // a _=<timestamp> param. ColdFusion rejects URL params that are not
+                    // declared cfarguments, returning 500. Keep cache:true so it is not sent.
+                    cache: true,
                     url: 'assets/cfc/user.cfc?method=getUsers',
                     type: 'GET',
                     dataSrc: 'users'

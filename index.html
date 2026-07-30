@@ -663,6 +663,19 @@
                     <li>Optionally, select a recurring schedule (daily, weekly, or monthly).</li>
                     <li>Click "Book Room" to finalize your booking.</li>
                 </ul>
+                <h6 class="mt-3">Booking for Someone Else</h6>
+                <ul>
+                    <li>By default the reservation is recorded for you, so booking for yourself needs
+                        no extra steps.</li>
+                    <li>To reserve a space on a colleague's behalf, tick <strong>"I am booking this
+                            for someone else"</strong> in the booking form and enter their name. Their
+                        email and department are optional but helpful.</li>
+                    <li>Both names are kept: the request still records that <em>you</em> submitted it,
+                        and shows <strong>Reservation For</strong> separately. Approvers see both, and
+                        the confirmation email lists them.</li>
+                    <li>Reservations made before this field existed simply show the requester as the
+                        person the space is for.</li>
+                </ul>
             </div>
             <div id="booking-history">
                 <h5>Viewing Booking History</h5>
@@ -679,15 +692,23 @@
                     <li>Click on a booking to view details or manage it (if you are the creator or an admin).</li>
                     <li>Navigate through different calendar views: day, week, or month.</li>
                     <li>Hover over bookings to see quick details in a tooltip.</li>
+                    <li>Opening a booking shows its full record: request number, who requested it, who
+                        it is for, the room and location, date and time, recurrence, purpose,
+                        submission date and current status. Anything not filled in is simply left
+                        out.</li>
                 </ul>
             </div>
             <div id="cancel-booking">
                 <h5>Cancel a Booking</h5>
                 <ul>
-                    <li>Click on the booking in on the calendar to cancel it.</li>
-                    <li>Confirm the cancellation by clicking "Yes, Cancel" in the modal.</li>
-                    <li> The booking will be removed from the calendar and you will be notified of the cancellation.
-                    </li>
+                    <li>Click the booking on the calendar, then choose "Cancel Booking".</li>
+                    <li>You may enter a reason. It is optional, but it is stored with the reservation
+                        and included in the notice sent to the requester, so it is worth adding.</li>
+                    <li>Confirm by clicking "Yes, cancel it".</li>
+                    <li>The requester is notified of the cancellation — including the request number,
+                        room, date and time, who cancelled it and the reason if one was given. If you
+                        cancelled your own booking, that notice goes to you.</li>
+                    <li>You can only cancel your own reservations unless you are an administrator.</li>
                 </ul>
             </div>
         </div>
@@ -1038,6 +1059,55 @@
                                                     style="min-height: 80px;"></textarea>
                                                 <div class="form-text text-muted small mt-1">
                                                     Required for non-focus room bookings
+                                                </div>
+                                            </div>
+
+                                            <!-- Reservation For: defaults to the signed-in
+                                                 requester, so booking for yourself needs no
+                                                 extra input. Ticking the box reveals the
+                                                 fields for booking on someone else's behalf. -->
+                                            <div class="mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                        id="bookingForSomeoneElse">
+                                                    <label class="form-check-label fw-medium" for="bookingForSomeoneElse">
+                                                        <i class="fas fa-user-friends me-1" aria-hidden="true"></i>I am
+                                                        booking this for someone else
+                                                    </label>
+                                                </div>
+                                                <div class="form-text text-muted small">
+                                                    Leave unticked to reserve this space for yourself.
+                                                </div>
+                                            </div>
+
+                                            <div id="reservationForFields" class="border rounded p-3 mb-2 bg-light"
+                                                style="display: none;">
+                                                <div class="mb-2">
+                                                    <label for="reservationForName" class="form-label fw-medium">
+                                                        Reservation For <span class="text-danger" aria-hidden="true">*</span>
+                                                    </label>
+                                                    <input type="text" class="form-control" id="reservationForName"
+                                                        maxlength="200" autocomplete="off"
+                                                        placeholder="Full name of the person this space is for">
+                                                    <div class="form-text text-muted small">
+                                                        Required when booking on someone else's behalf.
+                                                    </div>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <label for="reservationForEmail" class="form-label fw-medium">
+                                                        Their Email
+                                                    </label>
+                                                    <input type="email" class="form-control" id="reservationForEmail"
+                                                        maxlength="255" autocomplete="off"
+                                                        placeholder="name@mdanderson.org">
+                                                </div>
+                                                <div>
+                                                    <label for="reservationForDepartment" class="form-label fw-medium">
+                                                        Their Department
+                                                    </label>
+                                                    <input type="text" class="form-control" id="reservationForDepartment"
+                                                        maxlength="100" autocomplete="off"
+                                                        placeholder="Optional">
                                                 </div>
                                             </div>
                                         </div>
@@ -2026,11 +2096,16 @@
                             url: 'cfcs/dashboard-data.cfc',
                             method: 'GET',
                             data: {
-                                method: 'getAllBookings',
-                                timestamp: new Date().getTime() // Add timestamp to prevent caching
+                                method: 'getAllBookings'
                             },
                             dataType: 'json',
-                            cache: false, // Prevent caching of results
+                            // Cache-busting must not add query parameters here: a
+                            // remotely invoked CFC rejects any parameter the method
+                            // does not declare as a cfargument, which fails the whole
+                            // request with a 500. Ask for a fresh copy with a request
+                            // header instead -- getAllBookings also returns no-store
+                            // response headers.
+                            headers: { 'Cache-Control': 'no-cache' },
                             success: function (response) {
                                 console.log('Calendar events response:', response);
                                 if (response.status === 'success' && Array.isArray(response.BOOKINGS)) {
@@ -2256,14 +2331,14 @@
                         };
 
                         Swal.fire({
-                            title: `Booking Details (ID: ${info.event.id})`,
+                            title: `Reservation Details (Request #${info.event.id})`,
                             html: `
-                                <div class="booking-details text-start">
-                                    <p><strong>Room:</strong> ${info.event.extendedProps.roomName || 'Not specified'}</p>
-                                    <p><strong>Description:</strong> ${info.event.extendedProps.description || 'No description'}</p>
-                                    <p><strong>Starting On:</strong> ${startStr}</p>
-                                    <p><strong>Ending On:</strong> ${endStr}</p>
-                                    <p class="text-capitalize"><strong>Status:</strong> ${info.event.extendedProps.status}</p>
+                                <div class="booking-details text-start" id="bookingDetailBody">
+                                    <p><strong>Room:</strong> ${escapeHtmlDetail(info.event.extendedProps.roomName) || 'Not specified'}</p>
+                                    <p><strong>Starting On:</strong> ${escapeHtmlDetail(startStr)}</p>
+                                    <p><strong>Ending On:</strong> ${escapeHtmlDetail(endStr)}</p>
+                                    <p class="text-capitalize"><strong>Status:</strong> ${escapeHtmlDetail(info.event.extendedProps.status)}</p>
+                                    <p class="text-muted mb-0"><i class="fas fa-spinner fa-spin me-1"></i>Loading full details…</p>
                                 </div>
                             `,
                             showCancelButton: false,
@@ -2274,6 +2349,12 @@
                                 actions: 'd-flex gap-2 flex-wrap justify-content-center'
                             },
                             didOpen: () => {
+                                // Fetch the complete request record. The event payload
+                                // only carries what the calendar needs, so the full
+                                // detail (purpose, reservation-for, recurrence,
+                                // decision history) is loaded on demand.
+                                loadFullBookingDetail(info.event.id);
+
                                 const actionsContainer = Swal.getActions();
                                 actionsContainer.innerHTML = '';
 
@@ -2397,6 +2478,18 @@
                 const isFocusRoom = selectedRoom.includes('Focus Room');
                 const meetingTitle = !isFocusRoom ? $('#bookingTitle').val().trim() : '';
 
+                // "Reservation For". Left blank, the server defaults it to the
+                // requester, so booking for yourself needs no extra input.
+                const bookingForOther = $('#bookingForSomeoneElse').is(':checked');
+                const reservationForName = bookingForOther ? $('#reservationForName').val().trim() : '';
+                const reservationForEmail = bookingForOther ? $('#reservationForEmail').val().trim() : '';
+                const reservationForDept = bookingForOther ? $('#reservationForDepartment').val().trim() : '';
+
+                if (bookingForOther && !reservationForName) {
+                    showAlert('Please enter the name of the person this reservation is for.', 'warning');
+                    return;
+                }
+
                 // Show loading indicator
                 Swal.fire({
                     title: isEditMode ? 'Updating Booking...' : 'Creating Booking...',
@@ -2426,7 +2519,10 @@
                     end_time: endTime,
                     is_multi_day: isMultiDay ? 1 : 0,
                     recurring_details: $('#recurringDetails').val(),
-                    comments: meetingTitle || ''
+                    comments: meetingTitle || '',
+                    booked_for_name: reservationForName,
+                    booked_for_email: reservationForEmail,
+                    booked_for_department: reservationForDept
                 };
 
                 // Create or update booking
@@ -2520,8 +2616,136 @@
             });
 
             // Cancel booking function
+            // Reveal the Reservation For fields only when booking for someone else,
+            // and clear them on the way back so a stale value cannot be submitted.
+            $(document).on('change', '#bookingForSomeoneElse', function () {
+                const on = $(this).is(':checked');
+                $('#reservationForFields').toggle(on);
+                if (!on) {
+                    $('#reservationForName, #reservationForEmail, #reservationForDepartment').val('');
+                }
+            });
+
+            // The modal reset only clears form controls, so hide the panel too.
+            $(document).on('hidden.bs.modal', '#bookingModal', function () {
+                $('#bookingForSomeoneElse').prop('checked', false);
+                $('#reservationForFields').hide();
+                $('#reservationForName, #reservationForEmail, #reservationForDepartment').val('');
+            });
+
+            function escapeHtmlDetail(value) {
+                if (value === null || value === undefined) return '';
+                return String(value).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            }
+
+            // Renders the complete request into the already-open details dialog.
+            // Optional values are omitted rather than shown as "undefined"; a
+            // failed fetch leaves the summary the dialog opened with.
+            function loadFullBookingDetail(bookingId) {
+                $.ajax({
+                    url: 'cfcs/dashboard-data.cfc?method=getBookingDetail',
+                    method: 'GET',
+                    dataType: 'json',
+                    data: {
+                        bookingId: bookingId,
+                        userId: sessionStorage.getItem('USER_ID') || 0
+                    },
+                    success: function (response) {
+                        const container = document.getElementById('bookingDetailBody');
+                        if (!container) return;
+
+                        if (!response || response.status !== 'success' || !response.data) {
+                            container.querySelector('p.text-muted').outerHTML =
+                                '<p class="text-muted mb-0"><em>Full details are unavailable for this request.</em></p>';
+                            return;
+                        }
+
+                        const d = response.data;
+                        const row = (label, value) => {
+                            if (value === null || value === undefined || String(value).trim() === '') return '';
+                            return `<p class="mb-1"><strong>${label}:</strong> ${escapeHtmlDetail(value)}</p>`;
+                        };
+
+                        let html = '';
+                        html += row('Request Number', d.BOOKING_ID);
+                        html += row('Requested By', d.REQUESTED_BY);
+                        // Older records predate this field; the endpoint falls back to
+                        // the requester and flags it so we can label it honestly.
+                        html += row('Reservation For', d.RESERVATION_FOR_RECORDED
+                            ? d.RESERVATION_FOR
+                            : d.RESERVATION_FOR + ' (not separately recorded)');
+                        html += row('Department', d.DEPARTMENT);
+                        html += row('Room', d.ROOM_NAME);
+                        html += row('Location', d.LOCATION);
+                        html += row('Capacity', d.CAPACITY);
+                        html += row('Date', d.RESERVATION_DATE);
+                        html += (d.START_TIME || d.END_TIME)
+                            ? `<p class="mb-1"><strong>Time:</strong> ${escapeHtmlDetail(d.START_TIME)} &ndash; ${escapeHtmlDetail(d.END_TIME)}</p>`
+                            : '';
+                        html += row('Recurrence', d.RECURRENCE);
+                        html += row('Purpose', d.PURPOSE);
+                        html += row('Submitted', d.SUBMITTED_AT);
+                        html += `<p class="mb-1 text-capitalize"><strong>Status:</strong> ${escapeHtmlDetail(d.STATUS)}</p>`;
+                        html += row('Cancelled', d.CANCELLED_AT);
+                        html += row('Cancellation Reason', d.CANCELLATION_REASON);
+
+                        // Administrative detail: only present when the endpoint
+                        // decided this viewer is entitled to see it.
+                        let adminHtml = '';
+                        if (response.canSeeAdminFields) {
+                            adminHtml += row('Requester Email', d.REQUESTED_BY_EMAIL);
+                            adminHtml += row('Reservation For Email', d.RESERVATION_FOR_EMAIL);
+                            adminHtml += row('Decision By', d.DECIDED_BY);
+                            adminHtml += row('Decision Date', d.DECIDED_AT);
+                            adminHtml += row('Cancelled By', d.CANCELLED_BY);
+                            adminHtml += row('Last Modified By', d.MODIFIED_BY);
+                            adminHtml += row('Last Updated', d.LAST_UPDATED_AT);
+                            if (adminHtml) {
+                                adminHtml = '<hr class="my-2"><p class="mb-1 text-muted small text-uppercase">Administrative</p>' + adminHtml;
+                            }
+                        }
+
+                        container.innerHTML = html + adminHtml;
+                    },
+                    error: function () {
+                        const container = document.getElementById('bookingDetailBody');
+                        const pending = container ? container.querySelector('p.text-muted') : null;
+                        if (pending) {
+                            pending.outerHTML = '<p class="text-muted mb-0"><em>Full details could not be loaded.</em></p>';
+                        }
+                    }
+                });
+            }
+
+            // Confirms the cancellation and collects an optional reason, which is
+            // stored with the reservation and included in the requester's
+            // cancellation notice.
             function cancelBooking(bookingId) {
                 return new Promise((resolve, reject) => {
+                    Swal.fire({
+                        title: 'Cancel this reservation?',
+                        input: 'textarea',
+                        inputLabel: 'Reason (optional)',
+                        inputPlaceholder: 'Briefly explain why this reservation is being cancelled…',
+                        inputAttributes: { 'aria-label': 'Cancellation reason', maxlength: 1000 },
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, cancel it',
+                        cancelButtonText: 'Keep reservation',
+                        reverseButtons: true
+                    }).then((result) => {
+                        if (!result.isConfirmed) {
+                            reject({ cancelledByUser: true });
+                            return;
+                        }
+                        submitCancellation(bookingId, result.value || '', resolve, reject);
+                    });
+                });
+            }
+
+            function submitCancellation(bookingId, reason, resolve, reject) {
                     $.ajax({
                         url: 'cfcs/dashboard-data.cfc?method=cancelBooking',
                         method: 'POST',
@@ -2529,6 +2753,7 @@
                         data: {
                             bookingId: bookingId,
                             userId: sessionStorage.getItem('USER_ID'),
+                            reason: reason
                         },
                         success: function (response) {
                             if (response.status === 'SUCCESS') {
@@ -2544,8 +2769,11 @@
                             } else {
                                 Swal.fire({
                                     icon: 'error',
-                                    title: 'Error',
-                                    text: response.MESSAGE || 'Failed to cancel booking'
+                                    title: 'Unable to cancel',
+                                    // The endpoint returns a lowercase "message" key;
+                                    // accept either casing so the real reason (for
+                                    // example a permission denial) reaches the user.
+                                    text: response.message || response.MESSAGE || 'Failed to cancel booking'
                                 });
                                 reject(response);
                             }
@@ -2560,7 +2788,6 @@
                             reject(error);
                         }
                     });
-                });
             }
 
             // Logout function

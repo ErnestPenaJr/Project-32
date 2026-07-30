@@ -150,16 +150,28 @@
 
     <cffunction name="getAdminEmails" access="private" returntype="query">
         <cftry>
+            <!--- Recipients are Admin *and* Site Admin.
+                  This previously filtered LOWER(r.ROLE_NAME) = 'admin' exactly,
+                  which silently excluded every Site Admin. Where all
+                  administrators hold the Site Admin role the reminder resolved
+                  zero recipients and mailed nobody, while still reporting
+                  success. The role set here now matches
+                  ApprovalNotification.getApprovalRecipients(), so the immediate
+                  alert and the reminder agree on who an approver is.
+
+                  STATUS is compared case-insensitively for the same reason. --->
             <cfquery name="qryAdmins" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT
                     u.USER_ID,
                     u.EMAIL,
                     u.FIRST_NAME,
-                    u.LAST_NAME
+                    u.LAST_NAME,
+                    r.ROLE_NAME
                 FROM #this.DBSCHEMA#.USERS u
                 JOIN #this.DBSCHEMA#.ROLES r ON u.ROLE_ID = r.ROLE_ID
-                WHERE LOWER(r.ROLE_NAME) = 'admin'
-                AND u.STATUS = 'Active'
+                WHERE UPPER(TRIM(r.ROLE_NAME)) IN ('ADMIN', 'SITE ADMIN')
+                AND UPPER(u.STATUS) = 'ACTIVE'
+                AND u.EMAIL IS NOT NULL
             </cfquery>
             <cfreturn qryAdmins>
         <cfcatch>
@@ -169,35 +181,192 @@
         </cftry>
     </cffunction>
 
+    <!---
+        Reminder bucket for duplicate suppression.
+
+        Derived from the DATABASE clock, not the application server's: several
+        scheduler instances may run on hosts with skewed clocks, and they must
+        agree on which interval a send belongs to or the unique constraint in
+        NOTIFICATION_REMINDER_LOG will not suppress anything.
+
+        Requirement 4 asks that times use "the application's configured time
+        zone". This application has no configured time zone anywhere, so the
+        database session time zone is used as the single authority and documented
+        as such. Flagged for confirmation in the progress checklist.
+    --->
+    <cffunction name="getReminderIntervalKey" access="private" returntype="string" output="false">
+        <cfargument name="granularity" type="string" required="false" default="HOUR">
+
+        <cfset var qKey = "">
+        <cfset var mask = arguments.granularity EQ "DAY" ? "YYYY-MM-DD" : "YYYY-MM-DD HH24">
+
+        <cfquery name="qKey" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+            SELECT TO_CHAR(SYSTIMESTAMP, <cfqueryparam value="#mask#" cfsqltype="cf_sql_varchar">) AS INTERVAL_KEY
+            FROM DUAL
+        </cfquery>
+
+        <cfreturn qKey.INTERVAL_KEY>
+    </cffunction>
+
+    <!---
+        Claim the right to notify one recipient for one interval.
+
+        Returns true only if this caller won the claim. The unique constraint
+        UQ_REMINDER_ONCE_PER_INTERVAL makes this atomic across processes, so when
+        two scheduler runs overlap exactly one of them sends. A duplicate-key
+        error is the expected, healthy "someone else has this" signal -- not an
+        error condition.
+
+        If the log table is missing the claim is refused-open (returns true) so
+        reminders keep flowing; that is logged, and the trade-off is documented in
+        assets/sql/add_notification_reminder_log.sql.
+    --->
+    <cffunction name="claimReminderSlot" access="private" returntype="struct" output="false">
+        <cfargument name="recipientUserId" type="numeric" required="true">
+        <cfargument name="notificationType" type="string" required="true">
+        <cfargument name="intervalKey" type="string" required="true">
+        <cfargument name="pendingCount" type="numeric" required="false" default="0">
+
+        <cfset var result = { "claimed" = false, "logId" = 0, "reason" = "" }>
+        <cfset var qLog = "">
+
+        <cftry>
+            <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                INSERT INTO #this.DBSCHEMA#.NOTIFICATION_REMINDER_LOG
+                    (RECIPIENT_USER_ID, NOTIFICATION_TYPE, INTERVAL_KEY, PENDING_COUNT, DELIVERY_STATUS, CLAIMED_AT)
+                VALUES (
+                    <cfqueryparam value="#arguments.recipientUserId#" cfsqltype="cf_sql_numeric">,
+                    <cfqueryparam value="#arguments.notificationType#" cfsqltype="cf_sql_varchar">,
+                    <cfqueryparam value="#arguments.intervalKey#" cfsqltype="cf_sql_varchar">,
+                    <cfqueryparam value="#arguments.pendingCount#" cfsqltype="cf_sql_numeric">,
+                    'PENDING',
+                    CURRENT_TIMESTAMP
+                )
+            </cfquery>
+
+            <cfquery name="qLog" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT LOG_ID FROM #this.DBSCHEMA#.NOTIFICATION_REMINDER_LOG
+                WHERE RECIPIENT_USER_ID = <cfqueryparam value="#arguments.recipientUserId#" cfsqltype="cf_sql_numeric">
+                  AND NOTIFICATION_TYPE = <cfqueryparam value="#arguments.notificationType#" cfsqltype="cf_sql_varchar">
+                  AND INTERVAL_KEY = <cfqueryparam value="#arguments.intervalKey#" cfsqltype="cf_sql_varchar">
+            </cfquery>
+
+            <cfset result.claimed = true>
+            <cfset result.logId = qLog.LOG_ID>
+
+        <cfcatch>
+            <!--- ColdFusion reports "Error Executing Database Query." as the
+                  message and puts the ORA- text in detail, so both must be
+                  inspected. Matching only on message silently misclassified an
+                  expected duplicate as an unexpected failure. --->
+            <cfset var errText = cfcatch.message & " " & (structKeyExists(cfcatch, "detail") ? cfcatch.detail : "")>
+
+            <cfif findNoCase("ORA-00001", errText) OR findNoCase("unique constraint", errText)>
+                <!--- Expected: another run already owns this interval. --->
+                <cfset result.reason = "already sent this interval">
+            <cfelseif findNoCase("ORA-00942", errText) OR findNoCase("does not exist", errText)>
+                <!--- Table not deployed: keep reminders working, without suppression. --->
+                <cflog type="warning" file="pending_reminders"
+                       text="NOTIFICATION_REMINDER_LOG is missing; sending without duplicate suppression. Apply assets/sql/add_notification_reminder_log.sql. #errText#">
+                <cfset result.claimed = true>
+                <cfset result.reason = "log table absent">
+            <cfelse>
+                <cflog type="error" file="pending_reminders"
+                       text="Reminder claim failed for user #arguments.recipientUserId# interval #arguments.intervalKey#: #errText#">
+                <cfset result.reason = cfcatch.message>
+            </cfif>
+        </cfcatch>
+        </cftry>
+
+        <cfreturn result>
+    </cffunction>
+
+    <!--- Record the outcome of a claimed slot so failures can be found and retried. --->
+    <cffunction name="recordReminderOutcome" access="private" returntype="void" output="false">
+        <cfargument name="logId" type="numeric" required="true">
+        <cfargument name="status" type="string" required="true">
+        <cfargument name="failureDetail" type="string" required="false" default="">
+
+        <cfif arguments.logId LTE 0>
+            <cfreturn>
+        </cfif>
+
+        <cftry>
+            <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                UPDATE #this.DBSCHEMA#.NOTIFICATION_REMINDER_LOG
+                SET DELIVERY_STATUS = <cfqueryparam value="#arguments.status#" cfsqltype="cf_sql_varchar">,
+                    FAILURE_DETAIL = <cfqueryparam value="#left(arguments.failureDetail, 1000)#" cfsqltype="cf_sql_varchar" null="#!len(trim(arguments.failureDetail))#">,
+                    SENT_AT = CASE WHEN <cfqueryparam value="#arguments.status#" cfsqltype="cf_sql_varchar"> = 'SENT'
+                                   THEN CURRENT_TIMESTAMP ELSE SENT_AT END
+                WHERE LOG_ID = <cfqueryparam value="#arguments.logId#" cfsqltype="cf_sql_numeric">
+            </cfquery>
+        <cfcatch>
+            <cflog type="error" file="pending_reminders"
+                   text="Could not record reminder outcome for log #arguments.logId#: #cfcatch.message#">
+        </cfcatch>
+        </cftry>
+    </cffunction>
+
     <cffunction name="sendPendingRequestReminder" access="remote" returntype="struct" returnformat="JSON">
         <cftry>
             <cfset var results = {}>
             <cfset var pendingBookings = getPendingRequests()>
 
+            <!--- Resolved requests are excluded by getPendingRequests(), so an
+                  approved, rejected or cancelled request stops generating
+                  reminders on the very next run with no extra bookkeeping. --->
             <cfif pendingBookings.recordCount eq 0>
                 <cfset results["status"] = "success">
                 <cfset results["message"] = "No pending requests">
                 <cfset results["pendingCount"] = 0>
                 <cfset results["adminCount"] = 0>
                 <cfset results["emailsSent"] = 0>
+                <cfset results["skippedDuplicates"] = 0>
+                <cfset results["failed"] = 0>
                 <cfreturn results>
             </cfif>
 
             <cfset var adminList = getAdminEmails()>
 
             <cfif adminList.recordCount eq 0>
+                <!--- Recipients could not be determined. Surface it rather than
+                      reporting a quiet success. --->
+                <cflog type="warning" file="pending_reminders"
+                       text="#pendingBookings.recordCount# request(s) are pending but no active administrator could be resolved as a recipient.">
                 <cfset results["status"] = "success">
                 <cfset results["message"] = "No admin recipients">
                 <cfset results["pendingCount"] = pendingBookings.recordCount>
                 <cfset results["adminCount"] = 0>
                 <cfset results["emailsSent"] = 0>
+                <cfset results["skippedDuplicates"] = 0>
+                <cfset results["failed"] = 0>
                 <cfreturn results>
             </cfif>
 
             <cfset var reportTimestamp = DateFormat(now(), "mmmm dd, yyyy") & " at " & TimeFormat(now(), "h:mm:ss tt")>
             <cfset var emailsSent = 0>
+            <cfset var skippedDuplicates = 0>
+            <cfset var failedSends = 0>
+            <cfset var intervalKey = getReminderIntervalKey("HOUR")>
+            <cfset var claim = "">
+            <cfset var currentLogId = 0>
 
             <cfloop query="adminList">
+                <!--- One recipient's failure must not stop the others. --->
+                <cftry>
+                <cfset claim = claimReminderSlot(
+                    recipientUserId = adminList.USER_ID,
+                    notificationType = "PENDING_REQUEST_REMINDER",
+                    intervalKey = intervalKey,
+                    pendingCount = pendingBookings.recordCount
+                )>
+
+                <cfif NOT claim.claimed>
+                    <cfset skippedDuplicates++>
+                    <cfcontinue>
+                </cfif>
+
+                <cfset currentLogId = claim.logId>
                 <cfmail to="#adminList.EMAIL#"
                         from="no-reply@mdanderson.org"
                         subject="Action Required: #pendingBookings.recordCount# Pending Room Reservation Request(s)"
@@ -271,13 +440,33 @@
                     </cfoutput>
                 </cfmail>
                 <cfset emailsSent = emailsSent + 1>
+                <cfset recordReminderOutcome(logId = currentLogId, status = "SENT")>
+
+                <cfcatch>
+                    <!--- Leave the row FAILED with detail so it can be found and
+                          retried; the claim row itself stays, so a retry within
+                          the same interval is still suppressed until an operator
+                          clears or re-runs it deliberately. --->
+                    <cfset failedSends++>
+                    <cflog type="error" file="pending_reminders"
+                           text="Reminder to admin #adminList.USER_ID# (#adminList.EMAIL#) failed for interval #intervalKey#: #cfcatch.message# #cfcatch.detail#">
+                    <cfset recordReminderOutcome(
+                        logId = currentLogId,
+                        status = "FAILED",
+                        failureDetail = cfcatch.message & " " & cfcatch.detail
+                    )>
+                </cfcatch>
+                </cftry>
             </cfloop>
 
             <cfset results["status"] = "success">
-            <cfset results["message"] = "Pending request reminder emails sent successfully">
+            <cfset results["message"] = "Reminder run complete: #emailsSent# sent, #skippedDuplicates# already sent this interval, #failedSends# failed.">
             <cfset results["pendingCount"] = pendingBookings.recordCount>
             <cfset results["adminCount"] = adminList.recordCount>
             <cfset results["emailsSent"] = emailsSent>
+            <cfset results["skippedDuplicates"] = skippedDuplicates>
+            <cfset results["failed"] = failedSends>
+            <cfset results["intervalKey"] = intervalKey>
             <cfreturn results>
 
         <cfcatch>
@@ -287,7 +476,9 @@
                 "message": "Error sending pending request reminders: #cfcatch.message# - #cfcatch.detail#",
                 "pendingCount": 0,
                 "adminCount": 0,
-                "emailsSent": 0
+                "emailsSent": 0,
+                "skippedDuplicates": 0,
+                "failed": 0
             }>
         </cfcatch>
         </cftry>

@@ -147,6 +147,13 @@
 
     <cffunction name="getAllBookings" access="remote" returntype="any" returnformat="JSON" output="false">
         <cfset var retVal = {} />
+
+        <!--- The calendar must never render a stale booking list. Refusing the
+              cache here means callers do not need a cache-busting URL parameter,
+              which a remote CFC method would reject outright. --->
+        <cfheader name="Cache-Control" value="no-store, no-cache, must-revalidate" />
+        <cfheader name="Pragma" value="no-cache" />
+
         <cftry>
             <cfquery name="qryUpcoming" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                 SELECT 
@@ -158,15 +165,22 @@
                     r.ROOM_ID,
                     r.ROOM_NAME as NAME,
                     r.DESCRIPTION,
+                    r.BUILDING || '.' || r.ROOM_NUMBER AS LOCATION,
+                    r.CAPACITY,
                     b.START_TIME,
                     b.STATUS,
+                    b.COMMENTS AS PURPOSE,
+                    b.RECURRING_DETAILS,
+                    b.BOOKED_FOR_NAME,
+                    b.BOOKED_FOR_DEPARTMENT,
+                    TO_CHAR(b.CREATED_AT, 'MM/DD/YYYY HH12:MI AM') AS SUBMITTEDAT,
                     TO_CHAR(b.START_TIME,'YYYY-MM-DD') AS STARTDATE,
                     TO_CHAR(b.END_TIME,'YYYY-MM-DD') AS ENDDATE,
                     TO_CHAR(b.START_TIME, 'HH:MI AM') as STARTTIME,
                     TO_CHAR(b.END_TIME, 'HH:MI AM') as ENDTIME
                 FROM #this.DBSCHEMA#.BOOKINGS b
                 JOIN #this.DBSCHEMA#.ROOMS r ON b.ROOM_ID = r.ROOM_ID
-                JOIN #this.DBSCHEMA#.USERS u ON b.USER_ID = u.USER_ID 
+                JOIN #this.DBSCHEMA#.USERS u ON b.USER_ID = u.USER_ID
                 WHERE CURRENT_TIMESTAMP <= b.END_TIME
                 AND LOWER(b.STATUS) IN ('pending', 'approved')
                 ORDER BY b.START_TIME
@@ -182,12 +196,19 @@
                     "ID": qryUpcoming.ID,
                     "ROOM_ID": qryUpcoming.ROOM_ID,
                     "NAME": qryUpcoming.NAME,
+                    "LOCATION": qryUpcoming.LOCATION,
+                    "CAPACITY": qryUpcoming.CAPACITY,
                     "STATUS": qryUpcoming.STATUS,
                     "STARTDATE": qryUpcoming.STARTDATE,
                     "STARTTIME": qryUpcoming.STARTTIME,
                     "ENDDATE": qryUpcoming.ENDDATE,
                     "ENDTIME": qryUpcoming.ENDTIME,
-                    "DESCRIPTION": qryUpcoming.DESCRIPTION
+                    "DESCRIPTION": qryUpcoming.DESCRIPTION,
+                    "PURPOSE": qryUpcoming.PURPOSE,
+                    "RECURRING_DETAILS": qryUpcoming.RECURRING_DETAILS,
+                    "BOOKED_FOR_NAME": qryUpcoming.BOOKED_FOR_NAME,
+                    "BOOKED_FOR_DEPARTMENT": qryUpcoming.BOOKED_FOR_DEPARTMENT,
+                    "SUBMITTEDAT": qryUpcoming.SUBMITTEDAT
                 }) />
             </cfloop>
 
@@ -474,143 +495,405 @@
         </cftransaction>
     </cffunction>
 
-<cffunction name="cancelBooking" access="remote" returntype="any" returnformat="JSON" output="false">
-        <cfargument name="bookingid" required="true" type="numeric">
-        <cfargument name="userId" required="true" type="numeric" default="#sessionStorage.getItem('EMPLID')#">
+    <!---
+        Look up an asserted user's role so callers can enforce business rules
+        server-side. Note: this establishes *authorization* for a claimed
+        identity, not authentication -- see the header comment on cancelBooking.
+    --->
+    <cffunction name="getUserAuthorization" access="private" returntype="struct" output="false">
+        <cfargument name="userId" required="true" type="numeric">
 
-        
+        <cfset var result = { "found": false, "roleName": "", "isAdmin": false, "fullName": "", "email": "" }>
+        <cfset var qryUser = "">
+
+        <cfquery name="qryUser" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+            SELECT
+                u.USER_ID,
+                u.FIRST_NAME,
+                u.LAST_NAME,
+                u.EMAIL,
+                u.STATUS,
+                NVL(ro.ROLE_NAME, '') AS ROLE_NAME
+            FROM #this.DBSCHEMA#.USERS u
+            LEFT JOIN #this.DBSCHEMA#.ROLES ro ON ro.ROLE_ID = u.ROLE_ID
+            WHERE u.USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_numeric">
+              AND UPPER(u.STATUS) = 'ACTIVE'
+        </cfquery>
+
+        <cfif qryUser.recordCount>
+            <cfset result.found = true>
+            <cfset result.roleName = qryUser.ROLE_NAME>
+            <cfset result.isAdmin = ListFindNoCase("Admin,Site Admin", trim(qryUser.ROLE_NAME)) GT 0>
+            <cfset result.fullName = trim(qryUser.FIRST_NAME & " " & qryUser.LAST_NAME)>
+            <cfset result.email = qryUser.EMAIL>
+        </cfif>
+
+        <cfreturn result>
+    </cffunction>
+
+<!---
+        Cancel a booking and notify the original requester.
+
+        Authorization: the acting user must be the booking's requester or hold
+        the Admin / Site Admin role. This is checked against the database rather
+        than trusted from the caller.
+
+        KNOWN GAP -- this app has no Application.cfc, so neither the session nor
+        the application scope exists and Authenticate.cfc's session writes do not
+        persist. `userId` therefore arrives as a client-supplied assertion that
+        the server cannot authenticate. The role check below enforces the
+        business rule but is not yet a security boundary: a caller who forges a
+        different userId can still act as that user. Closing that gap requires
+        Application.cfc with sessionManagement enabled. Tracked in
+        docs/reservation-improvements-progress.md.
+    --->
+    <cffunction name="cancelBooking" access="remote" returntype="any" returnformat="JSON" output="false">
+        <cfargument name="bookingid" required="true" type="numeric">
+        <cfargument name="userId" required="true" type="numeric">
+        <cfargument name="reason" required="false" type="string" default="">
+
+        <cfset var qryGetBooking = "">
+        <cfset var actor = "">
+        <cfset var startTime = "">
+        <cfset var endTime = "">
+        <cfset var cancellingAgent = ".">
+        <cfset var emailBody = "">
+        <cfset var cleanReason = trim(arguments.reason)>
+        <cfset var bookedForLine = "">
+        <cfset var reasonLine = "">
+        <cfset var detailUrl = "">
+
+        <!--- Cancellation reasons are shown back to the requester; cap at the
+              declared CANCELLATION_REASON VARCHAR2(1000) width. --->
+        <cfif len(cleanReason) GT 1000>
+            <cfset cleanReason = left(cleanReason, 1000)>
+        </cfif>
+
         <cfquery name="qryGetBooking" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-           SELECT 
+           SELECT
                 b.BOOKING_ID,
-                b.USER_ID, 
-                b.ROOM_ID, 
-                r.ROOM_NAME, 
+                b.USER_ID,
+                b.ROOM_ID,
+                b.STATUS,
+                b.COMMENTS,
+                b.BOOKED_FOR_NAME,
+                b.BOOKED_FOR_EMAIL,
+                r.ROOM_NAME,
                 r.BUILDING || '.' || r.ROOM_NUMBER AS LOCATION,
                 u.EMAIL,
                 u.FIRST_NAME,
                 u.LAST_NAME,
                 TO_CHAR(b.START_TIME, 'YYYY-MM-DD HH24:MI:SS') AS START_TIME,
                 TO_CHAR(b.END_TIME, 'YYYY-MM-DD HH24:MI:SS') AS END_TIME
-            FROM 
+            FROM
                 #this.DBSCHEMA#.BOOKINGS b
-            JOIN 
+            JOIN
                 #this.DBSCHEMA#.ROOMS r ON r.ROOM_ID = b.ROOM_ID
-            JOIN 
+            JOIN
                 #this.DBSCHEMA#.USERS u ON u.USER_ID = b.USER_ID
-            WHERE 
+            WHERE
                 b.BOOKING_ID = <cfqueryparam value="#arguments.bookingid#" cfsqltype="cf_sql_numeric">
         </cfquery>
 
-        <cfquery name="qryGetCancellingAgent" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-            SELECT 
-                u.FIRST_NAME, 
-                u.LAST_NAME,
-                u.EMAIL
-            FROM 
-                #this.DBSCHEMA#.USERS u
-            WHERE 
-                u.USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_numeric">
-        </cfquery>
+        <cfif NOT qryGetBooking.recordCount>
+            <cfreturn { "status": "ERROR", "message": "Booking not found" }>
+        </cfif>
 
-        <cfquery name="qryCheckAvailability" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+        <cfset actor = getUserAuthorization(arguments.userId)>
+
+        <cfif NOT actor.found>
+            <cfreturn { "status": "ERROR", "message": "Cancelling user is not an active account" }>
+        </cfif>
+
+        <!--- Requester or admin only. --->
+        <cfif arguments.userId NEQ qryGetBooking.USER_ID AND NOT actor.isAdmin>
+            <cflog type="warning" file="booking_cancellations"
+                   text="Denied cancellation of booking #arguments.bookingid# by user #arguments.userId# (role '#actor.roleName#'): not the requester and not an administrator.">
+            <cfreturn { "status": "ERROR", "message": "You do not have permission to cancel this booking" }>
+        </cfif>
+
+        <!--- Already-cancelled bookings return success without re-notifying, so a
+              double submit cannot produce a second cancellation email. --->
+        <cfif ListFindNoCase("cancelled,canceled", trim(qryGetBooking.STATUS))>
+            <cfreturn {
+                "status": "SUCCESS",
+                "message": "Booking was already cancelled",
+                "alreadyCancelled": true
+            }>
+        </cfif>
+
+        <!--- Record the cancellation in its own columns. COMMENTS holds the
+              requester's meeting title and must not be overwritten. Guarded on
+              status so two concurrent callers cannot both proceed to notify. --->
+        <cfset var qryCancel = "">
+        <cfquery name="qryCancel" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#" result="cancelResult">
             UPDATE #this.DBSCHEMA#.BOOKINGS
             SET STATUS = 'cancelled',
-                APPROVED_BY = #arguments.userId#,
-                COMMENTS = 'Cancelled by #qryGetCancellingAgent.FIRST_NAME# #qryGetCancellingAgent.LAST_NAME#',
+                CANCELLED_BY = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_numeric">,
+                CANCELLED_AT = CURRENT_TIMESTAMP,
+                CANCELLATION_REASON = <cfqueryparam value="#cleanReason#" cfsqltype="cf_sql_varchar" null="#!len(cleanReason)#">,
                 UPDATED_AT = CURRENT_TIMESTAMP
             WHERE BOOKING_ID = <cfqueryparam value="#arguments.bookingid#" cfsqltype="cf_sql_numeric">
+              AND LOWER(STATUS) NOT IN ('cancelled', 'canceled')
         </cfquery>
+
+        <cfif structKeyExists(cancelResult, "recordCount") AND cancelResult.recordCount EQ 0>
+            <!--- Another request cancelled it between our read and write. --->
+            <cfreturn {
+                "status": "SUCCESS",
+                "message": "Booking was already cancelled",
+                "alreadyCancelled": true
+            }>
+        </cfif>
+
+        <!--- The booking is cancelled from here on. Notification is best-effort:
+              every failure is logged and swallowed so the caller still sees the
+              cancellation succeed. --->
+        <cftry>
             <cfset startTime = ParseDateTime(qryGetBooking.START_TIME)>
             <cfset endTime = ParseDateTime(qryGetBooking.END_TIME)>
-           
+
             <cfif arguments.userId NEQ qryGetBooking.USER_ID>
-                <cfset cancellingAgent = " By #qryGetCancellingAgent.FIRST_NAME# #qryGetCancellingAgent.LAST_NAME#." >
-            <cfelse>
-                <cfset cancellingAgent = "." >
+                <cfset cancellingAgent = " by #encodeForHTML(actor.fullName)#.">
             </cfif>
 
-        <cfset var emailBody = "
-            <cfoutput>
-                <p>Dear #qryGetBooking.FIRST_NAME#,</p>
+            <cfif len(trim(qryGetBooking.BOOKED_FOR_NAME))>
+                <cfset bookedForLine = "<li><strong>Reservation For:</strong> " & encodeForHTML(qryGetBooking.BOOKED_FOR_NAME) & "</li>">
+            </cfif>
 
-                <p>
-                    We would like to confirm that your booking for the room ""<strong>#qryGetBooking.ROOM_NAME#</strong>"" has been
-                    successfully cancelled#cancellingAgent#
-                </p>
+            <cfif len(cleanReason)>
+                <cfset reasonLine = "<li><strong>Reason:</strong> " & encodeForHTML(cleanReason) & "</li>">
+            </cfif>
 
-                <p>
-                    <strong>Details of the canceled booking:</strong><br>
+            <cfset detailUrl = "https://" & cgi.SERVER_NAME & "/" & ListFirst(CGI.SCRIPT_NAME, '/') & "/index.html?bookingId=" & qryGetBooking.BOOKING_ID>
+
+            <cfsavecontent variable="emailBody">
+                <cfoutput>
+                <p>Dear #encodeForHTML(qryGetBooking.FIRST_NAME)#,</p>
+
+                <p>Your reservation for "<strong>#encodeForHTML(qryGetBooking.ROOM_NAME)#</strong>" has been cancelled#cancellingAgent#</p>
+
+                <p><strong>Details of the cancelled reservation:</strong></p>
                 <ul>
-                    <li><strong>Location:</strong> #qryGetBooking.LOCATION#</li>
-                    <li><strong>Room:</strong> #qryGetBooking.ROOM_NAME#</li>
-                    <li><strong>Start Date:</strong> #DateFormat(startTime, "dddd, mmmm dd, yyyy")#  #TimeFormat(startTime, "h:mm tt")# </li>
-                    <li><strong>End Date:</strong> #DateFormat(endTime, "dddd, mmmm dd, yyyy")#  #TimeFormat(endTime, "h:mm tt")# </li>
-                    <li><strong>Booking ID:</strong> #qryGetBooking.BOOKING_ID#</li>
+                    <li><strong>Request Number:</strong> #qryGetBooking.BOOKING_ID#</li>
+                    <li><strong>Room:</strong> #encodeForHTML(qryGetBooking.ROOM_NAME)#</li>
+                    <li><strong>Location:</strong> #encodeForHTML(qryGetBooking.LOCATION)#</li>
+                    #bookedForLine#
+                    <li><strong>Date:</strong> #DateFormat(startTime, "dddd, mmmm dd, yyyy")#</li>
+                    <li><strong>Time:</strong> #TimeFormat(startTime, "h:mm tt")# &ndash; #TimeFormat(endTime, "h:mm tt")#</li>
+                    <li><strong>Status:</strong> Cancelled</li>
+                    #reasonLine#
                 </ul>
-                </p>
 
-                <p>
-                    If you have any questions or need further assistance, please feel free to reach out to our team at your
-                    convenience. We are here to help.
-                </p>
+                <p><a href="#detailUrl#">View this reservation</a></p>
 
-                <p>Kind regards,<br>
+                <p>If you did not expect this cancellation, please contact the reservation team.</p>
+
+                <p>Kind regards,<br />
                     <strong>DoCM Reservation System</strong>
                 </p>
-            </cfoutput>
-        ">
-            <!--- Check if user should receive booking cancellation email --->
-            <cfset var sendEmail = true />
+                </cfoutput>
+            </cfsavecontent>
+
+            <!--- In-app notification for the requester. --->
             <cftry>
-                <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications") />
-                <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CANCELLATION") />
-                <cfset sendEmail = (isDefined("userPreferences.email") AND isBoolean(userPreferences.email) AND userPreferences.email) />
+                <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                    INSERT INTO #this.DBSCHEMA#.NOTIFICATIONS (USER_ID, TYPE, CONTENT, STATUS, CREATED_AT)
+                    VALUES (
+                        <cfqueryparam value="#qryGetBooking.USER_ID#" cfsqltype="cf_sql_numeric">,
+                        <cfqueryparam value="BOOKING_CANCELLATION" cfsqltype="cf_sql_varchar">,
+                        <cfqueryparam value="#left('Reservation ##' & qryGetBooking.BOOKING_ID & ' for ' & qryGetBooking.ROOM_NAME & ' on ' & DateFormat(startTime, 'mm/dd/yyyy') & ' has been cancelled.' & (len(cleanReason) ? ' Reason: ' & cleanReason : ''), 1000)#" cfsqltype="cf_sql_varchar">,
+                        <cfqueryparam value="Unread" cfsqltype="cf_sql_varchar">,
+                        CURRENT_TIMESTAMP
+                    )
+                </cfquery>
             <cfcatch>
-                <!--- If notification service fails, default to sending email --->
-                <cfset sendEmail = true />
+                <cflog type="error" file="booking_cancellations"
+                       text="Booking #arguments.bookingid# cancelled but in-app notification insert failed: #cfcatch.message#">
             </cfcatch>
             </cftry>
 
-            <!--- Only send email if user has email notifications enabled for booking cancellations --->
+            <!--- Respect the requester's email preference; default to sending if
+                  the preference service is unavailable. --->
+            <cfset var sendEmail = true>
+            <cfset var notificationService = "">
+            <cfset var adminEmails = "">
+
+            <cftry>
+                <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications")>
+                <cfset var userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CANCELLATION")>
+                <cfset sendEmail = (isStruct(userPreferences) AND structKeyExists(userPreferences, "email") AND isBoolean(userPreferences.email) AND userPreferences.email)>
+            <cfcatch>
+                <cflog type="warning" file="booking_cancellations"
+                       text="Preference lookup failed for booking #arguments.bookingid#; defaulting to send. #cfcatch.message#">
+                <cfset sendEmail = true>
+                <cfset notificationService = "">
+            </cfcatch>
+            </cftry>
+
             <cfif sendEmail>
-                <!--- Get admins who should receive this notification --->
-                <cfset qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CANCELLATION", "email") />
-                
-                <!--- Build list of admin emails --->
-                <cfset adminEmails = "">
-                <cfloop query="qryAdminsToNotify">
-                    <cfset adminEmails = ListAppend(adminEmails, qryAdminsToNotify.EMAIL)>
-                </cfloop>
-                
-                <!--- Send email to requester and CC admins who want notifications --->
-                <cfif len(trim(adminEmails))>
-                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
-                            subject="Cancellation Confirmation - Room ""#qryGetBooking.ROOM_NAME#""" type="html" cc="#adminEmails#">
-                        <cfmailpart type="text/html">
-                            <cfoutput>#emailBody#</cfoutput>
-                        </cfmailpart>
-                    </cfmail>
-                <cfelse>
-                    <!--- If no admins to CC, just send to requester --->
-                    <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
-                            subject="Cancellation Confirmation - Room ""#qryGetBooking.ROOM_NAME#""" type="html">
-                        <cfmailpart type="text/html">
-                            <cfoutput>#emailBody#</cfoutput>
-                        </cfmailpart>
-                    </cfmail>
+                <!--- Only ask for admin CCs if the service actually loaded. The
+                      previous version called this on an undefined variable
+                      whenever the lookup above threw. --->
+                <cfif isObject(notificationService)>
+                    <cftry>
+                        <cfset var qryAdminsToNotify = notificationService.getAdminsForNotification("BOOKING_CANCELLATION", "email")>
+                        <cfloop query="qryAdminsToNotify">
+                            <cfset adminEmails = ListAppend(adminEmails, qryAdminsToNotify.EMAIL)>
+                        </cfloop>
+                    <cfcatch>
+                        <cflog type="warning" file="booking_cancellations"
+                               text="Admin CC lookup failed for booking #arguments.bookingid#: #cfcatch.message#">
+                    </cfcatch>
+                    </cftry>
                 </cfif>
+
+                <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org"
+                        subject="Cancellation Confirmation - Reservation ###qryGetBooking.BOOKING_ID# - #qryGetBooking.ROOM_NAME#"
+                        type="html" cc="#adminEmails#">
+                    <cfmailpart type="text/html">
+                        <cfoutput>#emailBody#</cfoutput>
+                    </cfmailpart>
+                </cfmail>
             </cfif>
 
-    <cfset response = {
-        "status": "SUCCESS",
-        "message": "Booking cancelled successfully"
+        <cfcatch>
+            <!--- Notification failure must never undo a completed cancellation. --->
+            <cflog type="error" file="booking_cancellations"
+                   text="Booking #arguments.bookingid# cancelled successfully but notification failed: #cfcatch.message# #cfcatch.detail#">
+        </cfcatch>
+        </cftry>
+
+        <cfreturn {
+            "status": "SUCCESS",
+            "message": "Booking cancelled successfully"
         }>
 
-    <cfreturn response>
-
-    </cffunction> 
+    </cffunction>
 
 
+
+    <!---
+        Complete detail for a single reservation request, for the dashboard
+        detail view. Optional fields come back as empty strings rather than
+        nulls so the client never has to guard against missing keys.
+
+        Administrative fields (who approved/cancelled it, created/modified-by)
+        are only populated when the asserted user is the requester or holds an
+        administrator role. Same authentication caveat as cancelBooking.
+    --->
+    <cffunction name="getBookingDetail" access="remote" returntype="any" returnformat="JSON" output="false">
+        <cfargument name="bookingId" required="true" type="numeric">
+        <cfargument name="userId" required="false" type="numeric" default="0">
+
+        <cfset var retVal = {} />
+        <cfset var qryDetail = "" />
+        <cfset var actor = { "found": false, "isAdmin": false } />
+        <cfset var canSeeAdminFields = false />
+        <cfset var detail = {} />
+
+        <cftry>
+            <cfquery name="qryDetail" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT
+                    b.BOOKING_ID,
+                    b.USER_ID,
+                    b.STATUS,
+                    b.COMMENTS,
+                    b.RECURRING_DETAILS,
+                    b.BOOKED_FOR_NAME,
+                    b.BOOKED_FOR_EMAIL,
+                    b.BOOKED_FOR_DEPARTMENT,
+                    b.CANCELLATION_REASON,
+                    b.REVISION_NUMBER,
+                    b.IS_MODIFIED,
+                    TO_CHAR(b.CREATED_AT, 'MM/DD/YYYY HH12:MI AM') AS SUBMITTED_AT,
+                    TO_CHAR(b.UPDATED_AT, 'MM/DD/YYYY HH12:MI AM') AS UPDATED_AT,
+                    TO_CHAR(b.DECIDED_AT, 'MM/DD/YYYY HH12:MI AM') AS DECIDED_AT,
+                    TO_CHAR(b.CANCELLED_AT, 'MM/DD/YYYY HH12:MI AM') AS CANCELLED_AT,
+                    <!--- FM is a toggle in Oracle: one leading FM keeps fill mode
+                          on for the rest of the mask. A second FM would switch it
+                          back off and re-pad the month name. --->
+                    TO_CHAR(b.START_TIME, 'FMDay, Month DD, YYYY') AS RESERVATION_DATE,
+                    TO_CHAR(b.START_TIME, 'HH12:MI AM') AS START_TIME,
+                    TO_CHAR(b.END_TIME, 'HH12:MI AM') AS END_TIME,
+                    r.ROOM_NAME,
+                    r.CAPACITY,
+                    r.BUILDING || '.' || r.ROOM_NUMBER AS LOCATION,
+                    req.FIRST_NAME || ' ' || req.LAST_NAME AS REQUESTED_BY,
+                    req.EMAIL AS REQUESTED_BY_EMAIL,
+                    NVL(decu.FIRST_NAME || ' ' || decu.LAST_NAME, '') AS DECIDED_BY_NAME,
+                    NVL(canu.FIRST_NAME || ' ' || canu.LAST_NAME, '') AS CANCELLED_BY_NAME,
+                    NVL(apru.FIRST_NAME || ' ' || apru.LAST_NAME, '') AS APPROVED_BY_NAME,
+                    NVL(modu.FIRST_NAME || ' ' || modu.LAST_NAME, '') AS MODIFIED_BY_NAME
+                FROM #this.DBSCHEMA#.BOOKINGS b
+                JOIN #this.DBSCHEMA#.ROOMS r ON r.ROOM_ID = b.ROOM_ID
+                JOIN #this.DBSCHEMA#.USERS req ON req.USER_ID = b.USER_ID
+                LEFT JOIN #this.DBSCHEMA#.USERS decu ON decu.USER_ID = b.DECIDED_BY
+                LEFT JOIN #this.DBSCHEMA#.USERS canu ON canu.USER_ID = b.CANCELLED_BY
+                LEFT JOIN #this.DBSCHEMA#.USERS apru ON apru.USER_ID = b.APPROVED_BY
+                LEFT JOIN #this.DBSCHEMA#.USERS modu ON modu.USER_ID = b.MODIFIED_BY
+                WHERE b.BOOKING_ID = <cfqueryparam value="#arguments.bookingId#" cfsqltype="cf_sql_numeric">
+            </cfquery>
+
+            <cfif NOT qryDetail.recordCount>
+                <cfset retVal["status"] = "error" />
+                <cfset retVal["message"] = "Reservation not found" />
+                <cfreturn retVal />
+            </cfif>
+
+            <cfif arguments.userId GT 0>
+                <cfset actor = getUserAuthorization(arguments.userId) />
+            </cfif>
+            <cfset canSeeAdminFields = (actor.isAdmin OR (arguments.userId GT 0 AND arguments.userId EQ qryDetail.USER_ID)) />
+
+            <cfset detail = {
+                "BOOKING_ID": qryDetail.BOOKING_ID,
+                "STATUS": qryDetail.STATUS,
+                "REQUESTED_BY": qryDetail.REQUESTED_BY,
+                "RESERVATION_FOR": len(trim(qryDetail.BOOKED_FOR_NAME)) ? qryDetail.BOOKED_FOR_NAME : qryDetail.REQUESTED_BY,
+                "RESERVATION_FOR_RECORDED": len(trim(qryDetail.BOOKED_FOR_NAME)) GT 0,
+                "DEPARTMENT": trim(qryDetail.BOOKED_FOR_DEPARTMENT),
+                "ROOM_NAME": qryDetail.ROOM_NAME,
+                "LOCATION": qryDetail.LOCATION,
+                "CAPACITY": qryDetail.CAPACITY,
+                "RESERVATION_DATE": trim(qryDetail.RESERVATION_DATE),
+                "START_TIME": trim(qryDetail.START_TIME),
+                "END_TIME": trim(qryDetail.END_TIME),
+                "RECURRENCE": trim(qryDetail.RECURRING_DETAILS),
+                "PURPOSE": trim(qryDetail.COMMENTS),
+                "SUBMITTED_AT": trim(qryDetail.SUBMITTED_AT),
+                "CANCELLATION_REASON": trim(qryDetail.CANCELLATION_REASON),
+                "CANCELLED_AT": trim(qryDetail.CANCELLED_AT),
+                "REVISION_NUMBER": val(qryDetail.REVISION_NUMBER),
+                "IS_MODIFIED": trim(qryDetail.IS_MODIFIED)
+            } />
+
+            <!--- Who acted on the request is administrative detail. --->
+            <cfif canSeeAdminFields>
+                <cfset detail["REQUESTED_BY_EMAIL"] = qryDetail.REQUESTED_BY_EMAIL />
+                <cfset detail["RESERVATION_FOR_EMAIL"] = trim(qryDetail.BOOKED_FOR_EMAIL) />
+                <cfset detail["DECIDED_BY"] = trim(qryDetail.DECIDED_BY_NAME) />
+                <cfset detail["DECIDED_AT"] = trim(qryDetail.DECIDED_AT) />
+                <cfset detail["APPROVED_BY"] = trim(qryDetail.APPROVED_BY_NAME) />
+                <cfset detail["CANCELLED_BY"] = trim(qryDetail.CANCELLED_BY_NAME) />
+                <cfset detail["MODIFIED_BY"] = trim(qryDetail.MODIFIED_BY_NAME) />
+                <cfset detail["LAST_UPDATED_AT"] = trim(qryDetail.UPDATED_AT) />
+            </cfif>
+
+            <cfset retVal["status"] = "success" />
+            <cfset retVal["canSeeAdminFields"] = canSeeAdminFields />
+            <cfset retVal["data"] = detail />
+
+        <cfcatch>
+            <cflog type="error" file="dashboard_data"
+                   text="getBookingDetail failed for booking #arguments.bookingId#: #cfcatch.message# #cfcatch.detail#">
+            <cfset retVal["status"] = "error" />
+            <cfset retVal["message"] = "Unable to load reservation details" />
+        </cfcatch>
+        </cftry>
+
+        <cfreturn retVal />
+    </cffunction>
 
     <cffunction name="calculateRecurringDates" access="private" returntype="array" output="false">
         <cfargument name="startDate" required="true" type="date">
@@ -678,10 +961,21 @@
         <cfargument name="recurring" required="false" type="string" default="NO">
         <cfargument name="recurring_type" required="false" type="string" default="DAILY">
         <cfargument name="comments" required="false" type="string" default="">
-        
+        <!--- "Reservation For" -- who the space is actually being reserved for.
+              Left empty the reservation is for the requester themselves, which is
+              the common case and must stay a zero-effort path. --->
+        <cfargument name="booked_for_name" required="false" type="string" default="">
+        <cfargument name="booked_for_email" required="false" type="string" default="">
+        <cfargument name="booked_for_department" required="false" type="string" default="">
+
         <cfset var retVal = {} />
         <cfset var warnings = [] />
         <cfset var bookingIds = [] />
+        <cfset var qryRequester = "" />
+        <cfset var bookedForName = trim(arguments.booked_for_name) />
+        <cfset var bookedForEmail = trim(arguments.booked_for_email) />
+        <cfset var bookedForDept = trim(arguments.booked_for_department) />
+        <cfset var bookedForIsSelf = true />
         
         <cftry>
             <!-- Parse date and time while considering AM/PM -->
@@ -724,15 +1018,58 @@
             
             <!--- Get room information for better error messages --->
             <cfquery name="qryRoomInfo" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
-                SELECT 
-                    ROOM_NAME, 
+                SELECT
+                    ROOM_NAME,
                     BUILDING,
                     ROOM_NUMBER,
                     (BUILDING || ' ' || ROOM_NUMBER) AS LOCATION
                 FROM #this.DBSCHEMA#.ROOMS
                 WHERE ROOM_ID = <cfqueryparam value="#arguments.room_id#" cfsqltype="cf_sql_numeric">
             </cfquery>
-            
+
+            <!--- Resolve "Reservation For". The requester is always recorded in
+                  USER_ID; these columns only say who the space is for. --->
+            <cfquery name="qryRequester" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT FIRST_NAME, LAST_NAME, EMAIL
+                FROM #this.DBSCHEMA#.USERS
+                WHERE USER_ID = <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">
+            </cfquery>
+
+            <cfif NOT qryRequester.recordCount>
+                <cfset retVal["status"] = "error" />
+                <cfset retVal["data"] = {"message": "The requesting user account could not be found."} />
+                <cfreturn retVal />
+            </cfif>
+
+            <!--- Default to the authenticated requester when nothing was supplied. --->
+            <cfif NOT len(bookedForName) AND NOT len(bookedForEmail)>
+                <cfset bookedForName = trim(qryRequester.FIRST_NAME & " " & qryRequester.LAST_NAME) />
+                <cfset bookedForEmail = qryRequester.EMAIL />
+                <cfset bookedForIsSelf = true />
+            <cfelse>
+                <cfset bookedForIsSelf = (compareNoCase(bookedForEmail, trim(qryRequester.EMAIL)) EQ 0) />
+
+                <!--- A name is required whenever booking on someone else's behalf,
+                      otherwise the approver has nothing to act on. --->
+                <cfif NOT len(bookedForName)>
+                    <cfset retVal["status"] = "error" />
+                    <cfset retVal["data"] = {"message": "Please provide the name of the person this reservation is for."} />
+                    <cfreturn retVal />
+                </cfif>
+
+                <cfif len(bookedForEmail) AND NOT isValid("email", bookedForEmail)>
+                    <cfset retVal["status"] = "error" />
+                    <cfset retVal["data"] = {"message": "The email address for the person this reservation is for is not valid."} />
+                    <cfreturn retVal />
+                </cfif>
+            </cfif>
+
+            <!--- Keep inserts inside the declared VARCHAR2 sizes:
+                  BOOKED_FOR_NAME(200), BOOKED_FOR_EMAIL(255), BOOKED_FOR_DEPARTMENT(100). --->
+            <cfset bookedForName = left(bookedForName, 200) />
+            <cfset bookedForEmail = left(bookedForEmail, 255) />
+            <cfset bookedForDept = left(bookedForDept, 100) />
+
             <!--- Check availability for all dates before creating any bookings --->
             <cfset var conflictDates = [] />
             <cfset var conflictDetails = [] />
@@ -792,8 +1129,9 @@
             <cfloop array="#bookingDates#" index="dateSlot">
                 <cfquery name="qryCreateBooking" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
                     INSERT INTO #this.DBSCHEMA#.BOOKINGS (
-                        USER_ID, ROOM_ID, START_TIME, END_TIME, 
-                        RECURRING_DETAILS, STATUS, COMMENTS, CREATED_AT, UPDATED_AT
+                        USER_ID, ROOM_ID, START_TIME, END_TIME,
+                        RECURRING_DETAILS, STATUS, COMMENTS, CREATED_AT, UPDATED_AT,
+                        BOOKED_FOR_NAME, BOOKED_FOR_EMAIL, BOOKED_FOR_DEPARTMENT
                     )
                     VALUES (
                     <cfqueryparam value="#arguments.user_id#" cfsqltype="cf_sql_numeric">,
@@ -804,7 +1142,10 @@
                     'pending',
                     <cfqueryparam value="#arguments.comments#" cfsqltype="cf_sql_varchar" null="#!len(trim(arguments.comments))#">,
                     CURRENT_TIMESTAMP,
-                    CURRENT_TIMESTAMP
+                    CURRENT_TIMESTAMP,
+                    <cfqueryparam value="#bookedForName#" cfsqltype="cf_sql_varchar" null="#!len(bookedForName)#">,
+                    <cfqueryparam value="#bookedForEmail#" cfsqltype="cf_sql_varchar" null="#!len(bookedForEmail)#">,
+                    <cfqueryparam value="#bookedForDept#" cfsqltype="cf_sql_varchar" null="#!len(bookedForDept)#">
                     )
                 </cfquery>
                 
@@ -860,7 +1201,11 @@
                 startTime = startTime,
                 endTime = endTime,
                 meetingTitle = qryGetBooking.COMMENTS,
-                submittedAt = now()
+                submittedAt = now(),
+                bookedForName = bookedForName,
+                bookedForEmail = bookedForEmail,
+                bookedForDepartment = bookedForDept,
+                bookedForIsSelf = bookedForIsSelf
             }>
 
             <cftry>
@@ -925,6 +1270,10 @@
                     <ul>
                         <li><strong>Location:</strong> #qryGetBooking.LOCATION#</li>
                         <li><strong>Room:</strong> #qryGetBooking.ROOM_NAME#</li>
+                        <cfif NOT bookedForIsSelf AND len(bookedForName)>
+                            <li><strong>Reservation For:</strong> #HTMLEditFormat(bookedForName)#<cfif len(bookedForDept)> (#HTMLEditFormat(bookedForDept)#)</cfif></li>
+                            <li><strong>Requested By:</strong> #HTMLEditFormat(trim(qryGetBooking.FIRST_NAME & " " & qryGetBooking.LAST_NAME))#</li>
+                        </cfif>
                         <cfif len(trim(qryGetBooking.COMMENTS))>
                             <li><strong>Meeting Title:</strong> #HTMLEditFormat(qryGetBooking.COMMENTS)#</li>
                         </cfif>

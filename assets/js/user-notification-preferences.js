@@ -135,8 +135,23 @@ class UserNotificationPreferences {
     }
 
     getCurrentUserId() {
-        // Get user ID from session storage (matches the pattern used in topNav.js)
-        return sessionStorage.getItem('USER_ID') || sessionStorage.getItem('userId') || localStorage.getItem('userId') || '1';
+        // Get user ID from session storage (matches the pattern used in topNav.js).
+        // setItem() stringifies, so a missing value from the login response is
+        // stored as the literal "undefined" -- truthy, and rejected by the CFCs,
+        // whose user_id arguments are typed numeric. Only accept digits.
+        const candidates = [
+            sessionStorage.getItem('USER_ID'),
+            sessionStorage.getItem('userId'),
+            localStorage.getItem('userId')
+        ];
+
+        const validId = candidates.find(id => id !== null && /^\d+$/.test(String(id).trim()));
+        if (validId) {
+            return String(validId).trim();
+        }
+
+        console.warn('No numeric USER_ID in storage (found:', candidates, ') - falling back to 1');
+        return '1';
     }
 
     async loadSystemStatus() {
@@ -331,7 +346,23 @@ class UserNotificationPreferences {
                 }
             });
 
-            const settings = await response.json();
+            // A remote CFC answers a bad argument with an HTML error page, not
+            // JSON. Reading it as JSON reports a meaningless syntax error, so
+            // surface the real status and body instead.
+            if (!response.ok) {
+                throw new Error(`getUserNotificationSettings returned HTTP ${response.status}`);
+            }
+
+            const body = await response.text();
+            let settings;
+            try {
+                settings = JSON.parse(body);
+            } catch (parseError) {
+                throw new Error(
+                    `getUserNotificationSettings did not return JSON: ${body.slice(0, 200)}`
+                );
+            }
+
             this.applyUserSettings(settings);
         } catch (error) {
             console.error('Failed to load user settings:', error);
@@ -341,8 +372,15 @@ class UserNotificationPreferences {
     }
 
     applyUserSettings(settings) {
-        if (Array.isArray(settings)) {
-            settings.forEach(setting => {
+        // The CFC wraps its rows in { SUCCESS, COUNT, MESSAGE, SETTINGS }. Reading
+        // the wrapper as an array silently applied nothing at all. Accept either
+        // shape so a plain array still works.
+        const rows = Array.isArray(settings)
+            ? settings
+            : (settings && Array.isArray(settings.SETTINGS) ? settings.SETTINGS : []);
+
+        if (rows.length) {
+            rows.forEach(setting => {
                 switch (setting.SETTING_NAME) {
                     case 'QUIET_HOURS_START':
                         document.getElementById('quietHoursStart').value = setting.SETTING_VALUE;

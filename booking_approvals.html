@@ -83,6 +83,7 @@
                 <ul>
                     <li><a href="#reviewingRequest">Reviewing a Request</a></li>
                     <li><a href="#approvingRequest">Approving a Request</a></li>
+                    <li><a href="#bulkApproving">Approving Several at Once</a></li>
                     <li><a href="#rejectingRequest">Rejecting a Request</a></li>
                     <li><a href="#searchingSorting">Searching and Sorting</a></li>
                     <li><a href="#expiredRequests">Expired Requests</a></li>
@@ -110,6 +111,30 @@
                     <li>Confirm at the "Approve Booking Request?" prompt.</li>
                     <li>The table and the pending count in the navigation bar both refresh once the
                         approval is saved.</li>
+                </ul>
+            </div>
+            <div id="bulkApproving">
+                <h5>Approving Several at Once</h5>
+                <ul>
+                    <li>Tick the checkbox beside each request you want to approve. Only requests that
+                        are still pending can be selected — anything already decided shows a dash
+                        instead of a checkbox.</li>
+                    <li>Use the checkbox in the table header to select every pending request in the
+                        <strong>current filtered view</strong>. If you have searched or filtered
+                        first, select-all applies only to the requests that match — not the whole
+                        queue.</li>
+                    <li>The toolbar above the table shows how many are selected. Your selection is
+                        kept as you move between pages.</li>
+                    <li>Click <strong>Bulk Approve</strong> and confirm. Each request is re-checked
+                        individually before it is approved, using the same rules as approving one at
+                        a time.</li>
+                    <li>You will see exactly what happened: how many were approved, and a list of any
+                        that could not be, each with the reason — for example a scheduling conflict,
+                        or a request someone else already decided while you were working.</li>
+                    <li>A request that fails does not stop the rest of the batch. Nothing is changed
+                        for the ones that failed, so you can fix the cause and try those again.</li>
+                    <li><strong>Clear selection</strong> empties your selection without approving
+                        anything.</li>
                 </ul>
             </div>
             <div id="rejectingRequest">
@@ -153,10 +178,31 @@
                         <h5 class="mb-0">Pending Bookings</h5>
                     </div>
                     <div class="card-body">
+                        <!-- Bulk action toolbar. Hidden until at least one request is
+                             selected so the default single-approval workflow is unchanged. -->
+                        <!--- Deliberately NOT using Bootstrap's .d-flex here: that rule is
+                              `display: flex !important`, which beats the plain inline
+                              `display: none` jQuery writes when hiding, leaving the bar
+                              visible with nothing selected. Layout classes only; the
+                              display value is owned entirely by syncSelectionUi(). -->
+                        <div id="bulkActionBar" class="flex-wrap align-items-center gap-2 mb-3 p-3 bg-light rounded"
+                            style="display: none;" role="region" aria-label="Bulk actions">
+                            <span class="fw-semibold" id="selectedCountLabel" aria-live="polite">0 selected</span>
+                            <button type="button" class="btn btn-sm btn-primary" id="bulkApproveBtn">
+                                <i class="fas fa-check-double me-1" aria-hidden="true"></i>Bulk Approve
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSelectionBtn">
+                                <i class="fas fa-times me-1" aria-hidden="true"></i>Clear selection
+                            </button>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover" id="bookingsTable">
                                 <thead>
                                     <tr class="table-dark">
+                                        <th class="text-center">
+                                            <input type="checkbox" class="form-check-input" id="selectAllBookings"
+                                                aria-label="Select all pending requests in the current view">
+                                        </th>
                                         <th>Booking ID</th>
                                         <th>Reserved By</th>
                                         <th>Meeting Title</th>
@@ -259,7 +305,7 @@
             }
             initializeBookingsTable();
             $('#bookingsTable').on('click', '.rejectBtn', async function () {
-                const bookingId = $(this).closest('tr').data('booking-id');
+                const bookingId = $(this).data('booking-id') || $(this).closest('tr').data('booking-id');
 
                 // Prompt for rejection reason
                 const { value: comment } = await Swal.fire({
@@ -290,7 +336,7 @@
             });
 
             $('#bookingsTable').on('click', '.approveBtn', function () {
-                const bookingId = $(this).closest('tr').data('booking-id');
+                const bookingId = $(this).data('booking-id') || $(this).closest('tr').data('booking-id');
                 var userId = sessionStorage.getItem('USER_ID');
 
                 // First load the booking details
@@ -306,18 +352,33 @@
                         if (response.SUCCESS) {
                             const bookingDetails = response.BOOKING;
                             const meetingTitleHtml = bookingDetails.MEETING_TITLE && bookingDetails.MEETING_TITLE.trim() !== ''
-                                ? `<p><strong><i class="fas fa-calendar-alt me-2 text-primary"></i>Meeting Title:</strong> <span class="text-primary fw-semibold">${bookingDetails.MEETING_TITLE}</span></p>`
+                                ? `<p><strong><i class="fas fa-calendar-alt me-2 text-primary"></i>Meeting Title:</strong> <span class="text-primary fw-semibold">${escapeHtml(bookingDetails.MEETING_TITLE)}</span></p>`
                                 : `<p><strong><i class="fas fa-calendar-alt me-2 text-muted"></i>Meeting Title:</strong> <span class="text-muted fst-italic">No title provided</span></p>`;
+
+                            // Approvers must be able to tell the submitter apart from
+                            // the person the space is for. Records predating that field
+                            // fall back to the requester and are labelled as such.
+                            const reservationForHtml = bookingDetails.RESERVATION_FOR_RECORDED
+                                ? `<p><strong>Reservation For:</strong> ${escapeHtml(bookingDetails.RESERVATION_FOR)}` +
+                                  (bookingDetails.DEPARTMENT ? ` <span class="text-muted">(${escapeHtml(bookingDetails.DEPARTMENT)})</span>` : '') + `</p>`
+                                : `<p><strong>Reservation For:</strong> <span class="text-muted">${escapeHtml(bookingDetails.RESERVATION_FOR)} (not separately recorded)</span></p>`;
+
+                            const recurrenceHtml = bookingDetails.RECURRENCE
+                                ? `<p><strong>Recurrence:</strong> ${escapeHtml(bookingDetails.RECURRENCE)}</p>`
+                                : '';
+
                             const detailsHtml = `
-                                <div class="d-flex justify-content-start align-items-start flex-column">
-                                    <p><strong>Booking ID:</strong> ${bookingDetails.BOOKING_ID}</p>
-                                    <p><strong>Reserved By:</strong> ${bookingDetails.FULL_NAME}</p>
+                                <div class="d-flex justify-content-start align-items-start flex-column text-start">
+                                    <p><strong>Request Number:</strong> ${escapeHtml(bookingDetails.BOOKING_ID)}</p>
+                                    <p><strong>Requested By:</strong> ${escapeHtml(bookingDetails.REQUESTED_BY || bookingDetails.FULL_NAME)}</p>
+                                    ${reservationForHtml}
                                     ${meetingTitleHtml}
-                                    <p><strong>Room:</strong> ${bookingDetails.ROOM_NAME}</p>
-                                    <p><strong>Location:</strong> ${bookingDetails.LOCATION}</p>
-                                    <p><strong>Date Booked:</strong> ${bookingDetails.DATE}</p>
-                                    <p><strong>Time Span:</strong> ${bookingDetails.TIME}</p>
-                                    <p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(bookingDetails.STATUS)}">${bookingDetails.STATUS}</span></p>
+                                    <p><strong>Room:</strong> ${escapeHtml(bookingDetails.ROOM_NAME)}</p>
+                                    <p><strong>Location:</strong> ${escapeHtml(bookingDetails.LOCATION)}</p>
+                                    <p><strong>Date Booked:</strong> ${escapeHtml(bookingDetails.DATE)}</p>
+                                    <p><strong>Time Span:</strong> ${escapeHtml(bookingDetails.TIME)}</p>
+                                    ${recurrenceHtml}
+                                    <p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(bookingDetails.STATUS)}">${escapeHtml(bookingDetails.STATUS)}</span></p>
                                 </div>`;
 
                             const swalWithBootstrapButtons = Swal.mixin({
@@ -336,21 +397,29 @@
                                 confirmButtonText: 'Yes, approve it!',
                                 reverseButtons: true
                             }).then((result) => {
-                                if (result.isConfirmed) {
+                                if (!result.isConfirmed) return;
 
-                                    approveBooking(bookingId, userId);
-                                    //reload table
-                                    refreshBookingsTable();
-                                    swalWithBootstrapButtons.fire(
-                                        'Approved!',
-                                        'The booking has been approved.',
-                                        'success'
-                                    );
-                                    checkPendingApprovals();
-                                } else if (result.dismiss === Swal.DismissReason.cancel) {
-
-
-                                }
+                                // Wait for the outcome before reporting it. This
+                                // previously announced "Approved!" unconditionally, so
+                                // a failing approval still looked successful -- which is
+                                // how a constraint violation that broke every approval
+                                // went unnoticed.
+                                approveBooking(bookingId, userId)
+                                    .then(function () {
+                                        swalWithBootstrapButtons.fire(
+                                            'Approved!',
+                                            'The booking has been approved.',
+                                            'success'
+                                        );
+                                        checkPendingApprovals();
+                                    }, function (reason) {
+                                        swalWithBootstrapButtons.fire({
+                                            icon: 'error',
+                                            title: 'Not approved',
+                                            text: typeof reason === 'string' ? reason : 'The approval did not complete.'
+                                        });
+                                        refreshBookingsTable();
+                                    });
                             });
                         } else {
                             Swal.fire({
@@ -383,6 +452,10 @@
             
             bookingsTable = $('#bookingsTable').DataTable({
                 ajax: {
+                    // DataTables defaults to cache:false, which makes jQuery append
+                    // a _=<timestamp> param. ColdFusion rejects URL params that are not
+                    // declared cfarguments, returning 500. Keep cache:true so it is not sent.
+                    cache: true,
                     url: 'assets/cfc/approvals.cfc?method=getPendingBookings',
                     type: 'GET',
                     dataSrc: function(json) {
@@ -403,24 +476,46 @@
                 responsive: true,
                 columns: [
                     {
-                        data: 'ID',
+                        // Selection column. Only 'pending' rows are selectable, so
+                        // select-all can never pick up an ineligible request.
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
                         render: function (data, type, row) {
-                            return `<span class="d-flex justify-content-center">${data}</span>`;
+                            const eligible = String(row.STATUS || '').toLowerCase() === 'pending';
+                            if (!eligible) {
+                                return '<span class="text-muted" title="Only pending requests can be selected">&mdash;</span>';
+                            }
+                            return `<input type="checkbox" class="form-check-input bookingSelect"
+                                        value="${escapeHtml(row.ID)}"
+                                        aria-label="Select request ${escapeHtml(row.ID)}">`;
                         }
                     },
-                    { data: 'USER_NAME' },
+                    {
+                        data: 'ID',
+                        render: function (data, type, row) {
+                            return `<span class="d-flex justify-content-center">${escapeHtml(data)}</span>`;
+                        }
+                    },
+                    {
+                        data: 'USER_NAME',
+                        render: function (data) {
+                            return escapeHtml(data);
+                        }
+                    },
                     {
                         data: 'MEETING_TITLE',
                         render: function (data, type, row) {
                             if (data && data.trim() !== '') {
-                                return `<span class="text-primary fw-semibold"><i class="fas fa-calendar-alt me-1"></i>${data}</span>`;
+                                return `<span class="text-primary fw-semibold"><i class="fas fa-calendar-alt me-1"></i>${escapeHtml(data)}</span>`;
                             } else {
                                 return `<span class="text-muted fst-italic"><i class="fas fa-minus-circle me-1"></i>No title</span>`;
                             }
                         }
                     },
-                    { data: 'ROOM_NAME' },
-                    { data: 'LOCATION' },
+                    { data: 'ROOM_NAME', render: function (d) { return escapeHtml(d); } },
+                    { data: 'LOCATION', render: function (d) { return escapeHtml(d); } },
                     { data: 'START_DATE' },
                     { data: 'END_DATE' },
                     {
@@ -431,13 +526,22 @@
                     },
                     {
                         data: null,
-                        render: function (data) {
+                        render: function (data, type, row) {
+                            // The id is carried on the buttons themselves, not just the
+                            // row. On narrow viewports DataTables' responsive mode moves
+                            // these controls into a separate child <tr> that has no
+                            // data-booking-id, so resolving the id from the row alone
+                            // returned undefined and approve/reject silently failed on
+                            // mobile.
+                            const id = escapeHtml(row.ID);
                             return `
-                                <button class="btn btn-sm btn-primary approveBtn">
-                                    <i class="fas fa-check"></i>
+                                <button class="btn btn-sm btn-primary approveBtn" data-booking-id="${id}"
+                                        aria-label="Approve request ${id}" title="Approve">
+                                    <i class="fas fa-check" aria-hidden="true"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger rejectBtn"">
-                                    <i class="fas fa-times"></i>
+                                <button class="btn btn-sm btn-danger rejectBtn" data-booking-id="${id}"
+                                        aria-label="Reject request ${id}" title="Reject">
+                                    <i class="fas fa-times" aria-hidden="true"></i>
                                 </button>
                             `;
                         }
@@ -450,7 +554,7 @@
                 $('tbody tr').each(function (index) {
                     const rowData = bookingsTable.row(this).data();
                     const bookingId = rowData ? rowData.ID : '';
-                    
+
                     $(this).attr({
                         'data-aos': 'fade-up',
                         'data-aos-delay': index * 100,
@@ -459,6 +563,167 @@
                     });
                 });
                 refreshAOS();
+
+                // Re-apply any selection that survived a redraw (paging/sorting),
+                // then resync the toolbar.
+                $('.bookingSelect').each(function () {
+                    $(this).prop('checked', selectedBookingIds.has(String(this.value)));
+                });
+                syncSelectionUi();
+            });
+        }
+
+        // ---- Bulk selection -------------------------------------------------
+        // Selection is tracked outside the DOM so it survives DataTables redraws.
+        const selectedBookingIds = new Set();
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        // Eligible = pending, and present in the current filtered result set.
+        function eligibleIdsInCurrentView() {
+            if (!bookingsTable) return [];
+            return bookingsTable
+                .rows({ search: 'applied' })
+                .data()
+                .toArray()
+                .filter(row => String(row.STATUS || '').toLowerCase() === 'pending')
+                .map(row => String(row.ID));
+        }
+
+        function syncSelectionUi() {
+            const count = selectedBookingIds.size;
+            $('#selectedCountLabel').text(count === 1 ? '1 selected' : `${count} selected`);
+            $('#bulkActionBar').css('display', count > 0 ? 'flex' : 'none');
+
+            // Header checkbox reflects the filtered set, not just the visible page.
+            const eligible = eligibleIdsInCurrentView();
+            const allSelected = eligible.length > 0 && eligible.every(id => selectedBookingIds.has(id));
+            const someSelected = eligible.some(id => selectedBookingIds.has(id));
+            const header = document.getElementById('selectAllBookings');
+            if (header) {
+                header.checked = allSelected;
+                header.indeterminate = !allSelected && someSelected;
+            }
+        }
+
+        function clearSelection() {
+            selectedBookingIds.clear();
+            $('.bookingSelect').prop('checked', false);
+            syncSelectionUi();
+        }
+
+        $(document).on('change', '.bookingSelect', function () {
+            const id = String(this.value);
+            if (this.checked) {
+                selectedBookingIds.add(id);
+            } else {
+                selectedBookingIds.delete(id);
+            }
+            syncSelectionUi();
+        });
+
+        $(document).on('change', '#selectAllBookings', function () {
+            const ids = eligibleIdsInCurrentView();
+            if (this.checked) {
+                ids.forEach(id => selectedBookingIds.add(id));
+            } else {
+                ids.forEach(id => selectedBookingIds.delete(id));
+            }
+            $('.bookingSelect').each(function () {
+                $(this).prop('checked', selectedBookingIds.has(String(this.value)));
+            });
+            syncSelectionUi();
+        });
+
+        $(document).on('click', '#clearSelectionBtn', clearSelection);
+
+        $(document).on('click', '#bulkApproveBtn', function () {
+            const ids = Array.from(selectedBookingIds);
+            if (!ids.length) return;
+
+            Swal.fire({
+                title: `Approve ${ids.length} request${ids.length === 1 ? '' : 's'}?`,
+                html: `<p class="text-start">Each request is checked for scheduling conflicts and its
+                       current status before it is approved. Requests that cannot be approved
+                       are reported back and left unchanged.</p>
+                       <p class="text-start mb-0"><strong>Requests:</strong> ${escapeHtml(ids.join(', '))}</p>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: `Yes, approve ${ids.length}`,
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'Processing…',
+                    html: `Approving ${ids.length} request${ids.length === 1 ? '' : 's'}.`,
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                $.ajax({
+                    url: 'assets/cfc/approvals.cfc?method=bulkApproveBookings',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        bookingIds: ids.join(','),
+                        userId: sessionStorage.getItem('USER_ID')
+                    },
+                    success: function (response) {
+                        showBulkResult(response);
+                        clearSelection();
+                        refreshBookingsTable();
+                        if (typeof checkPendingApprovals === 'function') checkPendingApprovals();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Bulk approve failed:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Bulk approval failed',
+                            text: 'The request could not be completed. No reservations were changed.'
+                        });
+                    }
+                });
+            });
+        });
+
+        // Distinguishes total success, partial success, and total failure so the
+        // approver always knows exactly which requests still need attention.
+        function showBulkResult(response) {
+            const ok = response.SUCCEEDEDCOUNT || 0;
+            const failedList = response.FAILED || [];
+
+            let html = `<p class="text-start"><strong>${ok}</strong> approved`;
+            if (failedList.length) {
+                html += `, <strong>${failedList.length}</strong> could not be processed`;
+            }
+            html += '.</p>';
+
+            if (failedList.length) {
+                html += `<div class="table-responsive"><table class="table table-sm mb-0">
+                         <thead><tr><th class="text-start">Request</th><th class="text-start">Reason</th></tr></thead><tbody>`;
+                failedList.forEach(f => {
+                    html += `<tr><td class="text-start">#${escapeHtml(f.bookingId)}</td>
+                             <td class="text-start">${escapeHtml(f.reason)}</td></tr>`;
+                });
+                html += '</tbody></table></div>';
+            }
+
+            Swal.fire({
+                icon: ok > 0 && failedList.length === 0 ? 'success'
+                    : ok > 0 ? 'warning'
+                    : 'error',
+                title: ok > 0 && failedList.length === 0 ? 'All requests approved'
+                    : ok > 0 ? 'Partially completed'
+                    : 'Nothing was approved',
+                html: html,
+                width: failedList.length ? '40rem' : '32rem'
             });
         }
 
@@ -472,6 +737,10 @@
             }
         }
 
+        // UNUSED. Nothing calls this, and #bookingDetailsModal does not exist on this
+        // page — the approve confirmation dialog above is where request details are
+        // shown. Left in place rather than deleted, but note it interpolates values
+        // without escaping, so it must not be wired up as-is.
         function loadBookingDetails(bookingId) {
             $.ajax({
                 url: 'assets/cfc/approvals.cfc',
@@ -502,23 +771,32 @@
                 },
             });
         }
+        // Returns a promise so the caller can report the real outcome. Previously
+        // this fired and forgot, and tested `response.success` — but the endpoint
+        // returns the key as SUCCESS, so that branch never ran and a failed
+        // approval produced no message and no console output at all.
         function approveBooking(bookingId, userId) {
-            $.ajax({
+            return $.ajax({
                 url: 'assets/cfc/approvals.cfc?method=approveBooking',
                 type: 'POST',
                 dataType: 'json',
                 data: {
                     bookingId: bookingId,
                     userId: userId
-                },
-                success: function (response) {
-                    if (response.success) {
-                        // Close sweet alert
-                        Swal.close();
-                        refreshBookingsTable();
-                        updateNavCounts(); // Reloads top nav
-                    }
                 }
+            }).then(function (response) {
+                const ok = response && (response.SUCCESS === true || response.success === true);
+                if (!ok) {
+                    // Surface the reason rather than silently doing nothing.
+                    return $.Deferred().reject(
+                        (response && (response.MESSAGE || response.message)) || 'The approval did not complete.'
+                    ).promise();
+                }
+                refreshBookingsTable();
+                updateNavCounts();
+                return response;
+            }, function () {
+                return $.Deferred().reject('The request could not be sent.').promise();
             });
         }
         function rejectBooking(bookingId, userId, comment) {
@@ -532,11 +810,22 @@
                     comment: comment
                 },
                 success: function (response) {
-                    console.log(response);
-                    if (response.SUCCESS) {
+                    const ok = response && (response.SUCCESS === true || response.success === true);
+                    if (ok) {
                         refreshBookingsTable();
                         updateNavCounts();
+                        Swal.fire({ icon: 'success', title: 'Rejected', text: 'The request has been rejected.' });
+                    } else {
+                        // A silent no-op here is how a failing rejection would hide.
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Unable to reject',
+                            text: (response && (response.MESSAGE || response.message)) || 'The rejection did not complete.'
+                        });
                     }
+                },
+                error: function () {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'The request could not be sent.' });
                 }
             });
         }

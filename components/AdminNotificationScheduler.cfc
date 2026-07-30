@@ -60,7 +60,8 @@
             found = 0,
             notified = 0,
             failed = 0,
-            userDetails = []
+            userDetails = [],
+            skippedDuplicates = 0
         }>
 
         <cftry>
@@ -83,7 +84,17 @@
                 WHERE u.DATEENTERED >= TRUNC(SYSDATE) - 1
                 AND NOT EXISTS (
                     SELECT 1 FROM #this.DBSCHEMA#.NOTIFICATIONS n
-                    WHERE n.USER_ID IN (SELECT USER_ID FROM #this.DBSCHEMA#.USERS WHERE ROLE_NAME = 'Admin')
+                    WHERE n.USER_ID IN (
+                        -- USERS has no ROLE_NAME column, only ROLE_ID. The previous
+                        -- subquery referenced it directly and raised ORA-00904, so
+                        -- every check in this component threw on each run and was
+                        -- swallowed by its cfcatch. Site Admins are included, matching
+                        -- getAdminUsers().
+                        SELECT au.USER_ID
+                        FROM #this.DBSCHEMA#.USERS au
+                        JOIN #this.DBSCHEMA#.ROLES ar ON ar.ROLE_ID = au.ROLE_ID
+                        WHERE UPPER(TRIM(ar.ROLE_NAME)) IN ('ADMIN', 'SITE ADMIN')
+                    )
                     AND n.TYPE = 'NEW_USER_REGISTERED'
                     AND n.CONTENT LIKE '%' || u.USER_ID || '%'
                     AND n.CREATED_AT >= TRUNC(SYSDATE) - 1
@@ -97,6 +108,17 @@
                 <!--- Send notification to each admin --->
                 <cfloop query="admins">
                     <cftry>
+                        <!--- Same once-per-interval guard as the reservation check, so
+                              overlapping runs cannot re-mail the same administrator
+                              about the same new users. --->
+                        <cfif NOT claimNotificationSlot(
+                                recipientUserId = admins.USER_ID,
+                                notificationType = "NEW_USER_REGISTERED_ALERT",
+                                pendingCount = qNewUsers.recordCount)>
+                            <cfset result.skippedDuplicates++>
+                            <cfcontinue>
+                        </cfif>
+
                         <cfset var notificationId = createAdminNotification(
                             adminUserId = admins.USER_ID,
                             type = "NEW_USER_REGISTERED",
@@ -148,7 +170,8 @@
             found = 0,
             notified = 0,
             failed = 0,
-            reservationDetails = []
+            reservationDetails = [],
+            skippedDuplicates = 0
         }>
 
         <cftry>
@@ -178,7 +201,17 @@
                      OR b.UPDATED_AT >= TRUNC(SYSDATE) - 1)
                 AND NOT EXISTS (
                     SELECT 1 FROM #this.DBSCHEMA#.NOTIFICATIONS n
-                    WHERE n.USER_ID IN (SELECT USER_ID FROM #this.DBSCHEMA#.USERS WHERE ROLE_NAME = 'Admin')
+                    WHERE n.USER_ID IN (
+                        -- USERS has no ROLE_NAME column, only ROLE_ID. The previous
+                        -- subquery referenced it directly and raised ORA-00904, so
+                        -- every check in this component threw on each run and was
+                        -- swallowed by its cfcatch. Site Admins are included, matching
+                        -- getAdminUsers().
+                        SELECT au.USER_ID
+                        FROM #this.DBSCHEMA#.USERS au
+                        JOIN #this.DBSCHEMA#.ROLES ar ON ar.ROLE_ID = au.ROLE_ID
+                        WHERE UPPER(TRIM(ar.ROLE_NAME)) IN ('ADMIN', 'SITE ADMIN')
+                    )
                     AND n.TYPE = 'NEW_RESERVATION_REQUEST'
                     AND n.CONTENT LIKE '%' || b.BOOKING_ID || '%'
                     AND n.CREATED_AT >= TRUNC(SYSDATE) - 1
@@ -192,6 +225,16 @@
                 <!--- Send notification to each admin --->
                 <cfloop query="admins">
                     <cftry>
+                        <!--- Compete for the same claim cfcs/scheduledAPI.cfc uses, so
+                              an administrator gets one pending-work notification per
+                              interval even if both components are scheduled. --->
+                        <cfif NOT claimNotificationSlot(
+                                recipientUserId = admins.USER_ID,
+                                pendingCount = qPendingBookings.recordCount)>
+                            <cfset result.skippedDuplicates++>
+                            <cfcontinue>
+                        </cfif>
+
                         <cfset var notificationId = createAdminNotification(
                             adminUserId = admins.USER_ID,
                             type = "NEW_RESERVATION_REQUEST",
@@ -245,7 +288,8 @@
             found = 0,
             notified = 0,
             failed = 0,
-            statusChangeDetails = []
+            statusChangeDetails = [],
+            skippedDuplicates = 0
         }>
 
         <cftry>
@@ -272,7 +316,17 @@
                 AND u.DATEMODIFIED > u.DATEENTERED
                 AND NOT EXISTS (
                     SELECT 1 FROM #this.DBSCHEMA#.NOTIFICATIONS n
-                    WHERE n.USER_ID IN (SELECT USER_ID FROM #this.DBSCHEMA#.USERS WHERE ROLE_NAME = 'Admin')
+                    WHERE n.USER_ID IN (
+                        -- USERS has no ROLE_NAME column, only ROLE_ID. The previous
+                        -- subquery referenced it directly and raised ORA-00904, so
+                        -- every check in this component threw on each run and was
+                        -- swallowed by its cfcatch. Site Admins are included, matching
+                        -- getAdminUsers().
+                        SELECT au.USER_ID
+                        FROM #this.DBSCHEMA#.USERS au
+                        JOIN #this.DBSCHEMA#.ROLES ar ON ar.ROLE_ID = au.ROLE_ID
+                        WHERE UPPER(TRIM(ar.ROLE_NAME)) IN ('ADMIN', 'SITE ADMIN')
+                    )
                     AND n.TYPE = 'USER_STATUS_CHANGED'
                     AND n.CONTENT LIKE '%' || u.USER_ID || '%'
                     AND n.CREATED_AT >= TRUNC(SYSDATE) - 1
@@ -286,6 +340,14 @@
                 <!--- Send notification to each admin --->
                 <cfloop query="admins">
                     <cftry>
+                        <cfif NOT claimNotificationSlot(
+                                recipientUserId = admins.USER_ID,
+                                notificationType = "USER_STATUS_CHANGED_ALERT",
+                                pendingCount = qStatusChanges.recordCount)>
+                            <cfset result.skippedDuplicates++>
+                            <cfcontinue>
+                        </cfif>
+
                         <cfset var notificationId = createAdminNotification(
                             adminUserId = admins.USER_ID,
                             type = "USER_STATUS_CHANGED",
@@ -329,7 +391,14 @@
         <cfreturn result>
     </cffunction>
 
-    <!--- Helper function to get all admin users --->
+    <!--- Helper function to get all admin users.
+
+         Recipients are Admin *and* Site Admin. This previously matched
+         LOWER(r.ROLE_NAME) = 'admin' exactly, silently excluding every Site
+         Admin — the same defect that was fixed in
+         cfcs/scheduledAPI.cfc:getAdminEmails() and
+         components/ApprovalNotification.cfc:getApprovalRecipients(). All three
+         now agree on who counts as an approver. --->
     <cffunction name="getAdminUsers" access="private" returntype="query" output="false">
         <cfquery name="qAdmins" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
             SELECT
@@ -340,10 +409,77 @@
                 u.STATUS
             FROM #this.DBSCHEMA#.USERS u
             JOIN #this.DBSCHEMA#.ROLES r ON u.ROLE_ID = r.ROLE_ID
-            WHERE LOWER(r.ROLE_NAME) = 'admin'
-            AND u.STATUS = 'Active'
+            WHERE UPPER(TRIM(r.ROLE_NAME)) IN ('ADMIN', 'SITE ADMIN')
+            AND UPPER(u.STATUS) = 'ACTIVE'
+            AND u.EMAIL IS NOT NULL
         </cfquery>
         <cfreturn qAdmins>
+    </cffunction>
+
+    <!---
+        Claim the right to notify one recipient for one interval.
+
+        Shares NOTIFICATION_REMINDER_LOG and the same interval key and type as
+        cfcs/scheduledAPI.cfc, deliberately. Both components notify approvers
+        about pending work, and either may be wired up as the scheduled task. By
+        competing for the same claim, whichever runs first wins and the other
+        skips — so an administrator receives one notification per interval even if
+        BOTH are scheduled. That removes the duplicate-mail risk without having to
+        decide which entry point is canonical.
+
+        Returns true only if this caller won the claim. A duplicate-key error is
+        the expected "someone else has this" signal, not a failure. If the log
+        table is absent the claim is refused-open so notifications keep flowing,
+        and that is logged.
+    --->
+    <cffunction name="claimNotificationSlot" access="private" returntype="boolean" output="false">
+        <cfargument name="recipientUserId" type="numeric" required="true">
+        <cfargument name="notificationType" type="string" required="false" default="PENDING_REQUEST_REMINDER">
+        <cfargument name="pendingCount" type="numeric" required="false" default="0">
+
+        <cfset var qKey = "">
+        <cfset var intervalKey = "">
+        <cfset var errText = "">
+
+        <cftry>
+            <!--- Database clock, so instances with skewed clocks agree on the bucket. --->
+            <cfquery name="qKey" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                SELECT TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD HH24') AS INTERVAL_KEY FROM DUAL
+            </cfquery>
+            <cfset intervalKey = qKey.INTERVAL_KEY>
+
+            <cfquery datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+                INSERT INTO #this.DBSCHEMA#.NOTIFICATION_REMINDER_LOG
+                    (RECIPIENT_USER_ID, NOTIFICATION_TYPE, INTERVAL_KEY, PENDING_COUNT, DELIVERY_STATUS, CLAIMED_AT)
+                VALUES (
+                    <cfqueryparam value="#arguments.recipientUserId#" cfsqltype="cf_sql_numeric">,
+                    <cfqueryparam value="#arguments.notificationType#" cfsqltype="cf_sql_varchar">,
+                    <cfqueryparam value="#intervalKey#" cfsqltype="cf_sql_varchar">,
+                    <cfqueryparam value="#arguments.pendingCount#" cfsqltype="cf_sql_numeric">,
+                    'SENT',
+                    CURRENT_TIMESTAMP
+                )
+            </cfquery>
+            <cfreturn true>
+
+        <cfcatch>
+            <!--- ColdFusion reports "Error Executing Database Query." as the
+                  message and puts the ORA- text in detail, so inspect both. --->
+            <cfset errText = cfcatch.message & " " & (structKeyExists(cfcatch, "detail") ? cfcatch.detail : "")>
+
+            <cfif findNoCase("ORA-00001", errText) OR findNoCase("unique constraint", errText)>
+                <cfreturn false>
+            <cfelseif findNoCase("ORA-00942", errText) OR findNoCase("does not exist", errText)>
+                <cflog type="warning" file="admin_notifications"
+                       text="NOTIFICATION_REMINDER_LOG is missing; notifying without duplicate suppression. Apply assets/sql/add_notification_reminder_log.sql. #errText#">
+                <cfreturn true>
+            <cfelse>
+                <cflog type="error" file="admin_notifications"
+                       text="Notification claim failed for user #arguments.recipientUserId#: #errText#">
+                <cfreturn false>
+            </cfif>
+        </cfcatch>
+        </cftry>
     </cffunction>
 
     <!--- Create in-app notification for admin --->
@@ -530,7 +666,13 @@
                             <td>Changed At</td>
                         </tr>
                         <cfloop query="arguments.statusChanges">
-                            <cfset statusColor = statusChanges.STATUS EQ 'Active' ? '#90EE90' : '#FFB6C6'>
+                            <!--- Hex colours must be escaped as ## inside cfoutput: a
+                                  single # opens a CFML expression, so '#90EE90' was a
+                                  COMPILE error ("90EE90 is not a valid identifier
+                                  name"). That made this entire component unloadable —
+                                  createObject() on it threw, so no scheduled run could
+                                  ever have executed. --->
+                            <cfset statusColor = statusChanges.STATUS EQ 'Active' ? '##90EE90' : '##FFB6C6'>
                             <tr>
                                 <td>#statusChanges.FIRST_NAME# #statusChanges.LAST_NAME#</td>
                                 <td>#statusChanges.EMAIL#</td>
