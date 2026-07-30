@@ -2,8 +2,36 @@ component {
     property name="dsn" type="string";
     property name="roomService";
     property name="notificationService";
+
+    property name="dbUser" type="string";
+    property name="dbPass" type="string";
+
+    // Explicit credentials are mandatory here. The datasource authenticates as
+    // WEBSCHEDULE_USER, not CONFROOM, so a queryExecute given only
+    // {datasource=...} cannot see any CONFROOM table -- every statement in this
+    // component failed with "ORA-00942: table or view does not exist".
+    // cfcs/*.cfc and assets/cfc/*.cfc already pass credentials on every query;
+    // this component did not.
+    private void function resolveCredentials() {
+        if (listFirst(CGI.SERVER_NAME, '.') EQ 'cmapps') {
+            variables.dbUser = "CONFROOM_USER";
+            variables.dbPass = "1DOCMAU4CNFRM6";
+        } else {
+            variables.dbUser = "CONFROOM";
+            variables.dbPass = "1DOCMOA4CNFRM3";
+        }
+    }
+
+    // Single source of query options, so no call site can omit the credentials.
+    private struct function dbOptions(struct extra = {}) {
+        var opts = { datasource = variables.dsn, username = variables.dbUser, password = variables.dbPass };
+        for (var k in arguments.extra) { opts[k] = arguments.extra[k]; }
+        return opts;
+    }
+
     
     public function init(required string dsn, required any roomService, required any notificationService) {
+        resolveCredentials();
         variables.dsn = arguments.dsn;
         variables.roomService = arguments.roomService;
         variables.notificationService = arguments.notificationService;
@@ -35,7 +63,7 @@ component {
                         status = {value='Confirmed', cfsqltype="cf_sql_varchar"},
                         generatedId = {type="out", variable="newBookingId", cfsqltype="cf_sql_numeric"}
                     },
-                    {datasource=variables.dsn, result="result"}
+                    dbOptions({result="result"})
                 );
                 
                 // Send notification
@@ -61,7 +89,7 @@ component {
              JOIN USERS u ON b.USER_ID = u.USER_ID
              WHERE b.BOOKING_ID = :bookingId",
             {bookingId = {value=arguments.bookingId, cfsqltype="cf_sql_numeric"}},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return qBooking;
     }
@@ -83,7 +111,7 @@ component {
         
         sql &= "ORDER BY b.START_TIME DESC";
         
-        var qBookings = queryExecute(sql, params, {datasource=variables.dsn});
+        var qBookings = queryExecute(sql, params, dbOptions());
         return qBookings;
     }
     
@@ -91,7 +119,7 @@ component {
         var qBooking = queryExecute(
             "SELECT USER_ID, STATUS FROM BOOKINGS WHERE BOOKING_ID = :bookingId",
             {bookingId = {value=arguments.bookingId, cfsqltype="cf_sql_numeric"}},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         
         if (qBooking.recordCount == 0) {
@@ -110,7 +138,7 @@ component {
             "UPDATE BOOKINGS SET STATUS = 'cancelled', UPDATED_AT = CURRENT_TIMESTAMP 
              WHERE BOOKING_ID = :bookingId",
             {bookingId = {value=arguments.bookingId, cfsqltype="cf_sql_numeric"}},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         
         // Send cancellation notification
@@ -135,7 +163,7 @@ component {
                 startDate = {value=arguments.startDate, cfsqltype="cf_sql_timestamp"},
                 endDate = {value=arguments.endDate, cfsqltype="cf_sql_timestamp"}
             },
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return qBookings;
     }

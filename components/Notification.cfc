@@ -3,10 +3,34 @@ component {
     property name="mailService";
     property name="systemManager";
     
+    property name="dbUser" type="string";
+    property name="dbPass" type="string";
+
     public function init(required string dsn) {
         variables.dsn = arguments.dsn;
+
+        // Explicit credentials are required. The datasource authenticates as
+        // WEBSCHEDULE_USER, not CONFROOM, so a queryExecute given only
+        // {datasource=...} cannot see any CONFROOM table and every statement in
+        // this component failed with ORA-00942. createNotification() swallows the
+        // error and returns 0, so in-app notifications silently never appeared --
+        // including the approver alert's in-app half.
+        if (listFirst(CGI.SERVER_NAME, '.') EQ 'cmapps') {
+            variables.dbUser = "CONFROOM_USER";
+            variables.dbPass = "1DOCMAU4CNFRM6";
+        } else {
+            variables.dbUser = "CONFROOM";
+            variables.dbPass = "1DOCMOA4CNFRM3";
+        }
+
         variables.systemManager = createObject("component", "assets.cfc.SystemNotificationManager");
         return this;
+    }
+
+    // Single place that builds the query options, so no call site can forget the
+    // credentials again.
+    private struct function dbOptions() {
+        return { datasource = variables.dsn, username = variables.dbUser, password = variables.dbPass };
     }
     
     public function createNotification(required struct notificationData, boolean forceCreate = false) {
@@ -25,18 +49,25 @@ component {
         }
         
         try {
-            var qCreate = queryExecute(
-                "INSERT INTO NOTIFICATIONS (USER_ID, TYPE, CONTENT, STATUS) 
-                 VALUES (:userId, :type, :content, :status)
-                 RETURNING NOTIFICATION_ID INTO :generatedId",
+            // Plain parameterised INSERT.
+            //
+            // This previously used `RETURNING NOTIFICATION_ID INTO :generatedId`
+            // with an out parameter and then returned result.generatedKey. That
+            // combination does not work through queryExecute's named-parameter
+            // syntax against Oracle, so the call threw, the catch below swallowed
+            // it and returned 0 -- and every caller reads the return value only for
+            // truthiness, so in-app notifications silently never appeared. Nothing
+            // needs the new id, so the RETURNING clause is dropped entirely.
+            queryExecute(
+                "INSERT INTO NOTIFICATIONS (USER_ID, TYPE, CONTENT, STATUS)
+                 VALUES (:userId, :type, :content, :status)",
                 {
                     userId = {value=arguments.notificationData.userId, cfsqltype="cf_sql_numeric"},
                     type = {value=arguments.notificationData.type, cfsqltype="cf_sql_varchar"},
                     content = {value=arguments.notificationData.content, cfsqltype="cf_sql_varchar"},
-                    status = {value='Unread', cfsqltype="cf_sql_varchar"},
-                    generatedId = {type="out", variable="newNotificationId", cfsqltype="cf_sql_numeric"}
+                    status = {value='Unread', cfsqltype="cf_sql_varchar"}
                 },
-                {datasource=variables.dsn, result="result"}
+                dbOptions()
             );
             
             // Update analytics
@@ -49,8 +80,13 @@ component {
                 );
             }
             
-            return result.generatedKey;
+            // Callers only test truthiness; 1 means "recorded".
+            return 1;
         } catch (any e) {
+            // A silent return of 0 is how this defect stayed hidden. Log it.
+            writeLog(type="error", file="notifications",
+                text="createNotification failed for user #arguments.notificationData.userId# "
+                   & "type #arguments.notificationData.type#: #e.message# #e.detail#");
             // Update failed analytics
             if (!arguments.forceCreate) {
                 variables.systemManager.updateNotificationAnalytics(
@@ -80,7 +116,7 @@ component {
         
         sql &= "ORDER BY n.CREATED_AT DESC";
         
-        var qNotifications = queryExecute(sql, params, {datasource=variables.dsn});
+        var qNotifications = queryExecute(sql, params, dbOptions());
         return qNotifications;
     }
     
@@ -94,7 +130,7 @@ component {
                 notificationId = {value=arguments.notificationId, cfsqltype="cf_sql_numeric"},
                 userId = {value=arguments.userId, cfsqltype="cf_sql_numeric"}
             },
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return true;
     }
@@ -108,7 +144,7 @@ component {
              JOIN USERS u ON b.USER_ID = u.USER_ID
              WHERE b.BOOKING_ID = :bookingId",
             {bookingId = {value=arguments.bookingId, cfsqltype="cf_sql_numeric"}},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         
         if (qBooking.recordCount) {
@@ -178,7 +214,7 @@ component {
              JOIN USERS u ON b.USER_ID = u.USER_ID
              WHERE b.BOOKING_ID = :bookingId",
             {bookingId = {value=arguments.bookingId, cfsqltype="cf_sql_numeric"}},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         
         if (qBooking.recordCount) {

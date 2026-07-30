@@ -4,8 +4,33 @@ component {
     property name="notificationService";
     property name="systemManager";
 
+    property name="dbUser" type="string";
+    property name="dbPass" type="string";
+
     public function init(required string dsn) {
         variables.dsn = arguments.dsn;
+
+        // Every query here must pass explicit credentials.
+        //
+        // The datasource itself authenticates as WEBSCHEDULE_USER, not CONFROOM,
+        // so a queryExecute given only {datasource=...} cannot see a single
+        // CONFROOM table -- every statement fails with
+        // "ORA-00942: table or view does not exist". That is why the immediate
+        // approver notification never worked, independently of the recipient
+        // query, the missing NOTIFICATION_TYPES rows, the application-scope guard,
+        // the private sendEmail and the relative template path.
+        //
+        // The rest of the application already does this: cfcs/*.cfc and
+        // assets/cfc/*.cfc pass username and password on every query. This
+        // component (and Notification, Room, User and Booking) did not.
+        if (listFirst(CGI.SERVER_NAME, '.') EQ 'cmapps') {
+            variables.dbUser = "CONFROOM_USER";
+            variables.dbPass = "1DOCMAU4CNFRM6";
+        } else {
+            variables.dbUser = "CONFROOM";
+            variables.dbPass = "1DOCMOA4CNFRM3";
+        }
+
         variables.emailService = createObject("component", "components.EmailService").init();
         variables.notificationService = createObject("component", "components.Notification").init(arguments.dsn);
         variables.systemManager = createObject("component", "assets.cfc.SystemNotificationManager");
@@ -144,7 +169,11 @@ component {
         var qRecipients = queryNew("");
 
         try {
-            qRecipients = queryExecute(sql, params, { datasource = variables.dsn });
+            qRecipients = queryExecute(sql, params, {
+                datasource = variables.dsn,
+                username   = variables.dbUser,
+                password   = variables.dbPass
+            });
         } catch (any e) {
             // A recipient lookup that throws must not be mistaken for "nobody
             // needs to be told". Log it so the missed approval alert is visible.

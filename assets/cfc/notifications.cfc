@@ -798,18 +798,43 @@
             </cfquery>
             
             <cfif qPreference.recordCount GT 0>
-                <!--- Use user preference if exists, otherwise use defaults --->
-                <cfif NOT IsNull(qPreference.EMAIL_ENABLED)>
+                <!--- Use the user's preference when they have one, otherwise the
+                      type default.
+
+                      This previously tested IsNull(qPreference.EMAIL_ENABLED).
+                      ColdFusion represents a NULL query column as an EMPTY STRING,
+                      not null, so IsNull() returns false for it: the "user has a
+                      preference" branch was always taken and the column's empty
+                      string was returned verbatim. Callers received
+                      {email:"", in_app:""} for every user with no
+                      NOTIFICATION_PREFERENCES row -- which is most users -- and the
+                      DEFAULT_EMAIL_ENABLED fallback below never ran.
+
+                      Consequences downstream: cancellation emails were suppressed
+                      (an empty string is not a boolean), and the booking
+                      confirmation path threw outright, because `<cfif "">` raises
+                      "cannot be converted to a boolean" rather than evaluating
+                      false. Both are recorded in
+                      docs/reservation-improvements-final-report.md as P23 and P28.
+
+                      A length check is the correct test for a query NULL here. --->
+                <cfif len(trim(qPreference.EMAIL_ENABLED))>
                     <cfset local.result.email = qPreference.EMAIL_ENABLED>
                 <cfelse>
                     <cfset local.result.email = qPreference.DEFAULT_EMAIL_ENABLED>
                 </cfif>
-                
-                <cfif NOT IsNull(qPreference.IN_APP_ENABLED)>
+
+                <cfif len(trim(qPreference.IN_APP_ENABLED))>
                     <cfset local.result.in_app = qPreference.IN_APP_ENABLED>
                 <cfelse>
                     <cfset local.result.in_app = qPreference.DEFAULT_IN_APP_ENABLED>
                 </cfif>
+            <cfelse>
+                <!--- No NOTIFICATION_TYPES row for this code at all. The seeded
+                      defaults above (both enabled) stand, and it is logged: a
+                      missing type row is a deployment gap, not a user choice. --->
+                <cflog type="warning" file="notifications"
+                       text="No NOTIFICATION_TYPES row for '#arguments.notification_type#'; defaulting to email and in-app enabled for user #arguments.user_id#.">
             </cfif>
             
         <cfcatch>

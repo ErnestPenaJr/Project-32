@@ -17,8 +17,8 @@ is in `reservation-improvements-progress.md`; the running pass/fail log is in
 | | |
 |---|---|
 | Requirements implemented | **5 of 5** |
-| Automated checks | **71 — all passing, 0 failing** |
-| Pre-existing defects found and fixed | **22** |
+| Automated checks | **78 — all passing, 0 failing** |
+| Pre-existing defects found and fixed | **30** |
 | Defects introduced by this work, then fixed | **6** |
 | Functional gaps remaining | **1** (recurrence end date — needs a business decision) |
 | Verification scenarios green | **11 of 12** (the 12th is blocked by an unshipped feature, not by a defect in this work) |
@@ -56,7 +56,7 @@ Plus, in iteration 10: `index.html` gained direct-link support (`?bookingId=N`),
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `tests/reservation-improvements-verify.cfm` | 600 | CFML regression harness, 41 checks. No framework required. |
+| `tests/reservation-improvements-verify.cfm` | 600 | CFML regression harness, 48 checks. No framework required. |
 | `tests/playwright/bulk-approval-ui.spec.js` | 297 | Browser suite, 11 checks, Chromium + Mobile Chrome. |
 | `tests/playwright/deep-link.spec.js` | 79 | Direct-link suite, 4 checks, both projects. |
 | `tests/ui-fixture.cfm` | 118 | Seed/clean endpoint for the browser suite. |
@@ -74,7 +74,7 @@ Plus, in iteration 10: `index.html` gained direct-link support (`?bookingId=N`),
 
 ## 3. Defects found
 
-### Pre-existing (22)
+### Pre-existing (30)
 
 | # | Severity | Defect | How found |
 |---|----------|--------|-----------|
@@ -90,9 +90,17 @@ Plus, in iteration 10: `index.html` gained direct-link support (`?bookingId=N`),
 | P10 | Medium | Recipient resolution matched `ROLE_NAME = 'admin'` exactly in three components, silently excluding **every Site Admin** | Reminder job resolving 0 recipients |
 | P11 | Medium | `api/cancel-booking.cfm` — unreferenced hard `DELETE` of reservations, no CSRF, wrong column names. Failed closed *only* because no session scope exists; **introducing `Application.cfc` would have activated it** | Reviewing dead endpoints |
 | P12 | Medium | The cancellation email's "View this reservation" link pointed at `index.html?bookingId=N`, but the page never read the parameter — the link only opened the dashboard | Checking whether the app supports direct links |
+| P29 | **Critical** | `getBookingHistory` guarded its user filter with `isDefined('##arguments.userId##')`, which tests the *value* not the name — `isDefined("76")` is false, so the filter never applied and it returned **every user's booking history**. `user-history.html` and `history.html` both pass the signed-in user's id | Parameterisation sweep |
+| P30 | High | `getSystemLogs` (`access="remote"`) concatenated four unvalidated string filters into its WHERE clause — a SQL injection vector, now bound. Not exploitable only because the function also uses a nonexistent datasource, no credentials and a nonexistent column, so it has never run | Same sweep |
+| P25 | **Critical** | The datasource authenticates as `WEBSCHEDULE_USER`, not CONFROOM, so any `queryExecute` without explicit credentials fails with ORA-00942. Five `components/*` files passed none — `ApprovalNotification`, `Notification`, `Room`, `User`, `Booking`; all five now fixed. `Room.checkAvailability` consequently reported every slot free and would have allowed double-bookings. **This is the real reason the immediate approver notification never worked**, independent of the five causes found in iteration 4 | ORA-00942 in the log added in iteration 1 |
+| P26 | **Critical** | The ICS calendar write sat in the shared `cftry`, so its failure aborted the confirmation email. `assets/temp` is unreachable from the container, so **no requester has ever received a booking confirmation** | Executing createBooking for a fresh user |
+| P27 | High | `createNotification` used `RETURNING … INTO` with an out parameter, which does not work via queryExecute against Oracle; it threw, the catch returned 0, and in-app notifications silently never appeared | Approver alert reporting inAppCreated=0 |
+| P28 | High | `createBooking`'s `<cfif userPreferences.email>` **throws** on the empty string returned for users with no preference row, aborting the block | Same test |
+| P23 | **Critical** | `shouldReceiveNotification` tested `IsNull()` on a query column, but ColdFusion returns a NULL column as an **empty string**, so the `DEFAULT_EMAIL_ENABLED` fallback never ran and it returned `{email:""}` for any user with no `NOTIFICATION_PREFERENCES` row. and `cancelBooking` treated that as an opt-out — so **cancellation emails were suppressed for most users**, defeating Requirement 1, while logging it as if deliberate | Executing the notification failure path |
+| P24 | Medium | `<cfmail>` is asynchronous, so real delivery failures are logged by ColdFusion to `mail.log` with no booking reference — "failures are logged for follow-up" was not satisfiable. The attempt is now logged with the booking id so failures can be correlated | Same test |
 | P21 | **High** | `CalendarCleanUp` wrote `APPROVED_BY = 0` (no such user; 19 orphaned rows found, and the real approver's identity destroyed) and overwrote `COMMENTS` with `'Auto-Archived: End time passed'`, destroying the meeting purpose on every archived booking — the same data loss as the old `cancelBooking`, still active in a second write path | Data-integrity audit, working back from 19 orphaned references |
 | P22 | Medium | The same function logged `#now#` — the function without parentheses — raising "Variable NOW is undefined" *after* the UPDATE committed, so it did its work then reported failure | Testing the endpoint after fixing P21 |
-| P14–P20 | **High** | Seven live predicates still used the retired status vocabulary (`'Confirmed'`, `'APPROVED'`, `'Pending'`) that `CHK_BOOKINGS_STATUS` no longer permits, so each matched nothing forever with no error: the 1-hour upcoming-booking reminder selected no rows for anyone; `Room.checkAvailability` always reported zero conflicts; edit conflict detection never fired (measured 0 rows vs 2); room utilisation, all booking reports and the dashboard total always read zero; `Booking.cfc` wrote an invalid value | Exhaustive sweep of every `BOOKINGS.STATUS` predicate |
+| P14–P20 *(one row, seven defects — hence no separate P15–P20 rows)* | **High** | Seven live predicates still used the retired status vocabulary (`'Confirmed'`, `'APPROVED'`, `'Pending'`) that `CHK_BOOKINGS_STATUS` no longer permits, so each matched nothing forever with no error: the 1-hour upcoming-booking reminder selected no rows for anyone; `Room.checkAvailability` always reported zero conflicts; edit conflict detection never fired (measured 0 rows vs 2); room utilisation, all booking reports and the dashboard total always read zero; `Booking.cfc` wrote an invalid value | Exhaustive sweep of every `BOOKINGS.STATUS` predicate |
 | P13 | High | `components/RecurringBooking.cfc` wrote capitalised status literals (`'Pending'`, `'Cancelled'`) — the same ORA-02290 defect as P1 — and its conflict check compared against values that never occur. Corrected, but **unverifiable** (see section 5) | Testing the series endpoint |
 
 ### Introduced by this work, then fixed (6)
@@ -105,7 +113,7 @@ All six were caught by executing the code, not by reading it.
 
 ## 4. Test results
 
-### 4.1 CFML regression harness — 41 / 41 PASS
+### 4.1 CFML regression harness — 48 / 48 PASS
 
 `tests/reservation-improvements-verify.cfm` — run twice with identical results.
 
@@ -190,7 +198,7 @@ report. All PASS unless noted.
 
 ### 4.4 Currently failing
 
-**None.** 71 of 71 automated checks pass.
+**None.** 78 of 78 automated checks pass.
 
 Every "failure" recorded during this work was either a defect now fixed (section 3)
 or a flaw in one of my own tests, corrected at the time:
@@ -203,10 +211,10 @@ or a flaw in one of my own tests, corrected at the time:
 
 | # | Scenario | Result |
 |---|----------|--------|
-| 1 | User books a room for themselves | **PASS** |
+| 1 | User books a room for themselves | **PASS** — booking created and `BOOKED_FOR_*` defaults to the requester. The confirmation email was separately broken (P26/P28) and now sends. |
 | 2 | User books a room for another employee | **PASS** |
 | 3 | Approver views complete details from the dashboard | **PASS** |
-| 4 | New request generates an immediate approver notification | **PASS to the final send** — chain repaired and verified end to end; the `cfmail` handoff itself is not asserted |
+| 4 | New request generates an immediate approver notification | **PASS** — verified through the component's own code path: 2 approvers resolved, 2 emails queued, 2 in-app notifications recorded (mail suppressed, nothing delivered). Only the final SMTP handoff is unasserted. **Note:** an earlier revision of this report claimed this was "verified end to end" after iteration 4. That was wrong — see P25; it did not work until iteration 16. |
 | 5 | Pending request generates a reminder | **PASS** — job selects correctly; suppression verified |
 | 6 | Approved request no longer generates reminders | **PASS** |
 | 7 | Cancelled request notifies the requester | **PASS** |
@@ -362,7 +370,7 @@ ORA-00904.
 ## 8. How to re-run
 
 ```
-# CFML harness (41 checks)
+# CFML harness (48 checks)
 http://localhost:8500/DoCMRoomReservation/tests/reservation-improvements-verify.cfm
 
 # Browser suites (15 checks per project)

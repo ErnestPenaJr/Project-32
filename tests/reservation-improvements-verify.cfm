@@ -139,6 +139,31 @@
             isStruct(pref) AND structKeyExists(pref, "email") AND isBoolean(pref.email),
             "returned #serializeJSON(pref)#")>
 
+        <!--- The harness's own seeded user has no NOTIFICATION_PREFERENCES row,
+              which is the case that was broken: shouldReceiveNotification tested
+              IsNull() on a query column, but ColdFusion returns a NULL column as an
+              empty string, so the DEFAULT_EMAIL_ENABLED fallback never ran and
+              callers received {email:""}. That suppressed cancellation emails and
+              made the confirmation path throw. --->
+        <cfset freshPref = prefSvc.shouldReceiveNotification(ids.nonAdmin, "BOOKING_CANCELLATION")>
+        <cfset check("R1: a user with no saved preference inherits the type default",
+            isStruct(freshPref) AND structKeyExists(freshPref, "email")
+            AND isBoolean(freshPref.email) AND freshPref.email,
+            "returned #serializeJSON(freshPref)# (must be usable and enabled)")>
+
+        <!--- The fallback must not trample a real opt-out. --->
+        <cfquery datasource="#DBSERVER#" username="#DBUSER#" password="#DBPASS#">
+            INSERT INTO #DBSCHEMA#.NOTIFICATION_PREFERENCES
+                (NOTIFICATION_ID, USER_ID, NOTIFICATION_TYPE, EMAIL_ENABLED, IN_APP_ENABLED)
+            VALUES (#DBSCHEMA#.NOTIFICATION_PREFERENCES_SEQ.NEXTVAL,
+                    <cfqueryparam value="#ids.nonAdmin#" cfsqltype="cf_sql_numeric">,
+                    'BOOKING_CANCELLATION', 0, 1)
+        </cfquery>
+        <cfset optedOut = prefSvc.shouldReceiveNotification(ids.nonAdmin, "BOOKING_CANCELLATION")>
+        <cfset check("R1: an explicit opt-out is still honoured",
+            isBoolean(optedOut.email) AND NOT optedOut.email,
+            "returned #serializeJSON(optedOut)# (email must be false)")>
+
         <cfset ccAdmins = prefSvc.getAdminsForNotification("BOOKING_CANCELLATION", "email")>
         <cfset check("R1: admin CC lookup returns a query",
             isQuery(ccAdmins), "#isQuery(ccAdmins) ? ccAdmins.recordCount : 0# recipient(s)")>
@@ -359,6 +384,88 @@
     <cfset check("Integrity: no denied or conflicting attempt changed a status",
         qPreR4.C EQ 0, "unexpectedly changed rows=#qPreR4.C#")>
 
+    <!--- The components/* family passes no database credentials, and the
+          datasource authenticates as WEBSCHEDULE_USER rather than CONFROOM, so
+          every query in them failed with ORA-00942 and the failures were
+          swallowed. Room.checkAvailability is the dangerous one: it could not see
+          BOOKINGS at all, so it never reported a conflict. Pin that these
+          components can now actually read CONFROOM. --->
+    <cftry>
+        <cfset roomSvc = createObject("component", "DoCMRoomReservation.components.Room").init(DBSERVER)>
+
+        <!--- A slot far from any fixture must read as available. --->
+        <cfset freeSlot = roomSvc.checkAvailability(roomId = ids.room,
+            startTime = createDateTime(2039, 7, 4, 9, 0, 0),
+            endTime   = createDateTime(2039, 7, 4, 10, 0, 0))>
+        <cfset check("Components: Room.checkAvailability executes against CONFROOM",
+            isBoolean(freeSlot), "returned #freeSlot# for an empty slot")>
+
+        <!--- The seeded APPROVED fixture occupies 14:00-15:00; overlap it. --->
+        <cfset busySlot = roomSvc.checkAvailability(roomId = ids.room,
+            startTime = createDateTime(2031, 3, 5, 14, 30, 0),
+            endTime   = createDateTime(2031, 3, 5, 15, 30, 0))>
+        <cfset check("Components: Room.checkAvailability detects an overlapping approved booking",
+            isBoolean(busySlot) AND NOT busySlot,
+            "returned #busySlot# where an approved reservation overlaps (must be false)")>
+    <cfcatch>
+        <cfset check("Components: Room.checkAvailability executes against CONFROOM", false,
+            "#cfcatch.message# | #cfcatch.detail#")>
+    </cfcatch>
+    </cftry>
+
+    <!--- Notification.createNotification returned 0 for every call: no credentials,
+          plus a RETURNING..INTO clause that does not work via queryExecute. --->
+    <cftry>
+        <cfset notifSvc = createObject("component", "DoCMRoomReservation.components.Notification").init(DBSERVER)>
+        <cfset notifId = notifSvc.createNotification({
+            userId: ids.admin,
+            type: "REGRESSION_HARNESS_PROBE",
+            content: "Harness probe -- removed during cleanup."
+        }, true)>
+        <cfset check("Components: Notification.createNotification actually records a row",
+            notifId GT 0, "returned #notifId#")>
+    <cfcatch>
+        <cfset check("Components: Notification.createNotification actually records a row", false,
+            "#cfcatch.message# | #cfcatch.detail#")>
+    </cfcatch>
+    </cftry>
+
+    <!--- getBookingHistory guarded its user filter with
+          isDefined('##arguments.userId##'), which interpolates the VALUE and asks
+          whether a variable of that name exists -- isDefined("76") is false, so the
+          WHERE clause never applied and every caller received EVERY user's booking
+          history. user-history.html and history.html both pass the signed-in
+          user's id, so a regular user could see everyone's reservations and meeting
+          purposes. admin-history.html passes no userId and must keep seeing all. --->
+    <cftry>
+        <cfset fnSvc = createObject("component", "DoCMRoomReservation.assets.cfc.functions")>
+
+        <cfquery name="qTotalBk" datasource="#DBSERVER#" username="#DBUSER#" password="#DBPASS#">
+            SELECT COUNT(*) AS C FROM #DBSCHEMA#.BOOKINGS
+        </cfquery>
+        <cfquery name="qHarnessOwned" datasource="#DBSERVER#" username="#DBUSER#" password="#DBPASS#">
+            SELECT COUNT(*) AS C FROM #DBSCHEMA#.BOOKINGS
+            WHERE USER_ID = <cfqueryparam value="#ids.admin#" cfsqltype="cf_sql_numeric">
+        </cfquery>
+
+        <cfset histFiltered = fnSvc.getBookingHistory(userId = ids.admin)>
+        <cfset nFiltered = (isStruct(histFiltered) AND structKeyExists(histFiltered, "DATA"))
+                           ? arrayLen(histFiltered.DATA) : -1>
+        <cfset check("Scoping: getBookingHistory returns only the requested user's rows",
+            nFiltered EQ qHarnessOwned.C,
+            "returned #nFiltered# for a user owning #qHarnessOwned.C# (table holds #qTotalBk.C#)")>
+
+        <cfset histAll = fnSvc.getBookingHistory()>
+        <cfset nAll = (isStruct(histAll) AND structKeyExists(histAll, "DATA"))
+                       ? arrayLen(histAll.DATA) : -1>
+        <cfset check("Scoping: omitting userId still returns every row (admin history view)",
+            nAll EQ qTotalBk.C, "returned #nAll# of #qTotalBk.C#")>
+    <cfcatch>
+        <cfset check("Scoping: getBookingHistory returns only the requested user's rows", false,
+            "#cfcatch.message# | #cfcatch.detail#")>
+    </cfcatch>
+    </cftry>
+
     <!--- ============ Requirement 4: reminder notifications ============ --->
     <!--- The reminder job resolves its own recipients. It must include Site
           Admins: filtering on ROLE_NAME = 'admin' exactly used to exclude them,
@@ -510,9 +617,18 @@
         DELETE FROM #DBSCHEMA#.BOOKINGS
         WHERE COMMENTS LIKE <cfqueryparam value="#MARK#%" cfsqltype="cf_sql_varchar">
     </cfquery>
+    <!--- Preference rows first: NOTIFICATION_PREFERENCES has an FK to USERS. --->
+    <cfquery datasource="#DBSERVER#" username="#DBUSER#" password="#DBPASS#">
+        DELETE FROM #DBSCHEMA#.NOTIFICATION_PREFERENCES WHERE USER_ID IN
+            (SELECT USER_ID FROM #DBSCHEMA#.USERS
+              WHERE EMAIL = <cfqueryparam value="#TESTEMAIL#" cfsqltype="cf_sql_varchar">)
+    </cfquery>
     <cfquery datasource="#DBSERVER#" username="#DBUSER#" password="#DBPASS#" result="delUsers">
         DELETE FROM #DBSCHEMA#.USERS
         WHERE EMAIL = <cfqueryparam value="#TESTEMAIL#" cfsqltype="cf_sql_varchar">
+    </cfquery>
+    <cfquery datasource="#DBSERVER#" username="#DBUSER#" password="#DBPASS#">
+        DELETE FROM #DBSCHEMA#.NOTIFICATIONS WHERE TYPE = 'REGRESSION_HARNESS_PROBE'
     </cfquery>
     <!--- Remove only the reminder claim rows this run created, identified by the
           interval it pre-claimed. Real reminder history is left intact. --->

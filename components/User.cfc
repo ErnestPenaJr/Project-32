@@ -1,7 +1,35 @@
 component {
     property name="dsn" type="string";
+
+    property name="dbUser" type="string";
+    property name="dbPass" type="string";
+
+    // Explicit credentials are mandatory here. The datasource authenticates as
+    // WEBSCHEDULE_USER, not CONFROOM, so a queryExecute given only
+    // {datasource=...} cannot see any CONFROOM table -- every statement in this
+    // component failed with "ORA-00942: table or view does not exist".
+    // cfcs/*.cfc and assets/cfc/*.cfc already pass credentials on every query;
+    // this component did not.
+    private void function resolveCredentials() {
+        if (listFirst(CGI.SERVER_NAME, '.') EQ 'cmapps') {
+            variables.dbUser = "CONFROOM_USER";
+            variables.dbPass = "1DOCMAU4CNFRM6";
+        } else {
+            variables.dbUser = "CONFROOM";
+            variables.dbPass = "1DOCMOA4CNFRM3";
+        }
+    }
+
+    // Single source of query options, so no call site can omit the credentials.
+    private struct function dbOptions(struct extra = {}) {
+        var opts = { datasource = variables.dsn, username = variables.dbUser, password = variables.dbPass };
+        for (var k in arguments.extra) { opts[k] = arguments.extra[k]; }
+        return opts;
+    }
+
     
     public function init(required string dsn) {
+        resolveCredentials();
         variables.dsn = arguments.dsn;
         return this;
     }
@@ -13,7 +41,7 @@ component {
              FROM USERS 
              WHERE USER_ID = :userId",
             {userId = {value=arguments.userId, cfsqltype="cf_sql_numeric"}},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return qUser;
     }
@@ -28,7 +56,7 @@ component {
                 email = {value=arguments.email, cfsqltype="cf_sql_varchar"},
                 passwordHash = {value=passwordHash, cfsqltype="cf_sql_varchar"}
             },
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return qUser;
     }
@@ -49,7 +77,7 @@ component {
                 status = {value='Active', cfsqltype="cf_sql_varchar"},
                 generatedId = {type="out", variable="newUserId", cfsqltype="cf_sql_numeric"}
             },
-            {datasource=variables.dsn, result="result"}
+            dbOptions({result="result"})
         );
         return result.generatedKey;
     }
@@ -77,7 +105,7 @@ component {
                 notificationPrefs = {value=arguments.userData.notificationPreferences, cfsqltype="cf_sql_clob"},
                 userId = {value=arguments.userId, cfsqltype="cf_sql_numeric"}
             },
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return true;
     }

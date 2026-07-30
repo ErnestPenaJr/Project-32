@@ -1,7 +1,35 @@
 component {
     property name="dsn" type="string";
+
+    property name="dbUser" type="string";
+    property name="dbPass" type="string";
+
+    // Explicit credentials are mandatory here. The datasource authenticates as
+    // WEBSCHEDULE_USER, not CONFROOM, so a queryExecute given only
+    // {datasource=...} cannot see any CONFROOM table -- every statement in this
+    // component failed with "ORA-00942: table or view does not exist".
+    // cfcs/*.cfc and assets/cfc/*.cfc already pass credentials on every query;
+    // this component did not.
+    private void function resolveCredentials() {
+        if (listFirst(CGI.SERVER_NAME, '.') EQ 'cmapps') {
+            variables.dbUser = "CONFROOM_USER";
+            variables.dbPass = "1DOCMAU4CNFRM6";
+        } else {
+            variables.dbUser = "CONFROOM";
+            variables.dbPass = "1DOCMOA4CNFRM3";
+        }
+    }
+
+    // Single source of query options, so no call site can omit the credentials.
+    private struct function dbOptions(struct extra = {}) {
+        var opts = { datasource = variables.dsn, username = variables.dbUser, password = variables.dbPass };
+        for (var k in arguments.extra) { opts[k] = arguments.extra[k]; }
+        return opts;
+    }
+
     
     public function init(required string dsn) {
+        resolveCredentials();
         variables.dsn = arguments.dsn;
         return this;
     }
@@ -17,7 +45,7 @@ component {
              GROUP BY r.ROOM_ID, r.ROOM_NAME, r.BUILDING, r.FLOOR, r.CAPACITY, 
                       r.DESCRIPTION, r.MAINTENANCE_STATUS",
             {roomId = {value=arguments.roomId, cfsqltype="cf_sql_numeric"}},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return qRoom;
     }
@@ -59,7 +87,7 @@ component {
         sql &= "GROUP BY r.ROOM_ID, r.ROOM_NAME, r.BUILDING, r.FLOOR, r.CAPACITY, 
                          r.DESCRIPTION, r.MAINTENANCE_STATUS";
         
-        var qRooms = queryExecute(sql, params, {datasource=variables.dsn});
+        var qRooms = queryExecute(sql, params, dbOptions());
         return qRooms;
     }
     
@@ -79,7 +107,7 @@ component {
                 startTime = {value=arguments.startTime, cfsqltype="cf_sql_timestamp"},
                 endTime = {value=arguments.endTime, cfsqltype="cf_sql_timestamp"}
             },
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return qBookings.CONFLICT_COUNT == 0;
     }
@@ -93,7 +121,7 @@ component {
                 roomId = {value=arguments.roomId, cfsqltype="cf_sql_numeric"},
                 status = {value=arguments.status, cfsqltype="cf_sql_varchar"}
             },
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return true;
     }
@@ -107,7 +135,7 @@ component {
                 AVG(CAPACITY) as AVG_CAPACITY
              FROM ROOMS",
             {},
-            {datasource=variables.dsn}
+            dbOptions()
         );
         return qStats;
     }

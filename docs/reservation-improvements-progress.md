@@ -1610,3 +1610,715 @@ notified; authorization without authentication.
 ### Next requirement to address
 
 None. All five implemented; 71 automated checks pass.
+
+---
+
+## Iteration 15 — 2026-07-29 — cancellation emails were suppressed for most users
+
+Two Requirement 1 acceptance criteria were still only asserted "by construction".
+Exercising them found a defect that defeated the requirement outright.
+
+### The defect: no preference row means no email
+
+`shouldReceiveNotification()` returns **`{email:"", in_app:""}`** — empty strings —
+for any user with no `NOTIFICATION_PREFERENCES` row. It does **not** fall back to
+`NOTIFICATION_TYPES.DEFAULT_EMAIL_ENABLED`, which is `1` for
+`BOOKING_CANCELLATION`. A freshly created user has no such row (verified: 0 rows).
+
+`cancelBooking` tested `isBoolean(email) AND email`. An empty string is not a
+boolean, so the whole expression was false and the email was **suppressed**. The
+log made it look deliberate: *"requester 135 has BOOKING_CANCELLATION email
+disabled"* — for a user who had never expressed any preference.
+
+Requirement 1 requires the requester be notified. For most users they were not.
+
+The inconsistency that hid it: when the preference service *throws*, the code
+already defaults to sending. Only when it returned an unusable value did it
+default to suppressing.
+
+**Fix:** suppress only on an explicit opt-out. An indeterminate answer now falls
+through to sending and logs a warning naming the value received. An explicit
+`0`/`false` still opts the user out.
+
+**Not fixed, deliberately:** the underlying gap is in
+`assets/cfc/notifications.cfc` — `shouldReceiveNotification` should fall back to
+the type defaults. Fixing it there would change behaviour for every caller
+(confirmations, reminders, approvals), which is a wider blast radius than this work
+should take unilaterally. Evidence is recorded so it can be fixed centrally.
+
+### Delivery failures could not be traced to a reservation
+
+`<cfmail>` is asynchronous. The `cftry` around it catches only synchronous problems;
+a real SMTP failure happens later on a spooler thread and ColdFusion logs it to
+`mail.log` as a bare exception with **no booking reference**. So "notification
+failures are logged for follow-up" was not actually satisfiable.
+
+`cancelBooking` now logs the attempt — booking id, recipient, cc list, subject —
+so a failure found in `mail.log` can be correlated by subject and timestamp. It
+also logs when an email is suppressed by preference, so a missing notice is
+explainable rather than silent.
+
+### Verified by execution
+
+| Acceptance criterion | Result |
+|----------------------|--------|
+| Cancelling a **pending** request succeeds | **PASS** — `SUCCESS`, committed |
+| Cancelling an **approved** reservation succeeds | **PASS** — `SUCCESS`, committed |
+| Cancellation survives a notification problem | **PASS** — both committed with `CANCELLED_AT/BY` and reason; **purpose preserved** |
+| Requester is notified | **PASS** — 2 in-app notifications, and the email is now queued where it was previously suppressed |
+| Failures are logged for follow-up | **PASS** — attempt logged with booking id; both booking numbers present in the log |
+
+### A mistake to record
+
+This test reached the **live** SMTP relay. I used a malformed recipient address so
+`cfmail` would fail, rather than suppressing mail as in iteration 8 — but the
+admin CC list contains real addresses, so the message was handed to
+`mail.mdanderson.org` with two genuine recipients on it.
+
+**Nothing was delivered:** the relay rejected the whole message with
+`501 5.1.3 Invalid address` because of the malformed `To`, and `mailsent.log` does
+not exist on this instance, so no message has ever been sent successfully.
+
+That was the design failing closed, not a safeguard I put in place. The malformed-
+address technique is not a safe substitute for suppressing mail, and I should not
+have used it on a path that CCs real addresses. Future tests of any sending path
+must repoint the mail server first, as iteration 8 did.
+
+Positive side effect: the 501 came *from* `mail.mdanderson.org`, which confirms the
+mail configuration restored in iteration 8 is functional.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `cfcs/dashboard-data.cfc` | Suppress the cancellation email only on an explicit opt-out; log the send attempt with booking id, recipient, cc and subject; log preference-driven suppression. |
+
+### Database changes
+
+None.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| Failure-path verification (seeded, then removed) | 5 criteria PASS |
+| `tests/reservation-improvements-verify.cfm` | 41 passed, 0 failed (twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+
+### Remaining work
+
+1. **Run `audit_booking_data_integrity.sql` against staging and production.**
+2. **Fix `shouldReceiveNotification` to fall back to the type defaults** — central
+   fix for the defect above; affects all notification types.
+3. **Recurring bookings** — unshipped; product decision (report §5).
+4. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+5. **CF Administrator access** for the 4 pm–11 pm reminder window.
+
+### Risks / decisions needing human review
+
+1. **NEW — other notification types are probably suppressed the same way.** Booking
+   confirmations, reminders and approval alerts all consult the same service. If
+   their callers test the preference the way `cancelBooking` did, they are silently
+   suppressed for every user without a preference row. Worth checking each caller.
+2. Carried forward: orphaned `APPROVED_BY = 0`; upcoming reminder emails will begin
+   sending; edit conflict detection will begin blocking; reports will show real
+   figures; time zone undefined; Site Admins now notified; authorization without
+   authentication.
+
+### Next requirement to address
+
+None. All five implemented; 71 automated checks pass.
+
+---
+
+## Iteration 16 — 2026-07-29 — the real reason approver notifications never worked
+
+Following up iteration 15's suspicion that other notification callers shared the
+same defect. They did — and the investigation uncovered something bigger that
+**corrects my iteration-4 conclusion**.
+
+### Correction: the datasource does not authenticate as CONFROOM
+
+Iteration 4 said the immediate approver notification chain was "repaired and
+verified end to end". That was wrong, and the verification was flawed: I tested
+each query by running it **with CONFROOM credentials I supplied myself**, not the
+way the component actually executes it.
+
+The datasource `inside2_docmd` authenticates as **`WEBSCHEDULE_USER`, not
+CONFROOM**. A `queryExecute` given only `{datasource=...}` therefore cannot see a
+single CONFROOM table — every statement fails with
+`ORA-00942: table or view does not exist`. Verified directly:
+`SELECT USER FROM DUAL` returns `WEBSCHEDULE_USER`, and unqualified `USERS`,
+`ROLES`, `BOOKINGS`, `NOTIFICATION_TYPES` and `NOTIFICATION_PREFERENCES` all fail,
+while the same query with explicit credentials returns 16 rows.
+
+Five components pass no credentials at all, so **every query in them fails**:
+
+| Component | Consequence |
+|-----------|-------------|
+| `ApprovalNotification.cfc` | Requirement 4's immediate approver alert — the real sixth reason it never worked |
+| `Notification.cfc` | `createNotification`, `sendBookingConfirmation`, `sendBookingCancellation` |
+| `Room.cfc` | `checkAvailability` — doubly broken; iteration 12 fixed only its status vocabulary |
+| `User.cfc`, `Booking.cfc` | all queries |
+
+`cfcs/*.cfc` and `assets/cfc/*.cfc` work because they pass username and password on
+every query. The `components/*` family largely does not.
+
+The iteration-1 logging is what surfaced this: the error appeared in
+`approval_notifications.log` as ORA-00942, where previously it was silent.
+
+### Requirement 4's immediate notification now actually works
+
+Fixed `ApprovalNotification.cfc` and `Notification.cfc` to resolve credentials the
+way the rest of the application does, with a single `dbOptions()` helper in
+`Notification.cfc` so no call site can omit them again.
+
+`createNotification` needed a second fix: it used
+`RETURNING NOTIFICATION_ID INTO :generatedId` with an out parameter and returned
+`result.generatedKey`. That does not work through `queryExecute`'s named-parameter
+syntax against Oracle, so it threw, the catch swallowed it and returned 0 — and
+callers only test truthiness, so in-app notifications silently never appeared. The
+RETURNING clause is dropped (nothing needs the id) and failures are now logged.
+
+Measured, calling the component exactly as `createBooking` does:
+
+| | Before | After |
+|---|--------|-------|
+| `sendPendingApprovalAlert` success | false | **true** |
+| Recipients reached | `[]` | **`[76, 84]`** |
+| Emails queued | 0 | **2** |
+| In-app notifications created | 0 | **2** (rows 0 → 2) |
+
+### Booking confirmations were never sent either
+
+The ICS calendar file write sat directly in the shared `cftry`, so its failure
+aborted everything after it — **including the confirmation email**. On this server
+the write does fail: `assets/temp` exists on the host but is not reachable from the
+ColdFusion container. So no requester has been receiving a booking confirmation.
+
+The write now has its own handler; a missing `.ics` downgrades to a missing
+calendar link instead of suppressing the notification, and the link is only offered
+when the file was actually written.
+
+The confirmation path also had iteration 15's preference defect in a worse form:
+`<cfif userPreferences.email>` where `email` is `""` does not evaluate false in
+CFML, it **throws**. Fixed the same fail-open way as cancellation.
+
+Result: `createBooking` for a fresh user now reports **no warnings at all**,
+where it previously reported both an approval-dispatch failure and the ICS failure.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `components/ApprovalNotification.cfc` | Resolves CONFROOM credentials and passes them on its recipient query. |
+| `components/Notification.cfc` | Same, via a `dbOptions()` helper used by all five queries; `createNotification` no longer uses `RETURNING … INTO`, returns 1 on success, and logs failures. |
+| `cfcs/dashboard-data.cfc` | ICS write is independently guarded; calendar link only shown when written; confirmation email suppressed only on an explicit opt-out. |
+
+### Database changes
+
+None.
+
+### Tests performed
+
+All with mail redirected to a dead local port, verified before and restored after
+(live configuration confirmed back to `mail.mdanderson.org`). **No mail delivered.**
+
+| Check | Result |
+|-------|--------|
+| Datasource authenticates as | `WEBSCHEDULE_USER` — root cause confirmed |
+| Approver alert after fix | success=true, 2 recipients, 2 emails, 2 in-app |
+| `createBooking` warnings for a fresh user | none (was 2) |
+| Three edited components parse | PASS |
+| `tests/reservation-improvements-verify.cfm` | 41 passed, 0 failed (twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+
+### Remaining work
+
+1. **Run `audit_booking_data_integrity.sql` against staging and production.**
+2. **Fix the remaining three credential-less components** — `Room.cfc`, `User.cfc`,
+   `Booking.cfc`. Not on the live paths today, but `Room.checkAvailability` would be
+   a natural thing to start calling and it silently reports no conflicts.
+3. **Fix `shouldReceiveNotification` to fall back to the type defaults** (iteration 15).
+4. **`assets/temp` is unreachable from the container** — decide whether to fix the
+   mount/permissions so calendar attachments work, or drop the feature.
+5. **Recurring bookings** — unshipped; product decision.
+6. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+7. **CF Administrator access** for the 4 pm–11 pm reminder window.
+
+### Risks / decisions needing human review
+
+1. **NEW — approver notifications will start arriving.** They have never worked. Once
+   deployed, every new request emails both approvers and creates an in-app notice.
+   That is the requirement, but it is new mail volume for a previously silent system.
+2. **NEW — booking confirmations will start arriving** for the same reason.
+3. **NEW — check whether staging and production datasources also authenticate as a
+   non-CONFROOM user.** If they do, the same components are dead there and these
+   fixes are required, not optional. If they authenticate as CONFROOM, the fixes are
+   harmless but the dev environment differs from production in a way worth knowing.
+4. Carried forward: orphaned `APPROVED_BY = 0`; upcoming reminder emails; edit
+   conflict blocking; reports showing real figures; time zone; Site Admins; auth.
+
+### Next requirement to address
+
+None. All five implemented; 71 automated checks pass. Requirement 4's immediate
+notification is, for the first time, verified working through the component's own
+code path.
+
+---
+
+## Iteration 17 — 2026-07-29 — finished the credential sweep
+
+Completed the remaining item from iteration 16: the three components still passing
+no database credentials. `Room.checkAvailability` was the one that mattered — an
+availability check that cannot see `BOOKINGS` reports every slot as free.
+
+### Completed work
+
+Applied the same fix to `Room.cfc`, `User.cfc` and `Booking.cfc`: resolve the
+CONFROOM credentials per environment, and route every query through a private
+`dbOptions()` helper so no call site can omit them again. 13 bare option structs
+replaced across the three files. **No `{datasource=variables.dsn}` remains anywhere
+in `components/`.**
+
+### Verified behaviour, not just execution
+
+`Room.checkAvailability` now genuinely detects conflicts:
+
+| Slot | Result |
+|------|--------|
+| Empty slot (2039-07-04 09:00–10:00) | `true` — available |
+| Overlapping an approved reservation (14:30–15:30 against 14:00–15:00) | **`false` — not available** |
+
+Before, the query failed with ORA-00942, so the function could never report a
+conflict. That is a booking-correctness landmine for anything that starts calling
+it: it would have silently approved double-bookings.
+
+`Notification.createNotification` verified to actually insert a row (returns > 0),
+where it previously returned 0 for every call.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `components/Room.cfc` | Credential resolution + `dbOptions()`; 5 queries. |
+| `components/User.cfc` | Same; 4 queries. |
+| `components/Booking.cfc` | Same; 6 queries. |
+| `tests/reservation-improvements-verify.cfm` | 3 new checks pinning that these components can read CONFROOM, that `checkAvailability` detects an overlap, and that `createNotification` records a row. Probe rows removed in cleanup. |
+
+### Database changes
+
+None.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| `tests/reservation-improvements-verify.cfm` | **44 passed, 0 failed** (run twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+| All five previously-broken components parse | PASS |
+| Probe and fixture rows removed | PASS — 0 remaining |
+| Mail configuration | unchanged, `mail.mdanderson.org` |
+| **Total** | **74 checks, 0 failing** |
+
+No mail was sent: this iteration exercised only read paths and a direct
+`createNotification` insert.
+
+### Remaining work
+
+1. **Run `audit_booking_data_integrity.sql` against staging and production** — still
+   the highest-value action, and the only way to answer whether real double-bookings
+   exist from the period the conflict checks were dead.
+2. **Confirm the staging and production datasources' database user.** If they also
+   authenticate as a non-CONFROOM user, the credential fixes are required there, not
+   optional.
+3. **Fix `shouldReceiveNotification` to fall back to the type defaults** (iteration 15).
+4. **`assets/temp` unreachable from the container** — fix the mount/permissions so
+   calendar attachments work, or drop the feature.
+5. **Recurring bookings** — unshipped; product decision (report §5).
+6. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+7. **CF Administrator access** for the 4 pm–11 pm reminder window.
+
+### Risks / decisions needing human review
+
+No new ones. Carried forward, and the deployment-facing ones are worth repeating
+because they are now numerous:
+
+* **Approver notifications and booking confirmations will start arriving** — neither
+  has ever worked.
+* **Upcoming-booking reminder emails will start sending.**
+* **Edit conflict detection will start blocking** edits that previously slipped
+  through, and existing double-booked rows are not cleaned up.
+* Reports, utilisation and dashboard tiles will show real figures instead of zero.
+* Orphaned `APPROVED_BY = 0` rows; undefined time zone; Site Admins now notified;
+  authorization without authentication.
+
+### Next requirement to address
+
+None. All five implemented; 74 automated checks pass. Iterations 15–17 are
+uncommitted.
+
+---
+
+## Iteration 18 — 2026-07-29 — fixed the preference defect at its root
+
+Iteration 15 patched two callers to work around a broken preference service and
+deferred the central fix as "wider blast radius". That reasoning no longer held:
+the service has exactly **two** callers, both now handle indeterminate answers
+defensively, so fixing the root cause became low risk.
+
+### The actual bug: IsNull() does not detect a query NULL
+
+`shouldReceiveNotification` already intended the right behaviour — default to
+enabled, prefer the user's saved preference, otherwise fall back to
+`NOTIFICATION_TYPES.DEFAULT_EMAIL_ENABLED`. It was one line away from working:
+
+```
+<cfif NOT IsNull(qPreference.EMAIL_ENABLED)>
+```
+
+ColdFusion represents a NULL query column as an **empty string**, not null, so
+`IsNull("")` is false. The "user has a saved preference" branch was therefore taken
+for *everyone*, and the column's empty string was returned verbatim. The
+`DEFAULT_EMAIL_ENABLED` fallback below it **never executed**.
+
+That single line caused both P23 and P28: cancellation emails were suppressed
+(an empty string is not a boolean), and the confirmation path threw outright,
+because `<cfif "">` raises "cannot be converted to a boolean" rather than
+evaluating false.
+
+Replaced with a length check, which is the correct test for a query NULL. Also
+added a logged warning when no `NOTIFICATION_TYPES` row exists for the requested
+code at all — that is a deployment gap, not a user choice, and it was previously
+indistinguishable from one.
+
+### Verified: fallback works and opt-out still wins
+
+| Case | Before | After |
+|------|--------|-------|
+| Fresh user, no preference row, `BOOKING_CANCELLATION` | `{email:"", in_app:""}` | **`{email:1, in_app:1}`** |
+| Same, `BOOKING_CONFIRMATION` | `{email:"", …}` | **`{email:1, in_app:1}`** |
+| **Explicit opt-out** (`EMAIL_ENABLED=0`) | — | **`{email:0, in_app:1}`** — still honoured |
+| Unknown type code | — | defaults stand, and a warning is logged |
+
+The opt-out case is the one that mattered to get right: a fallback that trampled
+real opt-outs would have been a worse bug than the one being fixed.
+
+The caller-side fail-open guards from iteration 15 are deliberately left in place.
+They are now a safety net rather than the mechanism, and they protect any future
+caller against a similar regression.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `assets/cfc/notifications.cfc` | `shouldReceiveNotification` uses a length check instead of `IsNull()`, so the type-default fallback actually runs; logs a missing `NOTIFICATION_TYPES` row. |
+| `tests/reservation-improvements-verify.cfm` | 2 new checks: a user with no saved preference inherits the type default, and an explicit opt-out is still honoured. Cleanup now removes `NOTIFICATION_PREFERENCES` rows before the user, respecting the foreign key. |
+
+### Database changes
+
+None.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| `tests/reservation-improvements-verify.cfm` | **46 passed, 0 failed** (run twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+| Test users and orphaned preference rows after run | 0 and 0 |
+| **Total** | **76 checks, 0 failing** |
+
+No mail sent — this iteration exercised only the preference service.
+
+### Remaining work
+
+1. **Run `audit_booking_data_integrity.sql` against staging and production.**
+2. **Confirm the staging and production datasource database user** (iteration 16).
+3. **`assets/temp` unreachable from the container** — fix the mount/permissions so
+   calendar attachments work, or drop the feature. The confirmation email now sends
+   either way.
+4. **Recurring bookings** — unshipped; product decision (report §5).
+5. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+6. **CF Administrator access** for the 4 pm–11 pm reminder window.
+
+### Risks / decisions needing human review
+
+No new ones. The deployment-facing set is unchanged and now largely a single theme:
+**several notification paths that have never worked will begin working.** Approver
+alerts, booking confirmations, upcoming-booking reminders, and cancellation emails
+for users with no saved preference. Each is the documented requirement, but
+collectively it is a noticeable change in outbound mail for a system that has been
+quiet. Worth telling administrators before deploy.
+
+Carried forward: orphaned `APPROVED_BY = 0`; edit conflict detection will begin
+blocking; reports will show real figures; undefined time zone; Site Admins now
+notified; authorization without authentication.
+
+### Next requirement to address
+
+None. All five implemented; 76 automated checks pass. Iterations 15–18 remain
+uncommitted.
+
+---
+
+## Iteration 19 — 2026-07-29 — parameterisation sweep; a data-exposure bug
+
+Swept two more defect classes. The `IsNull()`-on-a-query-column class from
+iteration 18 proved to be a single instance, already fixed — no further occurrences
+outside explanatory comments and one non-runnable mxunit test. The parameterisation
+sweep found real problems.
+
+### Data exposure: booking history ignored its user filter
+
+`assets/cfc/functions.cfc:getBookingHistory` guarded its filter with:
+
+```
+<cfif isDefined('#arguments.userId#') AND LEN(TRIM(#ARGUMENTS.userId#)) NEQ 0>
+```
+
+That interpolates the **value** and asks whether a variable of that name exists.
+`isDefined("76")` is **false** — verified directly — so the guard never passed and
+`WHERE b.USER_ID = …` was never applied. **`getBookingHistory` returned every
+user's booking history regardless of the userId supplied.**
+
+Both `user-history.html` and `history.html` call it with
+`sessionStorage.getItem('USER_ID')`, expecting only that person's reservations. A
+signed-in user could therefore see everyone's — who booked what, when, and the
+meeting purpose held in `COMMENTS`. `admin-history.html` passes no userId and
+legitimately expects everything.
+
+Fixed to `<cfif len(trim(arguments.userId))>`, which preserves the admin case.
+
+Verified with a discriminating test. The first attempt was inconclusive because one
+user owns every row in dev, so a second owner was seeded:
+
+| Call | Result |
+|------|--------|
+| `getBookingHistory(userId = <user owning 3>)` | **3 rows** of 59 in the table |
+| `getBookingHistory()` — the admin page's call | **59 rows** — unchanged |
+
+### SQL injection vector in the system log viewer
+
+`assets/cfc/system-logger.cfc:getSystemLogs` is `access="remote"` and built its
+WHERE clause by string concatenation:
+
+```
+whereClause &= " AND ACTION_TYPE = '#arguments.filterType#'"
+```
+
+`filterType`, `filterTable`, `startDate` and `endDate` are `type="string"` with no
+validation, so this was an injection vector reachable over HTTP and used by
+`system-logs.html`. All four are now bound with `cfqueryparam`, as are the
+pagination values.
+
+**Exploitation could not be demonstrated**, and the reason matters: the function
+never runs. Three further defects, all now documented on the function itself:
+
+1. Both queries use `datasource="roomreservation"` — not one of the three this
+   component configures — and pass **no credentials**, while `this.DBSERVER`,
+   `this.DBUSER` and `this.DBPASS` are set just above and ignored.
+2. They select `u.USERNAME`; `USERS` has no such column, so it would raise
+   ORA-00904 regardless.
+3. Consequently `system-logs.html` has never displayed data.
+
+**Deliberately not revived.** It is `access="remote"` with **no authorization check
+of any kind**, so repairing the datasource and column would immediately expose the
+whole system audit log — every logged change, with user names — to any
+unauthenticated caller. A prominent comment on the function records that. The
+injection fix is applied regardless, because that must not be left in place.
+
+`logDatabaseChange`, the function that *is* used, passes credentials correctly and
+was not touched.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `assets/cfc/functions.cfc` | `getBookingHistory` user filter now actually applies. |
+| `assets/cfc/system-logger.cfc` | Filters and pagination bound with `cfqueryparam`; the three reasons the function cannot run, and the authorization hazard, documented on it. |
+| `tests/reservation-improvements-verify.cfm` | 2 checks: history returns only the requested user's rows, and omitting the userId still returns everything. |
+
+### Database changes
+
+None.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| `tests/reservation-improvements-verify.cfm` | **48 passed, 0 failed** (run twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+| Whole-app sweep for user-controlled values interpolated into SQL | **0 remaining** |
+| `system-logger.cfc` parses; `logDatabaseChange` untouched | PASS |
+| **Total** | **78 checks, 0 failing** |
+
+No mail sent; this iteration touched only read paths.
+
+### Risks / decisions needing human review
+
+1. **NEW — booking history was exposing every user's reservations.** Worth deciding
+   whether that needs disclosing, depending on how long it has been live and how
+   sensitive the meeting purposes are. The exposure was read-only and required being
+   signed in.
+2. **NEW — do not revive `getSystemLogs` without an authorization check.** It would
+   publish the audit log to anonymous callers.
+3. Carried forward: several notification paths that have never worked will begin
+   working; edit conflict detection will begin blocking; reports will show real
+   figures; orphaned `APPROVED_BY = 0`; undefined time zone; Site Admins now
+   notified; authorization without authentication.
+
+---
+
+## Iteration 21 — 2026-07-29 — audited the handoff report itself
+
+The unblocked backlog is empty and I did not manufacture work. Instead I audited the
+final report, since it is the artifact you will actually rely on, it grew across
+nineteen iterations with counts patched piecemeal, and I have had to correct my own
+claims in it three times.
+
+### Also repaired: iteration 19's documentation
+
+Iteration 19's last command failed on a transient tooling error. Its **code changes
+had landed** — verified directly: 15 `cfqueryparam` bindings in `system-logger.cfc`,
+the `getBookingHistory` guard corrected, 2 harness checks present — but the
+documentation had not. Both documents are now caught up.
+
+### One genuine self-contradiction found and fixed
+
+The verification-scenario table still described Requirement 4's immediate approver
+notification as *"chain repaired and verified end to end"* — my flawed iteration-4
+claim. That directly contradicted defect P25 twenty lines earlier, which states the
+datasource credential problem is *"the real reason the immediate approver
+notification never worked"*.
+
+Corrected to what was actually measured in iteration 16 (2 approvers resolved, 2
+emails queued, 2 in-app notifications, mail suppressed), with an explicit note that
+the earlier claim was wrong and why. A reader should not have to reconcile two
+contradictory statements about the same requirement.
+
+Also:
+
+* Made the collapsed `P14–P20` row explicit, so the absence of separate P15–P20 rows
+  reads as intentional rather than as missing entries.
+* Annotated verification scenario 1: the booking is created, but the confirmation
+  email was separately broken (P26/P28) until iteration 16 and now sends. A bare
+  "PASS" overstated it.
+
+### Consistency now verified numerically
+
+| Claim | Reconciles |
+|-------|-----------|
+| Headline "78 automated checks" | 48 CFML + 15 Chromium + 15 Mobile Chrome = 78 |
+| Headline "30 pre-existing defects" | defect rows imply exactly 30, counting `P14–P20` as seven |
+| Headline "11 of 12 scenarios green" | 11 rows PASS + 1 NOT SATISFIABLE |
+| §4.7 "Not verified" list | still accurate — nothing in it has since been verified |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `docs/reservation-improvements-final-report.md` | Scenario 4 corrected and the superseded claim called out; collapsed defect numbering made explicit; scenario 1 annotated. |
+| `docs/reservation-improvements-progress.md` | Iteration 19 entry written (lost to the tooling failure) and this entry. |
+
+### Database changes
+
+None. No application code changed this iteration.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| `tests/reservation-improvements-verify.cfm` | 48 passed, 0 failed |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+| Same — Mobile Chrome | 15 passed, 0 failed |
+| Report internal consistency | reconciled, see table above |
+
+### Remaining work
+
+Unchanged. Every item needs either your infrastructure access — run the data
+integrity audit on staging and production, confirm those datasources' database user,
+CF Administrator for the reminder window, apply
+`add_reservation_for_and_decision_audit.sql` — or a product decision: recurring
+bookings, and whether `assets/temp` should be made reachable.
+
+### Risks / decisions needing human review
+
+No new ones. The two from iteration 19 are the ones with a clock on them:
+
+1. **P29 — booking history exposed every user's reservations** to any signed-in
+   user, including meeting purposes. Read-only, authenticated, now fixed. Whether it
+   needs disclosing depends on how long it was live, which I cannot determine from
+   here.
+2. **Do not revive `getSystemLogs`** without an authorization check.
+
+### Next requirement to address
+
+None. All five implemented; 78 automated checks pass; the report is internally
+consistent. Iterations 15–19 remain uncommitted.
+
+---
+
+## Iteration 22 — 2026-07-29 — loop stopped
+
+**The loop was stopped after this iteration.** Not arbitrarily: iterations 21 and 22
+both found no application work available, which is the first time that has happened
+twice consecutively. Earlier attempts to stop (iterations 5–7, 20) were premature —
+resuming after them produced 30 defect fixes. This time the backlog is demonstrably
+exhausted.
+
+The loop's own terminating condition is satisfied for everything implementable: all
+five requirements are complete, 78 automated checks pass, and no known regression
+remains. Its own escalation rule — stop and request human review when a business rule
+is unclear or a security-sensitive decision requires authorization — covers each
+remaining item.
+
+### Final state
+
+| | |
+|---|---|
+| Requirements implemented | 5 of 5 |
+| Automated checks | 78, all passing (48 CFML, 15 Chromium, 15 Mobile Chrome) |
+| Verification scenarios green | 11 of 12 (the 12th blocked by an unshipped feature) |
+| Pre-existing defects found and fixed | 30 |
+| Defects introduced by this work and fixed | 6 |
+| Committed | `ff010c4` and earlier |
+| Uncommitted | 12 files, iterations 15–19 |
+
+Fixtures removed, no temporary files, mail configuration intact at
+`mail.mdanderson.org`.
+
+### What needs you, in priority order
+
+1. **Commit the 12 outstanding files.** They include two security-relevant fixes.
+2. **P29 disclosure decision.** `getBookingHistory` returned every user's booking
+   history — including meeting purposes — to any signed-in user. Read-only and
+   authenticated, now fixed. Whether it needs disclosing depends on how long it was
+   live, which cannot be determined from here.
+3. **Run `assets/sql/audit_booking_data_integrity.sql` on staging and production.**
+   Read-only. Query 1 answers whether real double-bookings exist from the period the
+   conflict checks were dead — dev holds no pending or approved rows and cannot
+   answer it.
+4. **Apply `add_reservation_for_and_decision_audit.sql` to staging and production
+   before deploying**, or cancellation, the detail view and bulk approval all fail
+   with ORA-00904.
+5. **Warn administrators before deploy.** Several notification paths that have never
+   worked will begin working: approver alerts, booking confirmations,
+   upcoming-booking reminders, and cancellation emails for users with no saved
+   preference. Edit conflict detection will also start blocking edits that previously
+   slipped through, and reports will show real figures instead of zero.
+6. **Confirm the staging and production datasource database user.** If they too
+   authenticate as a non-CONFROOM user, the credential fixes are required there.
+7. **Decide on recurring bookings** (unshipped at four layers, report §5) and whether
+   `assets/temp` should be made reachable so calendar attachments work.
+8. **Do not revive `getSystemLogs`** without an authorization check.
+
+### To resume
+
+`/loop` re-arms the cadence. The two suites are the entry points:
+
+```
+http://localhost:8500/DoCMRoomReservation/tests/reservation-improvements-verify.cfm
+cd tests/playwright && npx playwright test bulk-approval-ui.spec.js deep-link.spec.js --project=chromium
+```
+
+Both are self-cleaning, refuse to run on staging and production, and send no mail.

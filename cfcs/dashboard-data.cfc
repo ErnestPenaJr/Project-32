@@ -728,7 +728,28 @@
             <cftry>
                 <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications")>
                 <cfset var userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CANCELLATION")>
-                <cfset sendEmail = (isStruct(userPreferences) AND structKeyExists(userPreferences, "email") AND isBoolean(userPreferences.email) AND userPreferences.email)>
+
+                <!--- Suppress ONLY on an explicit opt-out. An indeterminate answer
+                      must fall through to sending.
+                      shouldReceiveNotification returns {email:"", in_app:""} for any
+                      user with no NOTIFICATION_PREFERENCES row -- it does not fall
+                      back to NOTIFICATION_TYPES.DEFAULT_EMAIL_ENABLED, which is 1
+                      for BOOKING_CANCELLATION. Most users have no such row, so
+                      testing `isBoolean(email) AND email` suppressed the notice for
+                      them: an empty string is not a boolean, so the whole
+                      expression was false and the requester was never emailed.
+                      That defeats Requirement 1.
+                      This now mirrors the cfcatch below, which already defaults to
+                      sending when the preference cannot be determined. An explicit
+                      0 or false still opts the user out. --->
+                <cfset sendEmail = true>
+                <cfif isStruct(userPreferences) AND structKeyExists(userPreferences, "email")
+                      AND isBoolean(userPreferences.email)>
+                    <cfset sendEmail = userPreferences.email>
+                <cfelse>
+                    <cflog type="warning" file="booking_cancellations"
+                           text="Email preference for requester #qryGetBooking.USER_ID# is not set (received '#(isStruct(userPreferences) AND structKeyExists(userPreferences,'email')) ? userPreferences.email : 'no value'#'); sending the cancellation notice anyway, per Requirement 1.">
+                </cfif>
             <cfcatch>
                 <cflog type="warning" file="booking_cancellations"
                        text="Preference lookup failed for booking #arguments.bookingid#; defaulting to send. #cfcatch.message#">
@@ -761,6 +782,30 @@
                         <cfoutput>#emailBody#</cfoutput>
                     </cfmailpart>
                 </cfmail>
+
+                <!--- Record the attempt.
+                      <cfmail> is asynchronous: it hands the message to
+                      ColdFusion's spooler and returns. The cftry around it
+                      therefore catches only synchronous problems (a bad template,
+                      an undefined variable). An actual SMTP delivery failure
+                      happens later on a spooler thread and is logged by
+                      ColdFusion to mail.log as a bare exception with **no booking
+                      reference**, so it cannot be traced back to a reservation or
+                      a requester.
+
+                      Logging the attempt with the booking id, recipient and
+                      subject is what makes the "notification failures are logged
+                      for follow-up" requirement actionable: a failure found in
+                      mail.log can be correlated to this entry by subject and
+                      timestamp. --->
+                <cflog type="information" file="booking_cancellations"
+                       text="Cancellation notice queued for booking #qryGetBooking.BOOKING_ID# to #qryGetBooking.EMAIL##len(adminEmails) ? ' (cc: ' & adminEmails & ')' : ''#. Subject: Cancellation Confirmation - Reservation ###qryGetBooking.BOOKING_ID# - #qryGetBooking.ROOM_NAME#. Delivery is asynchronous; check mail.log for send failures.">
+            <cfelse>
+                <!--- Suppressed by preference, not a failure. Recorded so the
+                      absence of an email is explainable during follow-up; the
+                      in-app notification above was still created. --->
+                <cflog type="information" file="booking_cancellations"
+                       text="Cancellation email suppressed for booking #qryGetBooking.BOOKING_ID#: requester #qryGetBooking.USER_ID# has BOOKING_CANCELLATION email disabled. In-app notification was still recorded.">
             </cfif>
 
         <cfcatch>
@@ -1254,10 +1299,24 @@
                 <cfset var icsFileName = "booking_#qryGetBooking.BOOKING_ID#.ics">
                 <cfset var icsFilePath = ExpandPath("../assets/temp/#icsFileName#")>
                 <cfset var finalContent = arrayToList(icsContent, chr(13) & chr(10))>
+                <cfset var icsWritten = false>
 
-                <!--- Write the ICS file --->
-                <cffile action="write" file="#icsFilePath#" output="#finalContent#" charset="utf-8">
-                <!--- <p>Thank you for your reservation! We're happy to confirm that your office space (#qryGetBooking.ROOM_NAME#) is successfully booked.</p>--->
+                <!--- The calendar attachment is a convenience, not the notification.
+                      This cffile previously sat directly in the shared cftry, so a
+                      failed write aborted everything after it -- including the
+                      confirmation email itself. On this server the write does fail:
+                      assets/temp is not reachable from the ColdFusion container, so
+                      NO requester has been receiving a booking confirmation. Giving
+                      the write its own handler keeps the email flowing and downgrades
+                      a missing .ics to a missing calendar link. --->
+                <cftry>
+                    <cffile action="write" file="#icsFilePath#" output="#finalContent#" charset="utf-8">
+                    <cfset icsWritten = true>
+                <cfcatch>
+                    <cflog type="warning" file="booking_confirmations"
+                           text="Calendar file could not be written for booking #qryGetBooking.BOOKING_ID# (#icsFilePath#): #cfcatch.message#. The confirmation email will be sent without a calendar link.">
+                </cfcatch>
+                </cftry>
 
                 <!--- Build calendar link URLs outside of cfoutput --->
                 <cfset var calendarLinkURL = "https://#cgi.SERVER_NAME#:#cgi.SERVER_PORT#/#ListFirst(CGI.SCRIPT_NAME,'/')#/assets/temp/#icsFileName#" />
@@ -1286,7 +1345,9 @@
                         <li><strong>Starting On:</strong> #DateFormat(startTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(startTime, "h:mm tt")# </li>
                         <li><strong>Ending On:</strong> #DateFormat(endTime, "dddd, mmmm dd, yyyy")# at #TimeFormat(endTime, "h:mm tt")# </li>
                         <li><strong>Booking ID:</strong> #qryGetBooking.BOOKING_ID#</li>
-                        <li><strong>Add to Calendar:</strong> <a href="#calendarLinkURL#" target="_blank">Add to Calendar</a> | <a href="#calendarLinkURL#">Download iCalendar</a></li>
+                        <cfif icsWritten>
+                            <li><strong>Add to Calendar:</strong> <a href="#calendarLinkURL#" target="_blank">Add to Calendar</a> | <a href="#calendarLinkURL#">Download iCalendar</a></li>
+                        </cfif>
                     </ul>
                                    
                         <h3>Important Information:</h3>
@@ -1308,9 +1369,24 @@
                 <!--- Check if user should receive booking confirmation email --->
                 <cfset notificationService = createObject("component", "DoCMRoomReservation.assets.cfc.notifications") />
                 <cfset userPreferences = notificationService.shouldReceiveNotification(qryGetBooking.USER_ID, "BOOKING_CONFIRMATION") />
+
+                <!--- Suppress only on an explicit opt-out. shouldReceiveNotification
+                      returns {email:""} for any user with no NOTIFICATION_PREFERENCES
+                      row, and `<cfif "">` does not evaluate false in CFML -- it
+                      THROWS "cannot be converted to a boolean", which aborted the
+                      rest of this block including the email. Same defect as the
+                      cancellation path, with a noisier failure mode. --->
+                <cfset var sendConfirmation = true />
+                <cfif isStruct(userPreferences) AND structKeyExists(userPreferences, "email")
+                      AND isBoolean(userPreferences.email)>
+                    <cfset sendConfirmation = userPreferences.email />
+                <cfelse>
+                    <cflog type="warning" file="booking_confirmations"
+                           text="Email preference for requester #qryGetBooking.USER_ID# is not set; sending the booking confirmation anyway." />
+                </cfif>
                 
                 <!--- Only send email if user has email notifications enabled for booking confirmations --->
-                <cfif userPreferences.email>
+                <cfif sendConfirmation>
                         <cfmail to="#qryGetBooking.EMAIL#" from="NO-REPLY@mdanderson.org" 
                                 subject="Office Space Reservation - Pending Approval" type="html">
                             <cfmailpart type="text/html">

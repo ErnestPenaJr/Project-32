@@ -62,7 +62,19 @@
                 FROM #this.DBSCHEMA#.BOOKINGS b
                 JOIN #this.DBSCHEMA#.USERS u ON b.USER_ID = u.USER_ID
                 JOIN #this.DBSCHEMA#.ROOMS r ON b.ROOM_ID = r.ROOM_ID
-                <cfif isDefined('#arguments.userId#') AND LEN(TRIM(#ARGUMENTS.userId#)) NEQ 0>
+                <!--- This tested isDefined('#arguments.userId#'), which interpolates
+                      the VALUE and asks whether a variable of that name exists:
+                      isDefined("76") is false, so the guard never passed and the
+                      WHERE clause was never applied. getBookingHistory therefore
+                      returned EVERY user's booking history regardless of the userId
+                      supplied.
+                      user-history.html and history.html both pass
+                      sessionStorage USER_ID expecting only that person's
+                      reservations, so a signed-in user could see everyone's --
+                      including meeting purposes. admin-history.html passes no
+                      userId, so it still receives all rows, which is intended.
+                      The correct test is simply whether a value was supplied. --->
+                <cfif len(trim(arguments.userId))>
                 WHERE b.USER_ID = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_numeric">
                 </cfif>
                 ORDER BY b.START_TIME DESC
