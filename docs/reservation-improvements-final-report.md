@@ -17,11 +17,11 @@ is in `reservation-improvements-progress.md`; the running pass/fail log is in
 | | |
 |---|---|
 | Requirements implemented | **5 of 5** |
-| Automated checks | **59 — all passing, 0 failing** |
-| Pre-existing defects found and fixed | **11** |
+| Automated checks | **71 — all passing, 0 failing** |
+| Pre-existing defects found and fixed | **22** |
 | Defects introduced by this work, then fixed | **6** |
 | Functional gaps remaining | **1** (recurrence end date — needs a business decision) |
-| Verification scenarios green | **11 of 12** |
+| Verification scenarios green | **11 of 12** (the 12th is blocked by an unshipped feature, not by a defect in this work) |
 | Database migrations written | 3 (2 applied to dev, 1 for staging/production) |
 
 **Two of the fixes were load-bearing:** approval was failing for *every* request in
@@ -48,15 +48,19 @@ every environment, and the failure was invisible in the UI. Both are fixed.
 | `api/bookings/cancel.cfm` | +22 | Documented as unreferenced and why it cannot currently work. |
 | `docm-architecture.html` | 1 | Cancel node relabelled to the real path. |
 
+Plus, in iteration 10: `index.html` gained direct-link support (`?bookingId=N`), closing P12.
+
 **12 files, +1977 / −295.**
 
 ### New files
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `tests/reservation-improvements-verify.cfm` | 550 | CFML regression harness, 37 checks. No framework required. |
+| `tests/reservation-improvements-verify.cfm` | 600 | CFML regression harness, 41 checks. No framework required. |
 | `tests/playwright/bulk-approval-ui.spec.js` | 297 | Browser suite, 11 checks, Chromium + Mobile Chrome. |
+| `tests/playwright/deep-link.spec.js` | 79 | Direct-link suite, 4 checks, both projects. |
 | `tests/ui-fixture.cfm` | 118 | Seed/clean endpoint for the browser suite. |
+| `assets/sql/audit_booking_data_integrity.sql` | 240 | Read-only data-integrity audit for staging/production, plus optional remediation. |
 | `assets/sql/add_reservation_for_and_decision_audit.sql` | 156 | The 8 columns present in dev but in no repo migration. |
 | `assets/sql/add_notification_reminder_log.sql` | 107 | Reminder history table; its unique constraint is the concurrency guarantee. |
 | `assets/sql/add_pending_approval_notification_types.sql` | 71 | Two missing `NOTIFICATION_TYPES` rows. |
@@ -70,7 +74,7 @@ every environment, and the failure was invisible in the UI. Both are fixed.
 
 ## 3. Defects found
 
-### Pre-existing (11)
+### Pre-existing (22)
 
 | # | Severity | Defect | How found |
 |---|----------|--------|-----------|
@@ -85,6 +89,11 @@ every environment, and the failure was invisible in the UI. Both are fixed.
 | P9 | High | Immediate approver notification dead for five independent reasons: invalid `USERS.ROLE` column; missing `NOTIFICATION_TYPES` rows; unguarded application-scope read; `sendEmail` was `private` while composed not inherited; relative template include | Tracing the chain link by link |
 | P10 | Medium | Recipient resolution matched `ROLE_NAME = 'admin'` exactly in three components, silently excluding **every Site Admin** | Reminder job resolving 0 recipients |
 | P11 | Medium | `api/cancel-booking.cfm` — unreferenced hard `DELETE` of reservations, no CSRF, wrong column names. Failed closed *only* because no session scope exists; **introducing `Application.cfc` would have activated it** | Reviewing dead endpoints |
+| P12 | Medium | The cancellation email's "View this reservation" link pointed at `index.html?bookingId=N`, but the page never read the parameter — the link only opened the dashboard | Checking whether the app supports direct links |
+| P21 | **High** | `CalendarCleanUp` wrote `APPROVED_BY = 0` (no such user; 19 orphaned rows found, and the real approver's identity destroyed) and overwrote `COMMENTS` with `'Auto-Archived: End time passed'`, destroying the meeting purpose on every archived booking — the same data loss as the old `cancelBooking`, still active in a second write path | Data-integrity audit, working back from 19 orphaned references |
+| P22 | Medium | The same function logged `#now#` — the function without parentheses — raising "Variable NOW is undefined" *after* the UPDATE committed, so it did its work then reported failure | Testing the endpoint after fixing P21 |
+| P14–P20 | **High** | Seven live predicates still used the retired status vocabulary (`'Confirmed'`, `'APPROVED'`, `'Pending'`) that `CHK_BOOKINGS_STATUS` no longer permits, so each matched nothing forever with no error: the 1-hour upcoming-booking reminder selected no rows for anyone; `Room.checkAvailability` always reported zero conflicts; edit conflict detection never fired (measured 0 rows vs 2); room utilisation, all booking reports and the dashboard total always read zero; `Booking.cfc` wrote an invalid value | Exhaustive sweep of every `BOOKINGS.STATUS` predicate |
+| P13 | High | `components/RecurringBooking.cfc` wrote capitalised status literals (`'Pending'`, `'Cancelled'`) — the same ORA-02290 defect as P1 — and its conflict check compared against values that never occur. Corrected, but **unverifiable** (see section 5) | Testing the series endpoint |
 
 ### Introduced by this work, then fixed (6)
 
@@ -96,7 +105,7 @@ All six were caught by executing the code, not by reading it.
 
 ## 4. Test results
 
-### 4.1 CFML regression harness — 37 / 37 PASS
+### 4.1 CFML regression harness — 41 / 41 PASS
 
 `tests/reservation-improvements-verify.cfm` — run twice with identical results.
 
@@ -140,9 +149,9 @@ All six were caught by executing the code, not by reading it.
 | 36 | Integrity: seeded approved reservation was never modified | PASS |
 | 37 | Cleanup: all seeded rows removed | PASS |
 
-### 4.2 Browser suite — 11 / 11 PASS on each of two projects (22 runs)
+### 4.2 Browser suites — 15 / 15 PASS on each of two projects (30 runs)
 
-`tests/playwright/bulk-approval-ui.spec.js` — Chromium and Mobile Chrome.
+`bulk-approval-ui.spec.js` (11 checks) and `deep-link.spec.js` (4 checks), each run on Chromium and Mobile Chrome.
 
 | # | Check | Chromium | Mobile Chrome |
 |---|-------|----------|---------------|
@@ -157,6 +166,10 @@ All six were caught by executing the code, not by reading it.
 | 9 | No unescaped markup rendered into the grid | PASS | PASS |
 | 10 | Mobile viewport usable, no horizontal page overflow | PASS | PASS |
 | 11 | Approver dialog shows Requested By + Reservation For, escaped | PASS | PASS |
+| 12 | `?bookingId=N` opens that reservation and shows its stored details | PASS | PASS |
+| 13 | The `bookingId` parameter is removed so a refresh does not reopen it | PASS | PASS |
+| 14 | An unknown request number degrades gracefully instead of erroring | PASS | PASS |
+| 15 | A non-numeric `bookingId` is ignored and no dialog opens | PASS | PASS |
 
 ### 4.3 One-off verifications (not in a suite)
 
@@ -177,7 +190,7 @@ report. All PASS unless noted.
 
 ### 4.4 Currently failing
 
-**None.** 59 of 59 automated checks pass.
+**None.** 71 of 71 automated checks pass.
 
 Every "failure" recorded during this work was either a defect now fixed (section 3)
 or a flaw in one of my own tests, corrected at the time:
@@ -200,20 +213,52 @@ or a flaw in one of my own tests, corrected at the time:
 | 8 | Bulk-approve several non-conflicting requests | **PASS** |
 | 9 | Bulk selection with valid and conflicting requests | **PASS** — distinct reason per failure |
 | 10 | Two approvers approve the same request concurrently | **PASS** — claim guard; second sees "no longer pending" |
-| 11 | Recurring weekly, November through March | **RUNS BUT OVER-CREATES** — see section 5 |
+| 11 | Recurring weekly, November through March | **NOT SATISFIABLE — the recurring feature is unshipped.** A user cannot create a recurring series at all. See section 5. |
 | 12 | Existing requests without "Reservation For" remain usable | **PASS** |
 
-### 4.6 Not verified, and why
+### 4.6 Requirement 2 field coverage — audited against the live schema
+
+Requirement 2 lists sixteen fields. `getBookingDetail` returns 27 keys covering
+thirteen of them. The other three are **not collected anywhere in the application**
+— a search of every column in the `CONFROOM` schema for `%ATTEND%`, `%DESK%`,
+`%INSTRUCT%`, `%NOTE%`, `%HEADCOUNT%`, `%PARTICIPANT%` and `%GUEST%` returned
+nothing. The requirement scopes itself to "information already collected by the
+application", so these are out of scope rather than missing.
+
+| Requested field | Source | Shown |
+|-----------------|--------|-------|
+| Request / reservation number | `BOOKING_ID` | Yes |
+| Requester | `USER_ID` → `REQUESTED_BY` | Yes |
+| Person the reservation is for | `BOOKED_FOR_NAME` → `RESERVATION_FOR` | Yes |
+| Department or team | `BOOKED_FOR_DEPARTMENT` | Yes |
+| Room or workspace | `ROOM_NAME`, `LOCATION` | Yes |
+| Reservation date | `START_TIME` → `RESERVATION_DATE` | Yes |
+| Start and end time | `START_TIME` / `END_TIME` | Yes |
+| Recurrence information | `RECURRING_DETAILS` → `RECURRENCE` | Yes |
+| Number of attendees / desks | — | **Not collected** |
+| Purpose or description | `COMMENTS` → `PURPOSE` | Yes |
+| Special instructions | — | **Not collected** |
+| Current status | `STATUS` | Yes |
+| Submission date | `CREATED_AT` → `SUBMITTED_AT` | Yes |
+| Approval / cancellation history | `DECIDED_AT/BY`, `CANCELLED_AT/BY`, `CANCELLATION_REASON` | Yes, role-gated |
+| Approver notes | rejection reasons appended to `COMMENTS`; no dedicated column | **Partial** |
+| Created-by / modified-by, when authorized | `REQUESTED_BY`, `MODIFIED_BY`, `LAST_UPDATED_AT` | Yes, role-gated |
+
+Adding attendees, desks or special instructions would mean new columns, new form
+fields and a migration — new scope, not a fix. Flagged rather than assumed.
+
+### 4.7 Not verified, and why
 
 | Area | Reason |
 |------|--------|
 | Delivery of each notification to the mail server | Mail was suppressed by pointing ColdFusion at a dead local port; ColdFusion does not retain undeliverable messages here, and its spool thread logs asynchronously, so per-message counts are timing-dependent. Bodies were verified by rendering the templates directly. |
 | The 4 pm–11 pm reminder window | Not in this repository and not on this instance (`neo-cron.xml` is empty). It is configured in the CF Administrator on `s-cmapps` / `cmapps`. |
 | Staging and production behaviour | No access. |
-| Firefox, WebKit, Edge | Only Chromium and Mobile Chrome were run. |
+| Firefox, WebKit, Edge | Only Chromium and Mobile Chrome were run; those browser binaries are not installed. |
+| Pre-existing `todo-features.spec.js` | Not run — unrelated to this work and slow enough to time out the runner. |
 | CSRF protection | Deliberately not implemented — see section 6. |
 
-### 4.7 Test-environment notes
+### 4.8 Test-environment notes
 
 - The four pre-existing `tests/*.cfc` files **cannot execute**: they extend
   `mxunit.framework.TestCase` and mxunit is installed neither in the project nor in
@@ -228,20 +273,55 @@ or a flaw in one of my own tests, corrected at the time:
 
 ---
 
-## 5. The one remaining functional gap
+## 5. Recurring bookings — the feature is unshipped
 
-**Recurrence ignores any intended end date.** A weekly series requested from
-1 November produced **52 bookings spanning 2034-11-01 to 2035-10-24** — a full
-year, not November to March. `calculateRecurringDates` caps at 52 occurrences or
-one year, and there is no way to supply a series end date; the end time given
-applies to each occurrence, not to the series.
+**This corrects an earlier statement in this report.** Scenario 11 was previously
+recorded as "runs but over-creates — 52 entries". That was measured by calling
+`dashboard-data.createBooking(recurring="YES")` **directly**. A user cannot reach
+that path. Recurrence is non-functional from the interface, failing independently
+at four layers:
 
-This is directly relevant to the case that prompted this work (weekly desks
-November to March). **Not changed** — recurrence semantics are a business rule.
-Options: add a series end date to the request, cap by occurrence count, or leave
-as-is.
+| Layer | State |
+|-------|-------|
+| **Schema** | `assets/sql/add_recurring_bookings.sql` has **never been applied**. No `RECURRING_PATTERNS` table, no `SYSTEM_SETTINGS` table, and `BOOKINGS` has no `IS_RECURRING`, `PARENT_BOOKING_ID` or `SERIES_INSTANCE_NUMBER`. Confirmed against the live schema. |
+| **Component** | `RecurringBooking.cfc` reads and writes exactly those missing columns and tables, so it raises ORA-00904. It also wrote capitalised status literals (P13). |
+| **Client script** | `submitRecurringBooking()` in `assets/js/recurring-booking.js` has **no callers anywhere**. It also reads `#recurringEndValue` and `.recurring-day-checkbox`, neither of which exists — the markup defines `#recurringOccurrences` and `#day_1`–`#day_5`. Even if invoked it would read undefined values and always fail its weekly validation. |
+| **Submit path** | The booking form's save handler posts to `dashboard-data.createBooking` and **never sends a `recurring` parameter**, so it defaults to `"NO"`. Every recurrence setting the user configures is discarded. |
 
----
+The interface is misleading as a result: `index.html` renders a complete recurrence
+panel — frequency, interval, "Repeat On" weekdays, "Ends: On Date / After N
+Occurrences", and a working client-side "Preview Recurring Dates" — and then
+submitting creates exactly **one** booking.
+
+Separately, `calculateRecurringDates` in `dashboard-data.cfc` (the ad-hoc path)
+accepts no series end date at all; it caps at 52 occurrences or one year. The two
+creation paths disagree about what recurrence means.
+
+### Not fixed, deliberately
+
+Restoring this means applying a migration that creates two tables and alters two
+others, fixing the component, wiring the client script, and choosing between two
+competing creation paths. That is **building an unfinished feature**, not fixing
+the five requested requirements, and the path choice is a product decision — the
+same "two competing implementations" pattern already flagged for reminders.
+Requirement 5's recurrence clause concerns *approving* recurring requests
+efficiently, which is implemented and tested; it does not ask for creation to be
+built.
+
+What was done: P13's status casing is corrected, because it is mechanical, matches
+a fix already proven elsewhere, and would bite immediately once the migration is
+applied. It is marked unverified in the component header, since the component
+cannot execute until then.
+
+### Recommended order, if you want this shipped
+
+1. Apply `assets/sql/add_recurring_bookings.sql` (additive; review its rollback first).
+2. Re-test `api/recurring/create-series.cfm` — P13 is already fixed.
+3. Decide which path owns recurrence: the purpose-built series endpoint, or
+   `createBooking` with a bound end date. Retire the loser.
+4. Fix the two element-id mismatches and call `submitRecurringBooking()` from the
+   save handler when recurrence is enabled.
+5. Scenario 11 then becomes testable.
 
 ## 6. Database migrations
 
@@ -250,6 +330,7 @@ as-is.
 | `add_pending_approval_notification_types.sql` | **Applied** | Required |
 | `add_notification_reminder_log.sql` | **Applied** | Required |
 | `add_reservation_for_and_decision_audit.sql` | Not needed — columns pre-existed | **Required before this code ships** |
+| `add_recurring_bookings.sql` *(pre-existing, not from this work)* | **Never applied** | Never applied — see section 5 |
 
 All three are additive, with rollback instructions. The third is the important one:
 without it, cancellation, the dashboard detail view and bulk approval all fail with
@@ -281,13 +362,13 @@ ORA-00904.
 ## 8. How to re-run
 
 ```
-# CFML harness (37 checks)
+# CFML harness (41 checks)
 http://localhost:8500/DoCMRoomReservation/tests/reservation-improvements-verify.cfm
 
-# Browser suite (11 checks per project)
+# Browser suites (15 checks per project)
 cd tests/playwright
-npx playwright test bulk-approval-ui.spec.js --project=chromium
-npx playwright test bulk-approval-ui.spec.js --project="Mobile Chrome"
+npx playwright test bulk-approval-ui.spec.js deep-link.spec.js --project=chromium
+npx playwright test bulk-approval-ui.spec.js deep-link.spec.js --project="Mobile Chrome"
 
 # Remove fixtures if a run is interrupted
 http://localhost:8500/DoCMRoomReservation/tests/ui-fixture.cfm?mode=clean

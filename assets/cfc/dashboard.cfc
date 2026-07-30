@@ -44,7 +44,9 @@
             SELECT 
                 COUNT(*) as TotalBookings
             FROM #this.DBSCHEMA#.BOOKINGS
-            WHERE STATUS = 'CONFIRMED'
+            <!--- Retired status vocabulary: 'CONFIRMED' matches nothing under
+                 CHK_BOOKINGS_STATUS, so this count always reported zero. --->
+            WHERE LOWER(STATUS) = 'approved'
         </cfquery>
 
         <cfset temp = {} />

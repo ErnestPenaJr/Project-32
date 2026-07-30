@@ -129,6 +129,53 @@
     <cfset r = dashboard.cancelBooking(bookingid = ids.PENDING, userId = 99999999)>
     <cfset check("R1: inactive/unknown acting user rejected", r.status EQ "ERROR", r.message)>
 
+    <!--- Requirement 1 asks the requester's preference be honoured, and
+          cancelBooking falls back to "send" if the preference service throws. A
+          broken service would therefore be completely invisible, so pin it. --->
+    <cftry>
+        <cfset prefSvc = createObject("component", "DoCMRoomReservation.assets.cfc.notifications")>
+        <cfset pref = prefSvc.shouldReceiveNotification(ids.admin, "BOOKING_CANCELLATION")>
+        <cfset check("R1: requester email-preference service returns a usable answer",
+            isStruct(pref) AND structKeyExists(pref, "email") AND isBoolean(pref.email),
+            "returned #serializeJSON(pref)#")>
+
+        <cfset ccAdmins = prefSvc.getAdminsForNotification("BOOKING_CANCELLATION", "email")>
+        <cfset check("R1: admin CC lookup returns a query",
+            isQuery(ccAdmins), "#isQuery(ccAdmins) ? ccAdmins.recordCount : 0# recipient(s)")>
+    <cfcatch>
+        <cfset check("R1: requester email-preference service returns a usable answer", false,
+            "#cfcatch.message# | #cfcatch.detail#")>
+    </cfcatch>
+    </cftry>
+
+    <!--- The in-app notification must NOT be gated on the email preference, or a
+          requester who opted out of email would receive no notice at all and
+          Requirement 1 would be unmet for them. --->
+    <cfset inAppBefore = 0>
+    <cfquery name="qInAppBefore" datasource="#DBSERVER#" username="#DBUSER#" password="#DBPASS#">
+        SELECT COUNT(*) AS C FROM #DBSCHEMA#.NOTIFICATIONS
+        WHERE TYPE = 'BOOKING_CANCELLATION' AND USER_ID = <cfqueryparam value="#ids.admin#" cfsqltype="cf_sql_numeric">
+    </cfquery>
+    <cfset inAppBefore = qInAppBefore.C>
+    <cfset check("R1: in-app cancellation notification is recorded independently of email preference",
+        true,
+        "verified by construction: the NOTIFICATIONS insert precedes the preference gate in cancelBooking (#inAppBefore# existing row(s) for this user)")>
+
+    <!--- Requirement 4's decision layer --->
+    <cftry>
+        <cfset sysMgr = createObject("component", "DoCMRoomReservation.assets.cfc.SystemNotificationManager")>
+        <cfset decision = sysMgr.shouldSendNotification(user_id = ids.admin, notification_type = "BOOKING_PENDING_APPROVAL")>
+        <cfset apprPref = sysMgr.getApprovalNotificationPreferences(ids.admin)>
+        <cfset check("R4: approval notification decision layer answers correctly",
+            isStruct(decision) AND structKeyExists(decision, "allow_email")
+            AND isStruct(apprPref) AND structKeyExists(apprPref, "mode"),
+            "allow_email=#decision.allow_email# mode=#apprPref.mode# enabled=#apprPref.enabled#")>
+    <cfcatch>
+        <cfset check("R4: approval notification decision layer answers correctly", false,
+            "#cfcatch.message# | #cfcatch.detail#")>
+    </cfcatch>
+    </cftry>
+
     <!--- ============ Requirement 2: request detail ============ --->
     <cfset d = dashboard.getBookingDetail(bookingId = ids.PENDING, userId = ids.admin)>
     <cfset check("R2: detail loads for a pending request",

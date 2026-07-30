@@ -102,12 +102,12 @@ component {
             throw(type="Booking.Unauthorized", message="User not authorized to cancel this booking");
         }
         
-        if (qBooking.STATUS == 'Cancelled') {
+        if (lCase(qBooking.STATUS) == 'cancelled') {
             throw(type="Booking.AlreadyCancelled", message="Booking is already cancelled");
         }
         
         queryExecute(
-            "UPDATE BOOKINGS SET STATUS = 'Cancelled', UPDATED_AT = CURRENT_TIMESTAMP 
+            "UPDATE BOOKINGS SET STATUS = 'cancelled', UPDATED_AT = CURRENT_TIMESTAMP 
              WHERE BOOKING_ID = :bookingId",
             {bookingId = {value=arguments.bookingId, cfsqltype="cf_sql_numeric"}},
             {datasource=variables.dsn}
@@ -128,7 +128,7 @@ component {
              WHERE b.ROOM_ID = :roomId
              AND b.START_TIME >= :startDate
              AND b.END_TIME <= :endDate
-             AND b.STATUS = 'Confirmed'
+             AND LOWER(b.STATUS) = 'approved'
              ORDER BY b.START_TIME",
             {
                 roomId = {value=arguments.roomId, cfsqltype="cf_sql_numeric"},

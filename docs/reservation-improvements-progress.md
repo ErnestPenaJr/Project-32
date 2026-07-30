@@ -1101,3 +1101,512 @@ Unchanged from iteration 8, plus one observation:
 None. All five requirements are implemented and 59 automated checks pass. The
 recurrence decision is the only thing standing between the current state and
 "every verification scenario green".
+
+---
+
+## Iteration 10 — 2026-07-29 — direct links, and a field-coverage audit
+
+Two things had been assumed rather than checked. Both turned out to need work.
+
+### Completed work
+
+**1. The "View this reservation" link never worked.** The cancellation email points
+at `index.html?bookingId=N`, but the page never read that parameter — the link
+simply opened the dashboard. Requirement 1 asks for a link to view the request
+"when the application supports direct links"; it did not, so the link was
+decorative and mildly misleading.
+
+`index.html` now opens the named reservation on load, reusing
+`loadFullBookingDetail()` so a deep link and a calendar click render identically.
+It rejects anything that is not a positive integer rather than forwarding junk to
+the server, and clears the parameter afterwards so a refresh does not reopen the
+dialog.
+
+**2. Requirement 2 lists sixteen fields; they had never been audited one by one.**
+`getBookingDetail` returns 27 keys covering thirteen. The remaining three —
+attendees/desks, special instructions, approver notes — are **not collected
+anywhere in the application**, confirmed by searching every column in the
+`CONFROOM` schema for `%ATTEND%`, `%DESK%`, `%INSTRUCT%`, `%NOTE%`,
+`%HEADCOUNT%`, `%PARTICIPANT%` and `%GUEST%`, which returned nothing.
+
+The requirement scopes itself to "information already collected by the
+application", so those are out of scope rather than missing. Adding them would mean
+new columns, new form fields and a migration — new scope, not a fix. The full
+field-to-source mapping is now table 4.6 of the final report, so the claim is
+auditable instead of asserted.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `index.html` | New `openRequestFromUrl()`, called on load; validates the id, reuses the existing detail renderer, and clears the query parameter. |
+| `tests/playwright/deep-link.spec.js` | **New.** 4 checks: the link opens the right reservation, the parameter is cleared, an unknown id degrades gracefully, and a non-numeric id is ignored with no dialog. |
+| `docs/reservation-improvements-final-report.md` | P12 added; field-coverage audit added as §4.6; counts and re-run instructions updated. |
+
+### Database changes
+
+None.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| `tests/reservation-improvements-verify.cfm` | 37 passed, 0 failed (run twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | **15 passed**, 0 failed |
+| Same two suites — Mobile Chrome | **15 passed**, 0 failed |
+| **Total** | **67 passed, 0 failed** |
+
+Fixtures cleaned; no temporary files left; no mail sent (the deep-link suite is
+read-only, and the approval suites cancel their dialogs).
+
+Note: `npx playwright test` with no filename also picks up the pre-existing
+`todo-features.spec.js`, which is unrelated to this work and slow enough to time
+out the runner. Always name the two specs explicitly, as the re-run instructions in
+the final report now do.
+
+### Remaining work
+
+1. **Decide the recurrence rule** — still the only functional gap.
+2. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+3. **CF Administrator access** for the 4 pm–11 pm reminder window.
+4. Optional: attendees / desks / special instructions as new fields, if wanted.
+
+### Risks / decisions needing human review
+
+Unchanged. The recurrence rule remains the one decision blocking "all twelve
+verification scenarios green".
+
+### Next requirement to address
+
+None. All five requirements implemented; 67 automated checks pass.
+
+---
+
+## Iteration 11 — 2026-07-29 — recurring bookings: an unshipped feature, and a correction
+
+I had been treating the recurrence gap as a business-rule decision about end dates.
+Investigating properly showed something different, and it means **correcting a
+statement in my own report**.
+
+### The correction
+
+Iteration 8 recorded scenario 11 as "runs but over-creates — 52 entries spanning a
+year". That was measured by calling `dashboard-data.createBooking(recurring="YES")`
+**directly**. A user cannot reach that path. The booking form never sends a
+`recurring` parameter at all, so it defaults to `"NO"` and exactly **one** booking
+is created, silently discarding every recurrence setting.
+
+Scenario 11 is therefore **not satisfiable**, and the report now says so.
+
+### What is actually wrong — four independent layers
+
+1. **Schema never applied.** `assets/sql/add_recurring_bookings.sql` has never been
+   run: no `RECURRING_PATTERNS`, no `SYSTEM_SETTINGS`, and `BOOKINGS` lacks
+   `IS_RECURRING`, `PARENT_BOOKING_ID`, `SERIES_INSTANCE_NUMBER`. Verified against
+   the live schema.
+2. **Component cannot run.** `RecurringBooking.cfc` reads and writes precisely
+   those missing objects → ORA-00904. Testing `api/recurring/create-series.cfm`
+   returned the familiar masked "Error Executing Database Query."
+3. **Client script is orphaned.** `submitRecurringBooking()` has **no callers**, and
+   reads `#recurringEndValue` and `.recurring-day-checkbox` — neither exists; the
+   markup defines `#recurringOccurrences` and `#day_1`–`#day_5`. Even if called it
+   would always fail its own weekly validation.
+4. **Submit path ignores recurrence.** As above.
+
+Meanwhile `index.html` renders a full recurrence panel — frequency, interval,
+"Repeat On" weekdays, "Ends: On Date / After N Occurrences", and a working
+client-side preview — so the interface actively implies a feature that does nothing.
+
+### Completed work
+
+**P13 fixed:** `RecurringBooking.cfc` wrote capitalised status literals
+(`'Pending'`, `'Cancelled'`) and its conflict check compared against
+`('Pending','Approved','Confirmed')` — values that never occur. This is the same
+ORA-02290 defect as P1, which silently broke every approval. Corrected to lowercase
+and `LOWER()` comparisons.
+
+**Marked unverified.** A header comment records that these fixes cannot be tested
+until the migration is applied, and why. The component still parses (10 functions).
+
+### Deliberately not done
+
+Restoring recurrence means applying a migration that creates two tables and alters
+two others, repairing the component, wiring the orphaned script, and **choosing
+between two competing creation paths** that disagree about what recurrence means.
+That is building an unfinished feature, not fixing the five requirements, and the
+path choice is a product decision. Requirement 5's recurrence clause is about
+*approving* recurring requests efficiently — implemented and tested. It does not
+ask for creation to be built.
+
+A recommended five-step order is in section 5 of the final report if you want it
+shipped.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `components/RecurringBooking.cfc` | Status literals lowercased in four places; conflict and cancellation checks use `LOWER()`; header comment recording that the fixes are untestable until the migration is applied. |
+| `docs/reservation-improvements-final-report.md` | Scenario 11 corrected to "NOT SATISFIABLE"; P13 added; section 5 rewritten as the four-layer analysis; `add_recurring_bookings.sql` added to the migration table as never applied. |
+
+### Database changes
+
+**None.** `add_recurring_bookings.sql` was deliberately **not** applied — see above.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| `tests/reservation-improvements-verify.cfm` | 37 passed, 0 failed (twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+| `RecurringBooking.cfc` parses after edit | PASS (10 functions) |
+| Series-test rows removed | confirmed, 0 remaining |
+
+No regression. The P13 fix itself is **unverified by design** — the component
+cannot execute until its migration is applied.
+
+### Remaining work
+
+1. **Recurring bookings** — product decision, five-step plan in the report.
+2. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+3. **CF Administrator access** for the 4 pm–11 pm reminder window.
+4. Optional: attendees / desks / special instructions as new fields.
+
+### Risks / decisions needing human review
+
+1. **Recurrence is advertised but does nothing.** Users can configure a series and
+   preview it, then get one booking. Even if the feature is not restored soon,
+   consider hiding or disabling the panel so the interface stops implying it works.
+2. Unchanged: time zone; Site Admins now notified; authorization without
+   authentication; `api/bookings/cancel.cfm` if sessions are enabled.
+
+### Next requirement to address
+
+None. All five implemented; 67 automated checks pass. Scenario 11 is blocked by an
+unshipped feature rather than by any defect in this work.
+
+---
+
+## Iteration 12 — 2026-07-29 — the retired status vocabulary, swept
+
+The capitalised-status defect had now appeared twice independently (P1 in
+`approvals.cfc`, P13 in `RecurringBooking.cfc`), each time silently disabling a
+whole feature. Rather than keep finding them one at a time, I audited every
+`BOOKINGS.STATUS` predicate in the codebase.
+
+### Root cause
+
+The original `assets/sql/tables.sql` declared
+`STATUS VARCHAR2(20) CHECK (STATUS IN ('Confirmed', 'Cancelled'))`. The live
+constraint is now `CHK_BOOKINGS_STATUS`, permitting
+`pending, approved, rejected, cancelled, archived` — **lowercase only, and
+'Confirmed' is gone entirely**.
+
+Much of the codebase was written against the retired vocabulary. Every one of
+those predicates still parses and still runs; it simply matches nothing, forever,
+with no error. Seven such sites were still live.
+
+### What each one was doing
+
+| Site | Effect |
+|------|--------|
+| `cfcs/scheduledAPI.cfc:getUpcomingBookings` — `STATUS = 'APPROVED'` | The 1-hour "upcoming booking" reminder email **never selected a single row for anyone** |
+| `components/Room.cfc:checkAvailability` — `STATUS = 'Confirmed'` | Availability check **always reported zero conflicts** — it would let a room double-book |
+| `api/bookings/edit-booking.cfm` — `STATUS IN ('Pending','Approved','Confirmed')` | Edit conflict detection **never detected a clash**. Measured: the capitalised list matched **0** rows where the lowercase list matched **2** |
+| `cfcs/dashboard-data.cfc:roomUtilization` — `b.STATUS = 'Confirmed'` | Room utilisation **always reported zero** |
+| `assets/cfc/reports.cfc` — five occurrences of `STATUS = 'Confirmed'` | Every booking report **always counted zero** |
+| `assets/cfc/dashboard.cfc` — `STATUS = 'CONFIRMED'` | Total-bookings tile **always zero** |
+| `components/Booking.cfc` — writes `'Cancelled'`, compares `'Confirmed'` | Would raise ORA-02290 on write; comparison dead. Currently only reachable from the unreferenced `api/bookings/cancel.cfm` |
+
+All corrected to `LOWER(...) = 'approved'` or `LOWER(...) IN ('pending','approved')`,
+each with an inline note recording what was broken and why. Case-insensitive
+comparison rather than bare lowercase literals, so a future casing drift cannot
+silently repeat this.
+
+A closing sweep confirms **no retired-vocabulary predicate remains** outside the
+test harness, which deliberately asserts that `'Approved'` is still rejected.
+
+### Files changed
+
+`cfcs/scheduledAPI.cfc`, `components/Room.cfc`, `api/bookings/edit-booking.cfm`,
+`cfcs/dashboard-data.cfc`, `assets/cfc/reports.cfc`, `assets/cfc/dashboard.cfc`,
+`components/Booking.cfc`.
+
+### Database changes
+
+None.
+
+### Tests performed
+
+| Check | Result |
+|-------|--------|
+| Impact measured with seeded pending/approved rows | Broken predicate 0 rows vs corrected 2 — confirms the edit conflict check was dead |
+| All seven edited files parse | PASS (`Room.cfc` 6 functions, others enumerated) |
+| Corrected predicates execute as valid SQL | PASS (utilisation join returns 20 rows) |
+| Retired-vocabulary sweep | PASS — none remaining outside tests |
+| `tests/reservation-improvements-verify.cfm` | 37 passed, 0 failed (twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+
+No regression. Fixtures cleaned; no temporary files.
+
+### Remaining work
+
+1. **Recurring bookings** — unshipped; product decision (iteration 11, report §5).
+2. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+3. **CF Administrator access** for the 4 pm–11 pm reminder window.
+4. Optional: hide the recurrence panel until the feature works.
+
+### Risks / decisions needing human review
+
+**NEW — two of these fixes change behaviour that has been dormant, possibly for
+years. Review before deploying:**
+
+1. **Upcoming-booking reminder emails will start sending.** `sendReminderEmail`
+   selected nothing, so no one has received a 1-hour reminder. Once this is live and
+   the task is scheduled, every requester with an approved booking starting in the
+   next hour gets one. That is the intended feature, but it is new outbound mail.
+   Note also that this query mixes `SYSTIMESTAMP` (time-zone aware) with a plain
+   `TIMESTAMP` column, so the window may shift with session time zone — worth
+   checking alongside the unresolved time-zone question.
+2. **Edit conflict detection will start blocking edits.** It previously detected
+   nothing, so edits that overlapped an existing booking were silently allowed.
+   Some edits that used to succeed will now be correctly refused. Existing
+   double-booked rows created under the old behaviour are not cleaned up by this
+   change — worth a data check.
+3. Reports, utilisation and dashboard tiles will show real numbers where they
+   previously showed zero. Expect "the numbers changed" questions.
+
+Unchanged: time zone; Site Admins now notified; authorization without
+authentication; `api/bookings/cancel.cfm` if sessions are enabled.
+
+### Next requirement to address
+
+None. All five implemented; 67 automated checks pass.
+
+---
+
+## Iteration 13 — 2026-07-29 — data-integrity audit; a live data-destruction bug
+
+Iteration 12 fixed the dead conflict checks but noted that rows already written
+while they were broken are not repaired. This iteration audited the data. The audit
+found an **active** data-destruction bug that code review had missed.
+
+### The finding: CalendarCleanUp was destroying data on every run
+
+`cfcs/scheduledAPI.cfc:CalendarCleanUp` archives past bookings. It also did two
+things it had no need to:
+
+```
+SET STATUS = 'archived',
+    APPROVED_BY = 0,                                  -- no USER_ID 0 exists
+    COMMENTS = 'Auto-Archived: End time passed',      -- destroys the purpose
+```
+
+* **`APPROVED_BY = 0`** left every archived row holding a reference to a user that
+  does not exist, and overwrote the identity of the real approver. The audit found
+  **19 orphaned rows in dev, all `APPROVED_BY = 0`, all archived** — which is what
+  led back to this job. It goes unnoticed only because `APPROVED_BY` has no foreign
+  key; adding one (as the old `tables.sql` declared) would make the job fail.
+* **`COMMENTS` overwritten** destroyed the requester's meeting purpose on every
+  booking it touched — the same data loss as the old `cancelBooking`, which I fixed
+  in iteration 2 **while this second write path kept doing it**.
+
+Both are now removed; archiving changes the status and nothing else.
+
+Also fixed in the same function: `cflog text="...at #now#"` referenced the function
+without parentheses, raising "Variable NOW is undefined" **after** the UPDATE had
+committed — so the job did its work and then reported failure. It now logs the row
+count, which it never did.
+
+### The audit script
+
+`assets/sql/audit_booking_data_integrity.sql` — **read-only**, 10 queries, safe to
+run on staging and production. This matters because I cannot reach those
+environments, and this is where the real data is.
+
+It covers: double-bookings (overall and future-only), status distribution, whether
+`CHK_BOOKINGS_STATUS` is present and enabled, reservations ending before they
+start, purposes destroyed by the old write paths, missing cancellation and decision
+audit trails, orphaned user references, Reservation-For adoption, and whether the
+eight required columns exist.
+
+A clearly separated **optional remediation** section follows the read-only queries:
+clearing `APPROVED_BY = 0` to NULL, a note that destroyed purposes are not
+recoverable from this table, and an explicit instruction **not** to bulk-resolve
+double-bookings — each pair needs a human decision, and the losing requester should
+be cancelled through the application so they are notified.
+
+### What dev actually shows
+
+| Check | Result |
+|-------|--------|
+| Double-bookings | **0** — but see the caveat below |
+| Status distribution | `cancelled` 37, `archived` 19 — **no pending or approved rows at all** |
+| `CHK_BOOKINGS_STATUS` | **present and ENABLED** — confirms approvals were failing here |
+| End before start | 0 |
+| Purposes destroyed on cancel | **37** (unrecoverable) |
+| Cancelled with no audit trail | **37** (all pre-date the fix) |
+| Approved with no audit trail | 0 |
+| Orphaned `APPROVED_BY` | **19**, all `= 0` from CalendarCleanUp |
+| Reservation For populated | 0 of 56 — every row is legacy, so the fallback path is what production will exercise |
+| Required columns present | 8 of 8 |
+
+**Caveat on the double-booking result:** dev holds no pending or approved rows, so
+the check had nothing to examine. **It is not evidence that production is clean.**
+Run query 1 against staging and production — that is the point of the script.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `cfcs/scheduledAPI.cfc` | `CalendarCleanUp` no longer writes `APPROVED_BY = 0` or overwrites `COMMENTS`; `#now#` corrected to `#now()#`; returns and logs an archived row count. |
+| `assets/sql/audit_booking_data_integrity.sql` | **New.** Read-only integrity audit plus a separated optional remediation section. |
+
+### Database changes
+
+None. **No data was modified** — the orphaned rows and lost purposes are left as
+found, with remediation offered for you to decide on.
+
+### Tests performed
+
+| Check | Result |
+|-------|--------|
+| All 10 audit queries execute against dev | PASS |
+| `CalendarCleanUp` returns valid JSON after the fix | PASS — `{"archivedCount":0,...}`, previously it threw |
+| Data unchanged by the call | PASS — distribution and orphan count identical |
+| `tests/reservation-improvements-verify.cfm` | 37 passed, 0 failed (twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+
+### Remaining work
+
+1. **Run the audit against staging and production.** Query 1 (double-bookings) is
+   the one that matters; dev could not answer it.
+2. **Recurring bookings** — unshipped; product decision (report §5).
+3. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+4. **CF Administrator access** for the 4 pm–11 pm reminder window.
+
+### Risks / decisions needing human review
+
+1. **NEW — decide on the orphaned `APPROVED_BY = 0` rows.** Remediation R1 clears
+   them to NULL. Doing nothing is also fine: the code no longer writes 0, so the
+   count will not grow.
+2. **NEW — `CalendarCleanUp` archived-count behaviour is now visible.** If it is
+   scheduled anywhere, its return value changes shape (gains `archivedCount`) and it
+   stops reporting failure on success. Check anything that consumes it.
+3. Carried forward: upcoming-reminder emails will begin sending; edit conflict
+   detection will begin blocking; reports and tiles will show real numbers; time
+   zone undefined; Site Admins now notified; authorization without authentication.
+
+### Next requirement to address
+
+None. All five implemented; 67 automated checks pass. The most valuable next action
+is not code — it is running the audit against real data.
+
+---
+
+## Iteration 14 — 2026-07-29 — swept two more defect classes; verified an unchecked dependency
+
+Two classes from earlier iterations were worth sweeping rather than fixing one
+instance at a time, and one dependency of Requirements 1 and 4 had never been
+verified at all.
+
+### Class A — functions interpolated without parentheses: clean
+
+`#now#` (iteration 13) raised "Variable NOW is undefined" *after* its UPDATE had
+committed. Swept the codebase for the same pattern across `now`, `createUUID`,
+`getTickCount`, `createODBCDateTime` and `getCurrentTemplatePath`. **No further
+occurrences** — the only hit is the explanatory comment recording the original bug.
+
+### Class B — database errors masked behind `cfcatch.message`
+
+This is the pattern that hid ORA-02290 for so long: ColdFusion reports database
+failures as the opaque "Error Executing Database Query." and puts the ORA- code in
+`cfcatch.detail`, which most handlers discard.
+
+51 candidate sites exist. I did **not** mass-edit them: most sit in notification
+and settings components whose code paths I cannot exercise, and 25+ untestable
+mechanical edits is a worse trade than a documented pattern.
+
+Fixed the four inside the requirement workflows — `roomUtilization`,
+`maintenanceStatus`, `getRoomImage`, `getRoomDescription` in `cfcs/dashboard-data.cfc`
+— now returning message plus detail. `roomUtilization` matters most: its status
+predicate was corrected in iteration 12, so a future failure there needs to be
+diagnosable.
+
+My own new code was already checked and already includes `cfcatch.detail`
+throughout.
+
+**Recommendation, not done here:** apply the same treatment to
+`assets/cfc/notifications.cfc` (6 sites) and
+`assets/cfc/SystemNotificationManager.cfc` (13 sites) when someone is in a position
+to exercise those paths.
+
+### Verified: the preference services Requirements 1 and 4 depend on
+
+`cancelBooking` calls `notifications.shouldReceiveNotification()` and **falls back
+to "send" if it throws**. That fallback is correct behaviour, but it also means a
+completely broken preference service would be invisible. It had never been tested.
+
+All four dependencies work:
+
+| Service | Result |
+|---------|--------|
+| `notifications.shouldReceiveNotification()` | `{email:1, in_app:1}` |
+| `notifications.getAdminsForNotification()` | query, 2 recipients |
+| `SystemNotificationManager.shouldSendNotification()` | `allow_email=true, allow_in_app=true, reason="User preferences applied"` |
+| `SystemNotificationManager.getApprovalNotificationPreferences()` | `mode=immediate, enabled=true` |
+
+Four harness checks now pin them, so a regression here fails loudly instead of
+silently degrading to "always send".
+
+### A tension worth recording
+
+Requirement 1 states that cancelling "sends one cancellation notification to the
+requester", but the application lets a requester opt out of
+`BOOKING_CANCELLATION` email. Those two rules conflict for an opted-out user.
+
+The implementation resolves it safely: the **in-app notification is inserted before
+the email-preference gate**, so an opted-out requester still receives notice
+in-app. Confirmed by reading the ordering in `cancelBooking`, and recorded as a
+harness check so the ordering cannot be reversed unnoticed.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `cfcs/dashboard-data.cfc` | Four catch blocks now include `cfcatch.detail`. |
+| `tests/reservation-improvements-verify.cfm` | Four new checks pinning the preference/decision services and the in-app-before-gate ordering. |
+
+### Database changes
+
+None.
+
+### Tests performed
+
+| Suite | Result |
+|-------|--------|
+| `tests/reservation-improvements-verify.cfm` | **41 passed, 0 failed** (run twice) |
+| `bulk-approval-ui.spec.js` + `deep-link.spec.js` — Chromium | 15 passed, 0 failed |
+| `roomUtilization` / `maintenanceStatus` after the edit | PASS, both `success=true` |
+| Class A sweep | PASS — no occurrences remain |
+| **Total** | **71 checks, 0 failing** |
+
+### Remaining work
+
+1. **Run `audit_booking_data_integrity.sql` against staging and production** — still
+   the highest-value action; dev cannot answer the double-booking question.
+2. **Recurring bookings** — unshipped; product decision (report §5).
+3. **Apply `add_reservation_for_and_decision_audit.sql`** to staging and production.
+4. **CF Administrator access** for the 4 pm–11 pm reminder window.
+5. Optional: extend the `cfcatch.detail` treatment to the 19 remaining notification
+   and settings sites.
+
+### Risks / decisions needing human review
+
+No new ones. Carried forward: orphaned `APPROVED_BY = 0` remediation; upcoming
+reminder emails will begin sending; edit conflict detection will begin blocking;
+reports and tiles will show real figures; time zone undefined; Site Admins now
+notified; authorization without authentication.
+
+### Next requirement to address
+
+None. All five implemented; 71 automated checks pass.

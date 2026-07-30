@@ -68,7 +68,11 @@ component {
             "SELECT COUNT(*) as CONFLICT_COUNT
              FROM BOOKINGS
              WHERE ROOM_ID = :roomId
-             AND STATUS = 'Confirmed'
+             -- Retired status vocabulary: 'Confirmed' matches nothing under
+             -- CHK_BOOKINGS_STATUS, so this availability check always reported
+             -- zero conflicts and would let a room double-book. Pending requests
+             -- hold the slot too, matching createBooking and bulk approval.
+             AND LOWER(STATUS) IN ('pending', 'approved')
              AND NOT (END_TIME <= :startTime OR START_TIME >= :endTime)",
             {
                 roomId = {value=arguments.roomId, cfsqltype="cf_sql_numeric"},

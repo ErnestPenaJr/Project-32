@@ -35,7 +35,10 @@
                     ON b.USER_ID = u.USER_ID
                 INNER JOIN #this.DBSCHEMA#.ROOMS r 
                     ON b.ROOM_ID = r.ROOM_ID
-                WHERE b.STATUS = 'APPROVED'
+                <!--- CHK_BOOKINGS_STATUS permits lowercase only. 'APPROVED'
+                     matched nothing, so this upcoming-booking reminder never
+                     selected a single row for anyone. --->
+                WHERE LOWER(b.STATUS) = 'approved'
                 AND b.START_TIME BETWEEN 
                     SYSTIMESTAMP + INTERVAL '1' HOUR 
                     AND SYSTIMESTAMP + INTERVAL '2' HOUR
@@ -96,21 +99,39 @@
 
     <cffunction name="CalendarCleanUp" access="remote" returntype="any" returnformat="JSON" output="false">
 
-        <cfquery name="qryCleanUp" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
+        <!--- Archiving changes the status and nothing else.
+              This previously also wrote:
+                APPROVED_BY = 0  -- there is no USER_ID 0, so every archived row
+                                    was left holding an orphaned user reference
+                                    (19 such rows found in dev) and the identity of
+                                    the actual approver was destroyed. It only went
+                                    unnoticed because APPROVED_BY has no foreign
+                                    key; adding one would make this job fail.
+                COMMENTS = 'Auto-Archived: End time passed'
+                                 -- which destroyed the requester's meeting purpose
+                                    on every booking it touched. Same data loss as
+                                    the old cancelBooking, still happening here.
+              Neither is needed to archive a past booking. --->
+        <cfquery name="qryCleanUp" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#" result="cleanUpResult">
             UPDATE #this.DBSCHEMA#.BOOKINGS
             SET STATUS = 'archived',
-                APPROVED_BY = 0,
-                COMMENTS = 'Auto-Archived: End time passed',
                 UPDATED_AT = CURRENT_TIMESTAMP
             WHERE LOWER(STATUS) IN ('pending', 'approved', 'rejected')
                 AND END_TIME < CURRENT_TIMESTAMP
         </cfquery>
 
+        <cfset var archivedCount = structKeyExists(cleanUpResult, "recordCount") ? cleanUpResult.recordCount : 0>
+
         <cfset results = {}>
         <cfset results["status"] = "success">
-        <cfset results["message"] = "Bookings cleaned up successfully">
-        <!--- add cleanup resultes in to a log file with date--->
-        <cflog text="Bookings cleaned up successfully at #now#" type="info" />
+        <cfset results["message"] = "Archived #archivedCount# past booking(s)">
+        <cfset results["archivedCount"] = archivedCount>
+        <!--- `#now#` referenced the function without parentheses, which raises
+              "Variable NOW is undefined" -- after the UPDATE had already
+              committed, so the job silently reported failure while having done its
+              work. Also logs how many rows were touched, which it never did. --->
+        <cflog file="calendar_cleanup" type="information"
+               text="CalendarCleanUp archived #archivedCount# past booking(s) at #dateTimeFormat(now(), 'yyyy-mm-dd HH:nn:ss')#" />
 
 
         <cfreturn results>

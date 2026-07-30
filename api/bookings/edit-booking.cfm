@@ -133,7 +133,11 @@
             FROM #DBSCHEMA#.BOOKINGS
             WHERE ROOM_ID = <cfqueryparam value="#newRoomId#" cfsqltype="cf_sql_numeric">
             AND BOOKING_ID != <cfqueryparam value="#bookingId#" cfsqltype="cf_sql_numeric">
-            AND STATUS IN ('Pending', 'Approved', 'Confirmed')
+            <!--- Retired vocabulary: this matched nothing, so the edit conflict
+             check never detected a clash and an edit could double-book a room.
+             Verified: the capitalised list matched 0 rows where the lowercase
+             list matched every live pending/approved booking. --->
+        AND LOWER(STATUS) IN ('pending', 'approved')
             AND (
                 (START_TIME < <cfqueryparam value="#newEndTime#" cfsqltype="cf_sql_timestamp">
                 AND END_TIME > <cfqueryparam value="#newStartTime#" cfsqltype="cf_sql_timestamp">)

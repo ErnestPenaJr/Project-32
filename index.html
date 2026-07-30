@@ -2002,6 +2002,11 @@
                 $('#topNav').load('topNav-User.html');
             }
 
+            // Direct link support: notification emails link here as
+            // index.html?bookingId=N ("View this reservation"). Without this the
+            // parameter was ignored and the link merely opened the dashboard.
+            openRequestFromUrl();
+
             // Initialize filtering variables
             let selectedRoomId = '';
             let selectedStatus = '';
@@ -2632,6 +2637,40 @@
                 $('#reservationForFields').hide();
                 $('#reservationForName, #reservationForEmail, #reservationForDepartment').val('');
             });
+
+            // Opens the reservation named in ?bookingId=N, so the "View this
+            // reservation" link in notification emails lands on the actual request.
+            // Reuses loadFullBookingDetail so the deep link and the calendar click
+            // render identically.
+            function openRequestFromUrl() {
+                let requestedId;
+                try {
+                    requestedId = new URLSearchParams(window.location.search).get('bookingId');
+                } catch (e) {
+                    return;
+                }
+                // Ignore anything that is not a positive integer rather than
+                // forwarding junk to the server.
+                if (!requestedId || !/^\d+$/.test(requestedId)) return;
+
+                Swal.fire({
+                    title: `Reservation Details (Request #${escapeHtmlDetail(requestedId)})`,
+                    html: `<div class="booking-details text-start" id="bookingDetailBody">
+                               <p class="text-muted mb-0"><i class="fas fa-spinner fa-spin me-1"></i>Loading reservation…</p>
+                           </div>`,
+                    showConfirmButton: true,
+                    confirmButtonText: 'Close',
+                    showCloseButton: true,
+                    didOpen: () => loadFullBookingDetail(requestedId)
+                });
+
+                // Drop the parameter so a refresh does not reopen the dialog, and
+                // so the link is not re-triggered by later navigation.
+                if (window.history && window.history.replaceState) {
+                    const clean = window.location.pathname + window.location.hash;
+                    window.history.replaceState({}, document.title, clean);
+                }
+            }
 
             function escapeHtmlDetail(value) {
                 if (value === null || value === undefined) return '';

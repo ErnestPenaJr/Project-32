@@ -1,3 +1,18 @@
+/*
+ * NOTE (2026-07-29): status literals here were capitalised ('Pending',
+ * 'Approved', 'Confirmed', 'Cancelled'). CHK_BOOKINGS_STATUS permits lowercase
+ * only, so the INSERT raised ORA-02290 and the conflict check compared against
+ * values that never occur. Corrected to lowercase, matching the rest of the
+ * application -- the same defect that silently broke every approval in
+ * assets/cfc/approvals.cfc.
+ *
+ * THESE CHANGES ARE UNVERIFIED. This component also references BOOKINGS columns
+ * IS_RECURRING, PARENT_BOOKING_ID and SERIES_INSTANCE_NUMBER, plus the
+ * RECURRING_PATTERNS and SYSTEM_SETTINGS tables -- none of which exist, because
+ * assets/sql/add_recurring_bookings.sql has never been applied. The component
+ * cannot run at all until that migration is applied, at which point these fixes
+ * need testing. See docs/reservation-improvements-final-report.md.
+ */
 component {
     // Database configuration
     property name="dbServer";
@@ -216,7 +231,7 @@ component {
                 SELECT BOOKING_ID, START_TIME, END_TIME
                 FROM #variables.dbSchema#.BOOKINGS
                 WHERE ROOM_ID = :roomId
-                AND STATUS IN ('Pending', 'Approved', 'Confirmed')
+                AND LOWER(STATUS) IN ('pending', 'approved')
                 AND (
                     (START_TIME < :endTime AND END_TIME > :startTime)
                 )
@@ -359,7 +374,7 @@ component {
                     CREATED_AT
                 ) VALUES (
                     :userId, :roomId, :startTime, :endTime, :comments,
-                    'Pending', :isRecurring, :parentBookingId, :instanceNumber,
+                    'pending', :isRecurring, :parentBookingId, :instanceNumber,
                     CURRENT_TIMESTAMP
                 )
             ", {
@@ -489,10 +504,10 @@ component {
             queryExecute("
                 UPDATE #variables.dbSchema#.BOOKINGS
                 SET
-                    STATUS = 'Cancelled',
+                    STATUS = 'cancelled',
                     UPDATED_AT = CURRENT_TIMESTAMP
                 WHERE (PARENT_BOOKING_ID = :parentBookingId OR BOOKING_ID = :parentBookingId)
-                AND STATUS != 'Cancelled'
+                AND LOWER(STATUS) <> 'cancelled'
             ", {
                 parentBookingId = {value = arguments.parentBookingId, cfsqltype = "cf_sql_numeric"}
             }, {

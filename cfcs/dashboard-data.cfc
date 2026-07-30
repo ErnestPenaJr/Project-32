@@ -233,7 +233,9 @@
                 FROM #this.DBSCHEMA#.ROOMS r
                 LEFT JOIN #this.DBSCHEMA#.BOOKINGS b ON r.ROOM_ID = b.ROOM_ID
                     AND TRUNC(b.START_TIME) = TRUNC(SYSDATE)
-                    AND b.STATUS = 'Confirmed'
+                    <!--- 'Confirmed' is from the retired status vocabulary and
+                         matches nothing, so utilisation always reported zero. --->
+                    AND LOWER(b.STATUS) = 'approved'
                 WHERE r.MAINTENANCE_STATUS IS NULL
                 GROUP BY r.ROOM_NAME, r.CAPACITY
                 ORDER BY UtilizationPercentage DESC
@@ -243,7 +245,9 @@
             <cfset retVal["success"] = true />
         <cfcatch>
             <cfset retVal["success"] = false />
-            <cfset retVal["message"] = cfcatch.message />
+            <!--- Include detail: ColdFusion reports database failures as the opaque
+                 "Error Executing Database Query." and puts the ORA- code in detail. --->
+            <cfset retVal["message"] = cfcatch.message & " " & (structKeyExists(cfcatch, "detail") ? cfcatch.detail : "") />
         </cfcatch>
         </cftry>
         <cfreturn retVal />
@@ -263,7 +267,9 @@
             <cfset retVal["success"] = true />
         <cfcatch>
             <cfset retVal["success"] = false />
-            <cfset retVal["message"] = cfcatch.message />
+            <!--- Include detail: ColdFusion reports database failures as the opaque
+                 "Error Executing Database Query." and puts the ORA- code in detail. --->
+            <cfset retVal["message"] = cfcatch.message & " " & (structKeyExists(cfcatch, "detail") ? cfcatch.detail : "") />
         </cfcatch>
         </cftry>
         <cfreturn retVal />
@@ -1369,7 +1375,7 @@
             
         <cfcatch>
             <cfset retVal["status"] = "error">
-            <cfset retVal["message"] = cfcatch.message>
+            <cfset retVal["message"] = cfcatch.message & " " & (structKeyExists(cfcatch, "detail") ? cfcatch.detail : "")>
         </cfcatch>
         </cftry>
         
@@ -1399,7 +1405,7 @@
             
         <cfcatch>
             <cfset retVal["status"] = "error">
-            <cfset retVal["message"] = cfcatch.message>
+            <cfset retVal["message"] = cfcatch.message & " " & (structKeyExists(cfcatch, "detail") ? cfcatch.detail : "")>
         </cfcatch>
         </cftry>
         

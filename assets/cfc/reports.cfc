@@ -1,3 +1,7 @@
+<!--- NOTE (2026-07-29): these queries filtered BOOKINGS on
+     STATUS = 'Confirmed', a value from the retired status vocabulary that
+     CHK_BOOKINGS_STATUS no longer permits. Every report therefore counted
+     zero. Changed to LOWER(STATUS) = 'approved'. --->
 <cfcomponent output="false">
         <!--- Database configuration based on server environment --->
     <cfif ListFirst(CGI.SERVER_NAME,'.') EQ 'cmapps'>
@@ -24,7 +28,7 @@
         <cfquery name="qTotalBookings" datasource="#this.DBSERVER#" username="#this.DBUSER#" password="#this.DBPASS#">
             SELECT COUNT(*) as total_bookings
             FROM BOOKINGS
-            WHERE STATUS = 'Confirmed'
+            WHERE LOWER(STATUS) = 'approved'
             AND START_TIME >= TRUNC(SYSDATE) - 30
         </cfquery>
         
@@ -33,7 +37,7 @@
             SELECT COUNT(DISTINCT USER_ID) as active_users
             FROM BOOKINGS
             WHERE START_TIME >= TRUNC(SYSDATE) - 30
-            AND STATUS = 'Confirmed'
+            AND LOWER(STATUS) = 'approved'
         </cfquery>
         
         <!--- Get Room Utilization --->
@@ -44,7 +48,7 @@
                 (COUNT(DISTINCT ROOM_ID) * 24 * 60)) * 100 as utilization_rate
             FROM BOOKINGS
             WHERE START_TIME >= TRUNC(SYSDATE)
-            AND STATUS = 'Confirmed'
+            AND LOWER(STATUS) = 'approved'
         </cfquery>
         
         <!--- Get Average Rating --->
@@ -75,7 +79,7 @@
                 COUNT(*) as total_bookings
             FROM BOOKINGS
             WHERE START_TIME >= TRUNC(SYSDATE) - 30
-            AND STATUS = 'Confirmed'
+            AND LOWER(STATUS) = 'approved'
             GROUP BY TRUNC(START_TIME)
             ORDER BY booking_date
         </cfquery>
@@ -106,7 +110,7 @@
             FROM ROOMS r
             LEFT JOIN BOOKINGS b ON r.ROOM_ID = b.ROOM_ID
             WHERE b.START_TIME >= TRUNC(SYSDATE) - 30
-            AND b.STATUS = 'Confirmed'
+            AND b.LOWER(STATUS) = 'approved'
             GROUP BY r.ROOM_NAME
             ORDER BY booking_count DESC
         </cfquery>
