@@ -10,6 +10,23 @@
 -- HOW TO RUN
 --   sqlplus CONFROOM/<password>@<tns> @STAGING_DEPLOY_2026-07-30.sql
 --
+-- PREREQUISITES
+--   This script ADDS TO an existing schema; it does not create it. These must
+--   already exist in the target: BOOKINGS, USERS, ROLES, ROOMS, NOTIFICATIONS,
+--   SYSTEM_LOGS, NOTIFICATION_TYPES, NOTIFICATION_PREFERENCES.
+--   If NOTIFICATION_TYPES is absent, apply assets/sql/notification_preferences.sql
+--   first, then re-run this. Section 0 reports exactly which are missing.
+--
+-- IF YOU ARE RUNNING THIS IN A GUI TOOL (SQL Developer, Toad, PL/SQL Developer)
+--   rather than sqlplus: the SET and PROMPT lines are sqlplus-only and will
+--   error or be ignored -- skip them. Run each PL/SQL block (everything between
+--   one slash-on-its-own-line and the next) as a single statement, and turn
+--   DBMS_OUTPUT on first or you will see no report at all.
+--   Every block is independently self-guarding, so a block run on its own still
+--   reports rather than failing obscurely. The one thing you lose is the
+--   automatic stop after section 0, so read section 0's output yourself before
+--   running the rest.
+--
 -- The script prints a report as it goes. Read section 0 before letting it
 -- continue -- it tells you what state staging is in.
 --
@@ -37,7 +54,11 @@ SET SERVEROUTPUT ON SIZE UNLIMITED
 SET LINESIZE 200
 SET PAGESIZE 100
 SET FEEDBACK OFF
-WHENEVER SQLERROR CONTINUE
+
+-- Section 0 ends in a hard gate that raises if the connected user does not own
+-- BOOKINGS. This makes sqlplus stop there, before anything has been altered,
+-- rather than running the whole deployment against the wrong schema.
+WHENEVER SQLERROR EXIT FAILURE
 
 PROMPT
 PROMPT ==========================================================================
@@ -45,8 +66,9 @@ PROMPT  SECTION 0 -- PRE-FLIGHT REPORT (read-only, changes nothing)
 PROMPT ==========================================================================
 
 DECLARE
-    v_n   NUMBER;
-    v_txt VARCHAR2(4000);
+    v_n     NUMBER;
+    v_txt   VARCHAR2(4000);
+    v_owner VARCHAR2(128);
 
     FUNCTION col_exists(p_table VARCHAR2, p_col VARCHAR2) RETURN BOOLEAN IS
         c NUMBER;
@@ -73,9 +95,19 @@ BEGIN
                 'BOOKINGS','USERS','ROLES','ROOMS','NOTIFICATIONS','SYSTEM_LOGS',
                 'NOTIFICATION_TYPES','NOTIFICATION_PREFERENCES'))) LOOP
         IF tab_exists(t.tn) THEN
-            DBMS_OUTPUT.PUT_LINE('table  ' || RPAD(t.tn,28) || ' present');
+            DBMS_OUTPUT.PUT_LINE('table  ' || RPAD(t.tn,28) || 'present');
         ELSE
-            DBMS_OUTPUT.PUT_LINE('table  ' || RPAD(t.tn,28) || '*** MISSING -- see note A below');
+            -- Not owned by us. Say whether it exists elsewhere, because
+            -- "connected as the wrong user" and "migration never applied" look
+            -- identical in USER_TABLES and have opposite remedies.
+            SELECT COUNT(*), MIN(OWNER) INTO v_n, v_owner
+              FROM ALL_TABLES WHERE TABLE_NAME = t.tn;
+            IF v_n > 0 THEN
+                DBMS_OUTPUT.PUT_LINE('table  ' || RPAD(t.tn,28)
+                    || '*** owned by ' || v_owner || ', not ' || USER || ' -- see note D');
+            ELSE
+                DBMS_OUTPUT.PUT_LINE('table  ' || RPAD(t.tn,28) || '*** MISSING -- see note A below');
+            END IF;
         END IF;
     END LOOP;
 
@@ -127,16 +159,26 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE('CHK_BOOKINGS_STATUS : ABSENT -- see note C below');
     END;
 
-    -- Any status values the new code would not produce
-    SELECT COUNT(*) INTO v_n FROM BOOKINGS
-     WHERE STATUS IS NOT NULL
-       AND LOWER(STATUS) NOT IN ('pending','approved','rejected','cancelled','archived');
-    DBMS_OUTPUT.PUT_LINE('Rows with a status outside the expected five: ' || v_n);
+    -- Any status values the new code would not produce.
+    -- Dynamic, and skipped when BOOKINGS is not ours: a static reference here
+    -- would stop this entire pre-flight block from COMPILING on a target where
+    -- BOOKINGS is not visible, so the report whose whole job is to tell you the
+    -- target is wrong would never print. See the note above section 3.
+    IF tab_exists('BOOKINGS') THEN
+        EXECUTE IMMEDIATE
+            'SELECT COUNT(*) FROM BOOKINGS WHERE STATUS IS NOT NULL '
+         || 'AND LOWER(STATUS) NOT IN (''pending'',''approved'',''rejected'',''cancelled'',''archived'')'
+            INTO v_n;
+        DBMS_OUTPUT.PUT_LINE('Rows with a status outside the expected five: ' || v_n);
 
-    SELECT COUNT(*) INTO v_n FROM BOOKINGS
-     WHERE STATUS IS NOT NULL AND STATUS <> LOWER(STATUS);
-    DBMS_OUTPUT.PUT_LINE('Rows whose status is not lowercase          : ' || v_n
-                         || CASE WHEN v_n > 0 THEN '   <-- see note C' ELSE '' END);
+        EXECUTE IMMEDIATE
+            'SELECT COUNT(*) FROM BOOKINGS WHERE STATUS IS NOT NULL AND STATUS <> LOWER(STATUS)'
+            INTO v_n;
+        DBMS_OUTPUT.PUT_LINE('Rows whose status is not lowercase          : ' || v_n
+                             || CASE WHEN v_n > 0 THEN '   <-- see note C' ELSE '' END);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Status scan skipped -- BOOKINGS is not owned by ' || USER);
+    END IF;
 
     DBMS_OUTPUT.PUT_LINE('===============================================================');
     DBMS_OUTPUT.PUT_LINE('Note A: a missing prerequisite table means an earlier migration was');
@@ -150,9 +192,36 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('Note C: the application writes lowercase status values. If staging');
     DBMS_OUTPUT.PUT_LINE('        carries a constraint permitting only Confirmed/Cancelled, every');
     DBMS_OUTPUT.PUT_LINE('        approval will fail with ORA-02290 -- section 5.');
+    DBMS_OUTPUT.PUT_LINE('Note D: the table exists but another schema owns it, so you are');
+    DBMS_OUTPUT.PUT_LINE('        connected as the wrong user. This script reads USER_* views and');
+    DBMS_OUTPUT.PUT_LINE('        alters the CONNECTED schema, so running it as anyone but the');
+    DBMS_OUTPUT.PUT_LINE('        owner would report everything as missing and add the columns to');
+    DBMS_OUTPUT.PUT_LINE('        the WRONG schema. Reconnect as the owner named above.');
+    DBMS_OUTPUT.PUT_LINE('        The web datasource authenticates as WEBSCHEDULE_USER, which is');
+    DBMS_OUTPUT.PUT_LINE('        NOT the owner -- do not use those credentials to run this.');
     DBMS_OUTPUT.PUT_LINE('===============================================================');
+
+    -- HARD GATE -- the last thing section 0 does.
+    -- Every section below this point alters the CONNECTED schema. If BOOKINGS
+    -- is not ours then the target is wrong, and continuing would either fail
+    -- statement by statement or, worse, succeed against the wrong schema. Abort
+    -- while the database is still untouched. Paired with WHENEVER SQLERROR EXIT
+    -- FAILURE above, this stops sqlplus here and returns a non-zero exit code.
+    IF NOT tab_exists('BOOKINGS') THEN
+        DBMS_OUTPUT.PUT_LINE('');
+        DBMS_OUTPUT.PUT_LINE('*** STOPPING. BOOKINGS is not owned by ' || USER || ', so this is not');
+        DBMS_OUTPUT.PUT_LINE('    the right connection for a deployment. Nothing has been changed.');
+        DBMS_OUTPUT.PUT_LINE('    Reconnect as the schema owner (CONFROOM on staging) and re-run.');
+        RAISE_APPLICATION_ERROR(-20001,
+            'Wrong schema: connected as ' || USER || ', which does not own BOOKINGS. '
+            || 'Reconnect as the CONFROOM schema owner. Nothing was changed.');
+    END IF;
 END;
 /
+
+-- Target confirmed. From here a failure should report and carry on rather than
+-- abandon the run half-applied.
+WHENEVER SQLERROR CONTINUE
 
 PROMPT
 PROMPT ==========================================================================
@@ -178,6 +247,15 @@ DECLARE
     v_count NUMBER;
     v_added NUMBER := 0;
 BEGIN
+    -- Independently self-guarding, so this block still reports usefully when it
+    -- is run on its own in a GUI tool rather than through the whole script.
+    SELECT COUNT(*) INTO v_count FROM USER_TABLES WHERE TABLE_NAME = 'BOOKINGS';
+    IF v_count = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('*** SKIPPED -- BOOKINGS is not owned by ' || USER || '.');
+        DBMS_OUTPUT.PUT_LINE('    Reconnect as the schema owner (CONFROOM) and re-run. Nothing changed.');
+        RETURN;
+    END IF;
+
     FOR i IN 1 .. v_cols.COUNT LOOP
         v_name := UPPER(REGEXP_SUBSTR(v_cols(i), '^\S+'));
         SELECT COUNT(*) INTO v_count FROM USER_TAB_COLUMNS
@@ -202,6 +280,12 @@ END;
 DECLARE
     v_count NUMBER;
 BEGIN
+    SELECT COUNT(*) INTO v_count FROM USER_TABLES WHERE TABLE_NAME = 'BOOKINGS';
+    IF v_count = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('*** SKIPPED -- BOOKINGS is not owned by ' || USER || '. Nothing changed.');
+        RETURN;
+    END IF;
+
     SELECT COUNT(*) INTO v_count FROM USER_CONSTRAINTS
      WHERE CONSTRAINT_NAME = 'FK_BOOKINGS_CANCELLED_BY';
     IF v_count = 0 THEN
@@ -253,6 +337,15 @@ PROMPT  an application-level lock cannot.
 DECLARE
     v_count NUMBER;
 BEGIN
+    -- This table's foreign keys point at USERS and BOOKINGS, so it can only be
+    -- built in the schema that owns them.
+    SELECT COUNT(*) INTO v_count FROM USER_TABLES WHERE TABLE_NAME IN ('BOOKINGS','USERS');
+    IF v_count < 2 THEN
+        DBMS_OUTPUT.PUT_LINE('*** SKIPPED -- BOOKINGS/USERS are not owned by ' || USER || '.');
+        DBMS_OUTPUT.PUT_LINE('    Reconnect as the schema owner (CONFROOM) and re-run. Nothing changed.');
+        RETURN;
+    END IF;
+
     SELECT COUNT(*) INTO v_count FROM USER_TABLES WHERE TABLE_NAME = 'NOTIFICATION_REMINDER_LOG';
     IF v_count = 0 THEN
         EXECUTE IMMEDIATE '
@@ -296,33 +389,101 @@ PROMPT  ApprovalNotification resolves its recipients with an INNER JOIN against
 PROMPT  NOTIFICATION_TYPES. Without these two rows the join matches nothing and
 PROMPT  no approver is ever notified that a request needs action.
 
+-- Every reference to NOTIFICATION_TYPES below is issued through EXECUTE
+-- IMMEDIATE rather than as static SQL, and that is deliberate.
+--
+-- Static SQL in a PL/SQL block is resolved when the block is COMPILED, which
+-- happens before any line of it executes. So if NOTIFICATION_TYPES is absent,
+-- a statically-written INSERT makes the whole block fail to compile with
+--     ORA-06550 ... PL/SQL: ORA-00942: table or view does not exist
+--     ORA-06550 ... PL/SQL: SQL Statement ignored
+-- and the IF guard never runs -- meaning the script aborts with a raw Oracle
+-- error instead of printing the actionable message it was written to print.
+-- A runtime existence check cannot protect a static reference; only dynamic
+-- SQL defers name resolution to runtime.
 DECLARE
-    v_count NUMBER;
-BEGIN
-    SELECT COUNT(*) INTO v_count FROM USER_TABLES WHERE TABLE_NAME = 'NOTIFICATION_TYPES';
-    IF v_count = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('*** NOTIFICATION_TYPES does not exist. Apply');
-        DBMS_OUTPUT.PUT_LINE('    assets/sql/notification_preferences.sql first, then re-run.');
-    ELSE
-        INSERT INTO NOTIFICATION_TYPES (
-            TYPE_CODE, DISPLAY_NAME, DESCRIPTION, CATEGORY,
-            DEFAULT_EMAIL_ENABLED, DEFAULT_IN_APP_ENABLED, ADMIN_ONLY)
-        SELECT 'BOOKING_PENDING_APPROVAL', 'Booking Pending Approval',
-               'Immediate alert sent to approvers when a reservation request is submitted',
-               'Approval Workflow', 1, 1, 1
-          FROM DUAL
-         WHERE NOT EXISTS (SELECT 1 FROM NOTIFICATION_TYPES WHERE TYPE_CODE = 'BOOKING_PENDING_APPROVAL');
-        DBMS_OUTPUT.PUT_LINE('BOOKING_PENDING_APPROVAL        rows inserted: ' || SQL%ROWCOUNT);
+    v_owned   NUMBER;
+    v_visible NUMBER;
+    v_owner   VARCHAR2(128);
+    v_cols    NUMBER;
+    v_rows    NUMBER;
 
-        INSERT INTO NOTIFICATION_TYPES (
-            TYPE_CODE, DISPLAY_NAME, DESCRIPTION, CATEGORY,
-            DEFAULT_EMAIL_ENABLED, DEFAULT_IN_APP_ENABLED, ADMIN_ONLY)
-        SELECT 'BOOKING_PENDING_APPROVAL_DIGEST', 'Booking Pending Approval Digest',
-               'Recurring summary of reservation requests still awaiting a decision',
-               'Approval Workflow', 1, 0, 1
-          FROM DUAL
-         WHERE NOT EXISTS (SELECT 1 FROM NOTIFICATION_TYPES WHERE TYPE_CODE = 'BOOKING_PENDING_APPROVAL_DIGEST');
-        DBMS_OUTPUT.PUT_LINE('BOOKING_PENDING_APPROVAL_DIGEST rows inserted: ' || SQL%ROWCOUNT);
+    FUNCTION ins(p_sql VARCHAR2) RETURN NUMBER IS
+    BEGIN
+        EXECUTE IMMEDIATE p_sql;
+        RETURN SQL%ROWCOUNT;
+    END;
+BEGIN
+    SELECT COUNT(*) INTO v_owned
+      FROM USER_TABLES WHERE TABLE_NAME = 'NOTIFICATION_TYPES';
+
+    IF v_owned = 0 THEN
+        -- USER_TABLES lists only what the connected user OWNS. A zero here has
+        -- two very different causes and they need opposite remedies, so name
+        -- which one it is instead of guessing.
+        SELECT COUNT(*), MIN(OWNER) INTO v_visible, v_owner
+          FROM ALL_TABLES WHERE TABLE_NAME = 'NOTIFICATION_TYPES';
+
+        IF v_visible > 0 THEN
+            DBMS_OUTPUT.PUT_LINE('*** WRONG SCHEMA. NOTIFICATION_TYPES exists and is owned by '
+                                 || v_owner || ',');
+            DBMS_OUTPUT.PUT_LINE('    but you are connected as ' || USER || '. This script must run as the');
+            DBMS_OUTPUT.PUT_LINE('    schema owner. Reconnect as ' || v_owner || ' and run it again.');
+            DBMS_OUTPUT.PUT_LINE('    Nothing was changed.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('*** NOTIFICATION_TYPES does not exist in this schema, and is not');
+            DBMS_OUTPUT.PUT_LINE('    visible to ' || USER || '. Either an earlier migration was never');
+            DBMS_OUTPUT.PUT_LINE('    applied here -- apply assets/sql/notification_preferences.sql');
+            DBMS_OUTPUT.PUT_LINE('    first, then re-run this script -- or the table is owned by');
+            DBMS_OUTPUT.PUT_LINE('    another schema and no grant reaches you. Nothing was changed.');
+            DBMS_OUTPUT.PUT_LINE('    Note: PL/SQL ignores privileges granted through a ROLE. If you');
+            DBMS_OUTPUT.PUT_LINE('    can SELECT the table but this still reports it missing, you need');
+            DBMS_OUTPUT.PUT_LINE('    a direct grant, not a role.');
+        END IF;
+    ELSE
+        -- The table can exist with a different shape on an older environment.
+        -- Check before inserting so the failure names the cause.
+        SELECT COUNT(*) INTO v_cols FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = 'NOTIFICATION_TYPES'
+           AND COLUMN_NAME IN ('TYPE_CODE','DISPLAY_NAME','DESCRIPTION','CATEGORY',
+                               'DEFAULT_EMAIL_ENABLED','DEFAULT_IN_APP_ENABLED','ADMIN_ONLY');
+
+        IF v_cols < 7 THEN
+            DBMS_OUTPUT.PUT_LINE('*** NOTIFICATION_TYPES exists but has an unexpected shape: only '
+                                 || v_cols || ' of the 7');
+            DBMS_OUTPUT.PUT_LINE('    required columns are present (TYPE_CODE, DISPLAY_NAME,');
+            DBMS_OUTPUT.PUT_LINE('    DESCRIPTION, CATEGORY, DEFAULT_EMAIL_ENABLED,');
+            DBMS_OUTPUT.PUT_LINE('    DEFAULT_IN_APP_ENABLED, ADMIN_ONLY). No rows were inserted.');
+            DBMS_OUTPUT.PUT_LINE('    Reconcile the table against notification_preferences.sql.');
+        ELSE
+            BEGIN
+                v_rows := ins(q'[INSERT INTO NOTIFICATION_TYPES (
+                        TYPE_CODE, DISPLAY_NAME, DESCRIPTION, CATEGORY,
+                        DEFAULT_EMAIL_ENABLED, DEFAULT_IN_APP_ENABLED, ADMIN_ONLY)
+                    SELECT 'BOOKING_PENDING_APPROVAL', 'Booking Pending Approval',
+                           'Immediate alert sent to approvers when a reservation request is submitted',
+                           'Approval Workflow', 1, 1, 1
+                      FROM DUAL
+                     WHERE NOT EXISTS (SELECT 1 FROM NOTIFICATION_TYPES
+                                        WHERE TYPE_CODE = 'BOOKING_PENDING_APPROVAL')]');
+                DBMS_OUTPUT.PUT_LINE('BOOKING_PENDING_APPROVAL        rows inserted: ' || v_rows);
+
+                v_rows := ins(q'[INSERT INTO NOTIFICATION_TYPES (
+                        TYPE_CODE, DISPLAY_NAME, DESCRIPTION, CATEGORY,
+                        DEFAULT_EMAIL_ENABLED, DEFAULT_IN_APP_ENABLED, ADMIN_ONLY)
+                    SELECT 'BOOKING_PENDING_APPROVAL_DIGEST', 'Booking Pending Approval Digest',
+                           'Recurring summary of reservation requests still awaiting a decision',
+                           'Approval Workflow', 1, 0, 1
+                      FROM DUAL
+                     WHERE NOT EXISTS (SELECT 1 FROM NOTIFICATION_TYPES
+                                        WHERE TYPE_CODE = 'BOOKING_PENDING_APPROVAL_DIGEST')]');
+                DBMS_OUTPUT.PUT_LINE('BOOKING_PENDING_APPROVAL_DIGEST rows inserted: ' || v_rows);
+            EXCEPTION WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('*** Could not insert the reference rows: ' || SQLERRM);
+                DBMS_OUTPUT.PUT_LINE('    No approver notification will be sent until these two rows');
+                DBMS_OUTPUT.PUT_LINE('    exist. Resolve the error above and re-run this script.');
+            END;
+        END IF;
     END IF;
 END;
 /
@@ -374,15 +535,27 @@ DECLARE
     v_mixed   NUMBER;
     v_present NUMBER;
 BEGIN
+    SELECT COUNT(*) INTO v_present FROM USER_TABLES WHERE TABLE_NAME = 'BOOKINGS';
+    IF v_present = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('*** SKIPPED -- BOOKINGS is not owned by ' || USER || '.');
+        DBMS_OUTPUT.PUT_LINE('    Reconnect as the schema owner (CONFROOM) to get this report.');
+        RETURN;
+    END IF;
+
     SELECT COUNT(*) INTO v_present FROM USER_CONSTRAINTS
      WHERE TABLE_NAME = 'BOOKINGS' AND CONSTRAINT_NAME = 'CHK_BOOKINGS_STATUS';
 
-    SELECT COUNT(*) INTO v_bad FROM BOOKINGS
-     WHERE STATUS IS NOT NULL
-       AND LOWER(STATUS) NOT IN ('pending','approved','rejected','cancelled','archived');
+    -- Dynamic for the same reason as sections 0 and 3: a static BOOKINGS
+    -- reference would stop this report block from compiling wherever BOOKINGS
+    -- is not visible.
+    EXECUTE IMMEDIATE
+        'SELECT COUNT(*) FROM BOOKINGS WHERE STATUS IS NOT NULL '
+     || 'AND LOWER(STATUS) NOT IN (''pending'',''approved'',''rejected'',''cancelled'',''archived'')'
+        INTO v_bad;
 
-    SELECT COUNT(*) INTO v_mixed FROM BOOKINGS
-     WHERE STATUS IS NOT NULL AND STATUS <> LOWER(STATUS);
+    EXECUTE IMMEDIATE
+        'SELECT COUNT(*) FROM BOOKINGS WHERE STATUS IS NOT NULL AND STATUS <> LOWER(STATUS)'
+        INTO v_mixed;
 
     IF v_present = 1 THEN
         SELECT SEARCH_CONDITION INTO v_cond FROM USER_CONSTRAINTS
@@ -453,12 +626,28 @@ BEGIN
                            'CANCELLED_AT','CANCELLED_BY','CANCELLATION_REASON','DECIDED_AT','DECIDED_BY');
     SELECT COUNT(*) INTO v_tab  FROM USER_TABLES WHERE TABLE_NAME = 'NOTIFICATION_REMINDER_LOG';
     SELECT COUNT(*) INTO v_uq   FROM USER_CONSTRAINTS WHERE CONSTRAINT_NAME = 'UQ_REMINDER_ONCE_PER_INTERVAL';
-    SELECT COUNT(*) INTO v_types FROM NOTIFICATION_TYPES WHERE TYPE_CODE LIKE 'BOOKING_PENDING_APPROVAL%';
+
+    -- Dynamic for the same reason as section 3: a static reference to
+    -- NOTIFICATION_TYPES would stop this whole verification block from
+    -- compiling on an environment where the table is missing, so the report
+    -- that is supposed to TELL you it is missing would never print.
+    BEGIN
+        EXECUTE IMMEDIATE
+            'SELECT COUNT(*) FROM NOTIFICATION_TYPES '
+         || 'WHERE TYPE_CODE LIKE ''BOOKING_PENDING_APPROVAL%'''
+            INTO v_types;
+    EXCEPTION WHEN OTHERS THEN
+        v_types := -1;   -- table absent or unreadable; reported as INCOMPLETE below
+    END;
 
     DBMS_OUTPUT.PUT_LINE('BOOKINGS audit columns          : ' || v_cols  || ' of 8   ' || CASE WHEN v_cols=8 THEN 'OK' ELSE '*** INCOMPLETE' END);
     DBMS_OUTPUT.PUT_LINE('NOTIFICATION_REMINDER_LOG       : ' || v_tab   || ' of 1   ' || CASE WHEN v_tab=1 THEN 'OK' ELSE '*** MISSING' END);
     DBMS_OUTPUT.PUT_LINE('UQ_REMINDER_ONCE_PER_INTERVAL   : ' || v_uq    || ' of 1   ' || CASE WHEN v_uq=1 THEN 'OK' ELSE '*** MISSING' END);
-    DBMS_OUTPUT.PUT_LINE('Pending-approval type rows      : ' || v_types || ' of 2   ' || CASE WHEN v_types=2 THEN 'OK' ELSE '*** INCOMPLETE' END);
+    IF v_types < 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Pending-approval type rows      : *** NOTIFICATION_TYPES missing or unreadable');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Pending-approval type rows      : ' || v_types || ' of 2   ' || CASE WHEN v_types=2 THEN 'OK' ELSE '*** INCOMPLETE' END);
+    END IF;
 
     IF v_cols = 8 AND v_tab = 1 AND v_uq = 1 AND v_types = 2 THEN
         DBMS_OUTPUT.PUT_LINE('---------------------------------------------------------------');
