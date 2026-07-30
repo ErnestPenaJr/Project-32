@@ -21,6 +21,7 @@
 -- -----------------------------------------------------------------------------
 -- THIS FILE SUPERSEDES, AND YOU SHOULD NOT ALSO RUN:
 --   * assets/sql/notification_preferences.sql
+--   * assets/sql/system_notification_controls.sql
 --   * assets/sql/add_pending_approval_notification_types.sql
 --   * assets/sql/add_notification_reminder_log.sql
 --   * assets/sql/add_reservation_for_and_decision_audit.sql
@@ -442,6 +443,376 @@ COMMIT;
 
 PROMPT
 PROMPT ==========================================================================
+PROMPT  SECTION 2A -- System notification controls
+PROMPT ==========================================================================
+PROMPT  THIS SECTION IS NOT OPTIONAL. SystemNotificationManager.shouldSendNotification
+PROMPT  is called on every notification, and it SELECTs ENABLED,
+PROMPT  CRITICAL_NOTIFICATION, OVERRIDE_USER_PREFERENCES and EMERGENCY_OVERRIDE
+PROMPT  from NOTIFICATION_TYPES, then reads SYSTEM_NOTIFICATION_SETTINGS. Its
+PROMPT  result struct defaults allow_email and allow_in_app to FALSE and its
+PROMPT  exception handler sets only .reason -- so if any of these objects are
+PROMPT  missing it fails CLOSED and silently sends nothing at all. No error
+PROMPT  surfaces to the user; notifications just never arrive.
+
+DECLARE
+    v_count      NUMBER;
+    v_addedFlags BOOLEAN := FALSE;
+    v_seeded     NUMBER  := 0;
+
+    PROCEDURE ddl(p_sql VARCHAR2, p_label VARCHAR2) IS
+    BEGIN
+        EXECUTE IMMEDIATE p_sql;
+        DBMS_OUTPUT.PUT_LINE('created ' || p_label);
+    EXCEPTION WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('*** could not create ' || p_label || ': ' || SQLERRM);
+    END;
+
+    FUNCTION have_tab(p VARCHAR2) RETURN BOOLEAN IS
+        c NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO c FROM USER_TABLES WHERE TABLE_NAME = p;
+        RETURN c > 0;
+    END;
+BEGIN
+    IF NOT have_tab('NOTIFICATION_TYPES') OR NOT have_tab('USERS') THEN
+        DBMS_OUTPUT.PUT_LINE('*** SKIPPED -- needs NOTIFICATION_TYPES and USERS owned by '
+                             || USER || '. Nothing changed.');
+        RETURN;
+    END IF;
+
+    -- 1. The five control columns on NOTIFICATION_TYPES.
+    FOR c IN (SELECT COLUMN_VALUE d FROM TABLE(SYS.ODCIVARCHAR2LIST(
+                'ENABLED|NUMBER(1) DEFAULT 1 CHECK (ENABLED IN (0,1))',
+                'OVERRIDE_USER_PREFERENCES|NUMBER(1) DEFAULT 0 CHECK (OVERRIDE_USER_PREFERENCES IN (0,1))',
+                'CRITICAL_NOTIFICATION|NUMBER(1) DEFAULT 0 CHECK (CRITICAL_NOTIFICATION IN (0,1))',
+                'EMERGENCY_OVERRIDE|NUMBER(1) DEFAULT 0 CHECK (EMERGENCY_OVERRIDE IN (0,1))',
+                'MAINTENANCE_MODE|NUMBER(1) DEFAULT 0 CHECK (MAINTENANCE_MODE IN (0,1))'))) LOOP
+        DECLARE
+            v_nm VARCHAR2(128) := REGEXP_SUBSTR(c.d, '[^|]+', 1, 1);
+            v_ty VARCHAR2(200) := REGEXP_SUBSTR(c.d, '[^|]+', 1, 2);
+        BEGIN
+            SELECT COUNT(*) INTO v_count FROM USER_TAB_COLUMNS
+             WHERE TABLE_NAME = 'NOTIFICATION_TYPES' AND COLUMN_NAME = v_nm;
+            IF v_count = 0 THEN
+                EXECUTE IMMEDIATE 'ALTER TABLE NOTIFICATION_TYPES ADD (' || v_nm || ' ' || v_ty || ')';
+                DBMS_OUTPUT.PUT_LINE('added   NOTIFICATION_TYPES.' || v_nm);
+                v_addedFlags := TRUE;
+            ELSE
+                DBMS_OUTPUT.PUT_LINE('skipped NOTIFICATION_TYPES.' || v_nm || ' (already present)');
+            END IF;
+        END;
+    END LOOP;
+
+    -- 2. The four control tables and their sequences.
+    IF NOT have_tab('SYSTEM_NOTIFICATION_SETTINGS') THEN
+        ddl('CREATE TABLE SYSTEM_NOTIFICATION_SETTINGS (
+                SETTING_ID       NUMBER PRIMARY KEY,
+                SETTING_NAME     VARCHAR2(100) NOT NULL UNIQUE,
+                SETTING_VALUE    VARCHAR2(1000),
+                SETTING_TYPE     VARCHAR2(50) NOT NULL
+                    CHECK (SETTING_TYPE IN (''BOOLEAN'',''INTEGER'',''STRING'',''TIME'',''JSON'')),
+                DESCRIPTION      VARCHAR2(500),
+                CATEGORY         VARCHAR2(100) NOT NULL
+                    CHECK (CATEGORY IN (''SYSTEM'',''EMAIL'',''IN_APP'',''USER_EXPERIENCE'',''ANALYTICS'',
+                                        ''SECURITY'',''LIMITS'',''PERFORMANCE'',''RELIABILITY'')),
+                IS_ACTIVE        NUMBER(1) DEFAULT 1 CHECK (IS_ACTIVE IN (0,1)),
+                REQUIRES_RESTART NUMBER(1) DEFAULT 0 CHECK (REQUIRES_RESTART IN (0,1)),
+                CREATED_BY       NUMBER NOT NULL,
+                CREATED_AT       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UPDATED_BY       NUMBER,
+                UPDATED_AT       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT FK_SYSTEM_SETTINGS_CREATOR FOREIGN KEY (CREATED_BY) REFERENCES USERS(USER_ID),
+                CONSTRAINT FK_SYSTEM_SETTINGS_UPDATER FOREIGN KEY (UPDATED_BY) REFERENCES USERS(USER_ID)
+             )', 'SYSTEM_NOTIFICATION_SETTINGS');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('skipped SYSTEM_NOTIFICATION_SETTINGS (already present)');
+    END IF;
+
+    IF NOT have_tab('NOTIFICATION_SCHEDULES') THEN
+        ddl('CREATE TABLE NOTIFICATION_SCHEDULES (
+                SCHEDULE_ID        NUMBER PRIMARY KEY,
+                NOTIFICATION_TYPE  VARCHAR2(50) NOT NULL,
+                ACTION             VARCHAR2(20) NOT NULL CHECK (ACTION IN (''ENABLE'',''DISABLE'',''PAUSE'')),
+                START_TIME         TIMESTAMP NOT NULL,
+                END_TIME           TIMESTAMP,
+                RECURRENCE_PATTERN VARCHAR2(100),
+                IS_ACTIVE          NUMBER(1) DEFAULT 1 CHECK (IS_ACTIVE IN (0,1)),
+                CREATED_BY         NUMBER NOT NULL,
+                CREATED_AT         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UPDATED_BY         NUMBER,
+                UPDATED_AT         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT FK_NOTIF_SCHEDULE_TYPE FOREIGN KEY (NOTIFICATION_TYPE)
+                    REFERENCES NOTIFICATION_TYPES(TYPE_CODE) ON DELETE CASCADE,
+                CONSTRAINT FK_NOTIF_SCHEDULE_CREATOR FOREIGN KEY (CREATED_BY) REFERENCES USERS(USER_ID),
+                CONSTRAINT FK_NOTIF_SCHEDULE_UPDATER FOREIGN KEY (UPDATED_BY) REFERENCES USERS(USER_ID)
+             )', 'NOTIFICATION_SCHEDULES');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('skipped NOTIFICATION_SCHEDULES (already present)');
+    END IF;
+
+    IF NOT have_tab('NOTIFICATION_ANALYTICS') THEN
+        ddl('CREATE TABLE NOTIFICATION_ANALYTICS (
+                ANALYTICS_ID      NUMBER PRIMARY KEY,
+                NOTIFICATION_TYPE VARCHAR2(50) NOT NULL,
+                DELIVERY_METHOD   VARCHAR2(20) NOT NULL
+                    CHECK (DELIVERY_METHOD IN (''EMAIL'',''IN_APP'',''BOTH'')),
+                TOTAL_SENT        NUMBER DEFAULT 0,
+                TOTAL_DELIVERED   NUMBER DEFAULT 0,
+                TOTAL_FAILED      NUMBER DEFAULT 0,
+                TOTAL_OPENED      NUMBER DEFAULT 0,
+                ANALYTICS_DATE    DATE NOT NULL,
+                CREATED_AT        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UPDATED_AT        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT FK_NOTIF_ANALYTICS_TYPE FOREIGN KEY (NOTIFICATION_TYPE)
+                    REFERENCES NOTIFICATION_TYPES(TYPE_CODE) ON DELETE CASCADE,
+                CONSTRAINT UQ_ANALYTICS_DATE_TYPE UNIQUE (NOTIFICATION_TYPE, DELIVERY_METHOD, ANALYTICS_DATE)
+             )', 'NOTIFICATION_ANALYTICS');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('skipped NOTIFICATION_ANALYTICS (already present)');
+    END IF;
+
+    IF NOT have_tab('USER_NOTIFICATION_SETTINGS') THEN
+        ddl('CREATE TABLE USER_NOTIFICATION_SETTINGS (
+                SETTING_ID    NUMBER PRIMARY KEY,
+                USER_ID       NUMBER NOT NULL,
+                SETTING_NAME  VARCHAR2(100) NOT NULL,
+                SETTING_VALUE VARCHAR2(1000),
+                SETTING_TYPE  VARCHAR2(50) NOT NULL
+                    CHECK (SETTING_TYPE IN (''BOOLEAN'',''INTEGER'',''STRING'',''TIME'',''JSON'')),
+                CREATED_AT    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UPDATED_AT    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT FK_USER_NOTIF_SETTINGS_USER FOREIGN KEY (USER_ID)
+                    REFERENCES USERS(USER_ID) ON DELETE CASCADE,
+                CONSTRAINT UQ_USER_SETTING_NAME UNIQUE (USER_ID, SETTING_NAME)
+             )', 'USER_NOTIFICATION_SETTINGS');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('skipped USER_NOTIFICATION_SETTINGS (already present)');
+    END IF;
+
+    FOR s IN (SELECT COLUMN_VALUE sn FROM TABLE(SYS.ODCIVARCHAR2LIST(
+                'SYSTEM_NOTIFICATION_SETTINGS_SEQ','NOTIFICATION_SCHEDULES_SEQ',
+                'NOTIFICATION_ANALYTICS_SEQ','USER_NOTIFICATION_SETTINGS_SEQ'))) LOOP
+        SELECT COUNT(*) INTO v_count FROM USER_SEQUENCES WHERE SEQUENCE_NAME = s.sn;
+        IF v_count = 0 THEN
+            ddl('CREATE SEQUENCE ' || s.sn || ' START WITH 1 INCREMENT BY 1 NOCACHE', s.sn);
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('skipped ' || s.sn || ' (already present)');
+        END IF;
+    END LOOP;
+
+    -- 3. Indexes.
+    FOR ix IN (SELECT COLUMN_VALUE d FROM TABLE(SYS.ODCIVARCHAR2LIST(
+                 'IDX_SYSTEM_SETTINGS_NAME|SYSTEM_NOTIFICATION_SETTINGS(SETTING_NAME)',
+                 'IDX_SYSTEM_SETTINGS_CATEGORY|SYSTEM_NOTIFICATION_SETTINGS(CATEGORY)',
+                 'IDX_NOTIF_TYPES_ENABLED|NOTIFICATION_TYPES(ENABLED)',
+                 'IDX_NOTIF_TYPES_CRITICAL|NOTIFICATION_TYPES(CRITICAL_NOTIFICATION)',
+                 'IDX_NOTIF_SCHEDULE_ACTIVE|NOTIFICATION_SCHEDULES(IS_ACTIVE)',
+                 'IDX_NOTIF_SCHEDULE_START|NOTIFICATION_SCHEDULES(START_TIME)',
+                 'IDX_NOTIF_ANALYTICS_DATE|NOTIFICATION_ANALYTICS(ANALYTICS_DATE)',
+                 'IDX_USER_NOTIF_SETTINGS_USER|USER_NOTIFICATION_SETTINGS(USER_ID)'))) LOOP
+        DECLARE
+            v_nm VARCHAR2(128) := REGEXP_SUBSTR(ix.d, '[^|]+', 1, 1);
+            v_on VARCHAR2(200) := REGEXP_SUBSTR(ix.d, '[^|]+', 1, 2);
+        BEGIN
+            SELECT COUNT(*) INTO v_count FROM USER_INDEXES WHERE INDEX_NAME = v_nm;
+            IF v_count = 0 THEN
+                ddl('CREATE INDEX ' || v_nm || ' ON ' || v_on, v_nm);
+            ELSE
+                DBMS_OUTPUT.PUT_LINE('skipped ' || v_nm || ' (already present)');
+            END IF;
+        END;
+    END LOOP;
+
+    -- 4. Default system settings. NOTIFICATIONS_ENABLED in particular is the
+    --    master switch areNotificationsEnabled() reads; without the row, every
+    --    notification is treated as globally disabled.
+    IF have_tab('SYSTEM_NOTIFICATION_SETTINGS') THEN
+        FOR st IN (SELECT COLUMN_VALUE d FROM TABLE(SYS.ODCIVARCHAR2LIST(
+            'NOTIFICATIONS_ENABLED|1|BOOLEAN|Master switch for all notifications system-wide|SYSTEM',
+            'EMAIL_NOTIFICATIONS_ENABLED|1|BOOLEAN|Global switch for email notifications|EMAIL',
+            'IN_APP_NOTIFICATIONS_ENABLED|1|BOOLEAN|Global switch for in-app notifications|IN_APP',
+            'MAINTENANCE_MODE|0|BOOLEAN|System maintenance mode - only critical notifications allowed|SYSTEM',
+            'EMERGENCY_MODE|0|BOOLEAN|Emergency mode - override all user preferences for critical notifications|SYSTEM',
+            'MAX_DAILY_NOTIFICATIONS_PER_USER|50|INTEGER|Maximum number of notifications per user per day|LIMITS',
+            'BULK_NOTIFICATION_BATCH_SIZE|100|INTEGER|Number of notifications to process in each batch|PERFORMANCE',
+            'NOTIFICATION_RETRY_ATTEMPTS|3|INTEGER|Number of retry attempts for failed notifications|RELIABILITY',
+            'QUIET_HOURS_START|22:00|TIME|Start time for quiet hours (no non-critical notifications)|USER_EXPERIENCE',
+            'QUIET_HOURS_END|08:00|TIME|End time for quiet hours|USER_EXPERIENCE'))) LOOP
+            BEGIN
+                EXECUTE IMMEDIATE
+                    'INSERT INTO SYSTEM_NOTIFICATION_SETTINGS
+                         (SETTING_NAME, SETTING_VALUE, SETTING_TYPE, DESCRIPTION, CATEGORY, CREATED_BY)
+                     SELECT :a, :b, :c, :d, :e,
+                            (SELECT MIN(u.USER_ID) FROM USERS u JOIN ROLES r ON u.ROLE_ID = r.ROLE_ID
+                              WHERE UPPER(r.ROLE_NAME) = ''SITE ADMIN'')
+                       FROM DUAL
+                      WHERE EXISTS (SELECT 1 FROM USERS u JOIN ROLES r ON u.ROLE_ID = r.ROLE_ID
+                                     WHERE UPPER(r.ROLE_NAME) = ''SITE ADMIN'')
+                        AND NOT EXISTS (SELECT 1 FROM SYSTEM_NOTIFICATION_SETTINGS
+                                         WHERE SETTING_NAME = :f)'
+                    USING REGEXP_SUBSTR(st.d,'[^|]+',1,1), REGEXP_SUBSTR(st.d,'[^|]+',1,2),
+                          REGEXP_SUBSTR(st.d,'[^|]+',1,3), REGEXP_SUBSTR(st.d,'[^|]+',1,4),
+                          REGEXP_SUBSTR(st.d,'[^|]+',1,5), REGEXP_SUBSTR(st.d,'[^|]+',1,1);
+                v_seeded := v_seeded + SQL%ROWCOUNT;
+            EXCEPTION WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('*** setting ' || REGEXP_SUBSTR(st.d,'[^|]+',1,1)
+                                     || ' failed: ' || SQLERRM);
+            END;
+        END LOOP;
+        DBMS_OUTPUT.PUT_LINE('system settings inserted: ' || v_seeded);
+
+        EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM SYSTEM_NOTIFICATION_SETTINGS' INTO v_count;
+        IF v_count = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('*** WARNING: SYSTEM_NOTIFICATION_SETTINGS is EMPTY.');
+            DBMS_OUTPUT.PUT_LINE('    CREATED_BY is NOT NULL and references a Site Admin, so the');
+            DBMS_OUTPUT.PUT_LINE('    seed inserts nothing when no user holds the Site Admin role.');
+            DBMS_OUTPUT.PUT_LINE('    Without the NOTIFICATIONS_ENABLED row every notification is');
+            DBMS_OUTPUT.PUT_LINE('    treated as globally disabled. Create a Site Admin and re-run.');
+        END IF;
+    END IF;
+
+    -- 5. Classify the notification types -- ONLY when the flag columns were
+    --    added by this run. On a re-run the flags may have been tuned by an
+    --    administrator through the UI, and blindly re-applying the defaults
+    --    would silently discard that.
+    IF v_addedFlags THEN
+        EXECUTE IMMEDIATE q'[
+            UPDATE NOTIFICATION_TYPES SET
+                ENABLED = 1,
+                CRITICAL_NOTIFICATION = CASE WHEN TYPE_CODE IN
+                    ('BOOKING_CONFIRMATION','BOOKING_CANCELLATION','BOOKING_REJECTION','PASSWORD_RESET')
+                    THEN 1 ELSE 0 END,
+                OVERRIDE_USER_PREFERENCES = CASE WHEN TYPE_CODE IN
+                    ('SYSTEM_MAINTENANCE','NEW_USER_ACCESS_REQUEST')
+                    THEN 1 ELSE 0 END]';
+        DBMS_OUTPUT.PUT_LINE('classified ' || SQL%ROWCOUNT || ' notification types (flags were new)');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('left notification type flags untouched (columns already existed --');
+        DBMS_OUTPUT.PUT_LINE('  an administrator may have tuned them; not overwriting)');
+    END IF;
+END;
+/
+
+COMMIT;
+
+-- Triggers for the four control tables. Top-level CREATE OR REPLACE, for the
+-- same reason as section 1's: idempotent by nature, and a trigger body's :NEW
+-- references do not survive EXECUTE IMMEDIATE reliably.
+CREATE OR REPLACE TRIGGER TRG_SYSTEM_SETTINGS_ID
+    BEFORE INSERT ON SYSTEM_NOTIFICATION_SETTINGS
+    FOR EACH ROW
+BEGIN
+    IF :NEW.SETTING_ID IS NULL THEN
+        SELECT SYSTEM_NOTIFICATION_SETTINGS_SEQ.NEXTVAL INTO :NEW.SETTING_ID FROM DUAL;
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_SYSTEM_SETTINGS_UPDATE
+    BEFORE UPDATE ON SYSTEM_NOTIFICATION_SETTINGS
+    FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := CURRENT_TIMESTAMP;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_NOTIF_SCHEDULE_ID
+    BEFORE INSERT ON NOTIFICATION_SCHEDULES
+    FOR EACH ROW
+BEGIN
+    IF :NEW.SCHEDULE_ID IS NULL THEN
+        SELECT NOTIFICATION_SCHEDULES_SEQ.NEXTVAL INTO :NEW.SCHEDULE_ID FROM DUAL;
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_NOTIF_SCHEDULE_UPDATE
+    BEFORE UPDATE ON NOTIFICATION_SCHEDULES
+    FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := CURRENT_TIMESTAMP;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_NOTIF_ANALYTICS_ID
+    BEFORE INSERT ON NOTIFICATION_ANALYTICS
+    FOR EACH ROW
+BEGIN
+    IF :NEW.ANALYTICS_ID IS NULL THEN
+        SELECT NOTIFICATION_ANALYTICS_SEQ.NEXTVAL INTO :NEW.ANALYTICS_ID FROM DUAL;
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_NOTIF_ANALYTICS_UPDATE
+    BEFORE UPDATE ON NOTIFICATION_ANALYTICS
+    FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := CURRENT_TIMESTAMP;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_USER_NOTIF_SETTINGS_ID
+    BEFORE INSERT ON USER_NOTIFICATION_SETTINGS
+    FOR EACH ROW
+BEGIN
+    IF :NEW.SETTING_ID IS NULL THEN
+        SELECT USER_NOTIFICATION_SETTINGS_SEQ.NEXTVAL INTO :NEW.SETTING_ID FROM DUAL;
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_USER_NOTIF_SETTINGS_UPDATE
+    BEFORE UPDATE ON USER_NOTIFICATION_SETTINGS
+    FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := CURRENT_TIMESTAMP;
+END;
+/
+
+-- Views. CREATE OR REPLACE is idempotent.
+CREATE OR REPLACE VIEW VW_ACTIVE_NOTIFICATION_TYPES AS
+SELECT
+    nt.*,
+    CASE
+        WHEN sns_global.SETTING_VALUE = '0' THEN 0
+        WHEN sns_maint.SETTING_VALUE = '1' AND nt.CRITICAL_NOTIFICATION = 0 THEN 0
+        WHEN nt.ENABLED = 0 THEN 0
+        ELSE 1
+    END AS IS_CURRENTLY_ACTIVE,
+    sns_global.SETTING_VALUE AS GLOBAL_NOTIFICATIONS_ENABLED,
+    sns_maint.SETTING_VALUE AS MAINTENANCE_MODE_ACTIVE
+FROM NOTIFICATION_TYPES nt
+CROSS JOIN (SELECT SETTING_VALUE FROM SYSTEM_NOTIFICATION_SETTINGS
+             WHERE SETTING_NAME = 'NOTIFICATIONS_ENABLED') sns_global
+CROSS JOIN (SELECT SETTING_VALUE FROM SYSTEM_NOTIFICATION_SETTINGS
+             WHERE SETTING_NAME = 'MAINTENANCE_MODE') sns_maint;
+
+CREATE OR REPLACE VIEW VW_EFFECTIVE_USER_PREFERENCES AS
+SELECT
+    u.USER_ID, u.FIRST_NAME, u.LAST_NAME, u.EMAIL,
+    nt.TYPE_CODE, nt.DISPLAY_NAME, nt.CATEGORY,
+    nt.ENABLED AS TYPE_ENABLED,
+    nt.CRITICAL_NOTIFICATION,
+    nt.OVERRIDE_USER_PREFERENCES,
+    COALESCE(np.EMAIL_ENABLED,  nt.DEFAULT_EMAIL_ENABLED)  AS EMAIL_ENABLED,
+    COALESCE(np.IN_APP_ENABLED, nt.DEFAULT_IN_APP_ENABLED) AS IN_APP_ENABLED,
+    CASE WHEN nt.OVERRIDE_USER_PREFERENCES = 1 THEN 1
+         WHEN nt.ENABLED = 0 THEN 0
+         ELSE COALESCE(np.EMAIL_ENABLED, nt.DEFAULT_EMAIL_ENABLED) END AS EFFECTIVE_EMAIL_ENABLED,
+    CASE WHEN nt.OVERRIDE_USER_PREFERENCES = 1 THEN 1
+         WHEN nt.ENABLED = 0 THEN 0
+         ELSE COALESCE(np.IN_APP_ENABLED, nt.DEFAULT_IN_APP_ENABLED) END AS EFFECTIVE_IN_APP_ENABLED
+FROM USERS u
+JOIN ROLES r ON u.ROLE_ID = r.ROLE_ID
+CROSS JOIN NOTIFICATION_TYPES nt
+LEFT JOIN NOTIFICATION_PREFERENCES np
+       ON u.USER_ID = np.USER_ID AND nt.TYPE_CODE = np.NOTIFICATION_TYPE
+WHERE u.STATUS = 'Active'
+  AND (nt.ADMIN_ONLY = 0 OR UPPER(r.ROLE_NAME) IN ('ADMIN','SITE ADMIN'));
+
+PROMPT
+PROMPT ==========================================================================
 PROMPT  SECTION 3 -- BOOKINGS: Reservation-For and decision/cancellation audit
 PROMPT ==========================================================================
 PROMPT  Purely additive. Every column is nullable with no default, so existing
@@ -678,22 +1049,31 @@ BEGIN
             DBMS_OUTPUT.PUT_LINE('skipped grants to ' || g.gn || ' (that is us -- owner already has full access)');
         ELSE
             FOR o IN (SELECT COLUMN_VALUE obj FROM TABLE(SYS.ODCIVARCHAR2LIST(
-                        'NOTIFICATION_TYPES','NOTIFICATION_PREFERENCES','NOTIFICATION_REMINDER_LOG'))) LOOP
+                        'NOTIFICATION_TYPES','NOTIFICATION_PREFERENCES','NOTIFICATION_REMINDER_LOG',
+                        'SYSTEM_NOTIFICATION_SETTINGS','NOTIFICATION_SCHEDULES',
+                        'NOTIFICATION_ANALYTICS','USER_NOTIFICATION_SETTINGS'))) LOOP
                 BEGIN
                     EXECUTE IMMEDIATE 'GRANT SELECT, INSERT, UPDATE, DELETE ON '
                                    || o.obj || ' TO ' || g.gn;
-                    DBMS_OUTPUT.PUT_LINE('granted DML on ' || RPAD(o.obj,26) || ' to ' || g.gn);
+                    DBMS_OUTPUT.PUT_LINE('granted DML on ' || RPAD(o.obj,30) || ' to ' || g.gn);
                 EXCEPTION WHEN OTHERS THEN
                     DBMS_OUTPUT.PUT_LINE('*** grant on ' || o.obj || ' to ' || g.gn
                                          || ' failed: ' || SQLERRM);
                 END;
             END LOOP;
-            BEGIN
-                EXECUTE IMMEDIATE 'GRANT SELECT ON NOTIFICATION_PREFERENCES_SEQ TO ' || g.gn;
-                DBMS_OUTPUT.PUT_LINE('granted SELECT on NOTIFICATION_PREFERENCES_SEQ to ' || g.gn);
-            EXCEPTION WHEN OTHERS THEN
-                DBMS_OUTPUT.PUT_LINE('*** sequence grant to ' || g.gn || ' failed: ' || SQLERRM);
-            END;
+            FOR o IN (SELECT COLUMN_VALUE obj FROM TABLE(SYS.ODCIVARCHAR2LIST(
+                        'NOTIFICATION_PREFERENCES_SEQ','SYSTEM_NOTIFICATION_SETTINGS_SEQ',
+                        'NOTIFICATION_SCHEDULES_SEQ','NOTIFICATION_ANALYTICS_SEQ',
+                        'USER_NOTIFICATION_SETTINGS_SEQ','VW_ACTIVE_NOTIFICATION_TYPES',
+                        'VW_EFFECTIVE_USER_PREFERENCES'))) LOOP
+                BEGIN
+                    EXECUTE IMMEDIATE 'GRANT SELECT ON ' || o.obj || ' TO ' || g.gn;
+                    DBMS_OUTPUT.PUT_LINE('granted SELECT on ' || RPAD(o.obj,30) || ' to ' || g.gn);
+                EXCEPTION WHEN OTHERS THEN
+                    DBMS_OUTPUT.PUT_LINE('*** grant on ' || o.obj || ' to ' || g.gn
+                                         || ' failed: ' || SQLERRM);
+                END;
+            END LOOP;
         END IF;
     END LOOP;
 END;
@@ -807,6 +1187,7 @@ PROMPT =========================================================================
 DECLARE
     v_cols  NUMBER; v_tab NUMBER; v_uq NUMBER;
     v_types NUMBER; v_pend NUMBER; v_prefTab NUMBER; v_seq NUMBER; v_trg NUMBER;
+    v_ctlTab NUMBER; v_ctlCol NUMBER; v_views NUMBER; v_master NUMBER;
     v_ok    BOOLEAN;
 BEGIN
     SELECT COUNT(*) INTO v_cols FROM USER_TAB_COLUMNS
@@ -846,8 +1227,39 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE('Pending-approval type rows      : ' || v_pend || ' of 2   ' || CASE WHEN v_pend=2 THEN 'OK' ELSE '*** INCOMPLETE' END);
     END IF;
 
+    -- The system-control objects. shouldSendNotification fails CLOSED without
+    -- these, so a deployment missing them looks healthy and silently sends
+    -- nothing. They are part of the READY verdict, not an optional extra.
+    SELECT COUNT(*) INTO v_ctlTab FROM USER_TABLES
+     WHERE TABLE_NAME IN ('SYSTEM_NOTIFICATION_SETTINGS','NOTIFICATION_SCHEDULES',
+                          'NOTIFICATION_ANALYTICS','USER_NOTIFICATION_SETTINGS');
+    SELECT COUNT(*) INTO v_ctlCol FROM USER_TAB_COLUMNS
+     WHERE TABLE_NAME = 'NOTIFICATION_TYPES'
+       AND COLUMN_NAME IN ('ENABLED','OVERRIDE_USER_PREFERENCES','CRITICAL_NOTIFICATION',
+                           'EMERGENCY_OVERRIDE','MAINTENANCE_MODE');
+    SELECT COUNT(*) INTO v_views FROM USER_VIEWS
+     WHERE VIEW_NAME IN ('VW_ACTIVE_NOTIFICATION_TYPES','VW_EFFECTIVE_USER_PREFERENCES');
+
+    BEGIN
+        EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM SYSTEM_NOTIFICATION_SETTINGS '
+                       || 'WHERE SETTING_NAME = ''NOTIFICATIONS_ENABLED''' INTO v_master;
+    EXCEPTION WHEN OTHERS THEN
+        v_master := -1;
+    END;
+
+    DBMS_OUTPUT.PUT_LINE('NOTIFICATION_TYPES control cols : ' || v_ctlCol || ' of 5   ' || CASE WHEN v_ctlCol=5 THEN 'OK' ELSE '*** INCOMPLETE' END);
+    DBMS_OUTPUT.PUT_LINE('System control tables           : ' || v_ctlTab || ' of 4   ' || CASE WHEN v_ctlTab=4 THEN 'OK' ELSE '*** INCOMPLETE' END);
+    DBMS_OUTPUT.PUT_LINE('Notification views              : ' || v_views || ' of 2   ' || CASE WHEN v_views=2 THEN 'OK' ELSE '*** INCOMPLETE' END);
+    IF v_master = 1 THEN
+        DBMS_OUTPUT.PUT_LINE('NOTIFICATIONS_ENABLED setting   : present   OK');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('NOTIFICATIONS_ENABLED setting   : *** MISSING -- notifications are');
+        DBMS_OUTPUT.PUT_LINE('                                  treated as globally disabled');
+    END IF;
+
     v_ok := (v_cols = 8 AND v_prefTab = 1 AND v_seq = 1 AND v_trg = 3
-             AND v_tab = 1 AND v_uq = 1 AND v_types >= 16 AND v_pend = 2);
+             AND v_tab = 1 AND v_uq = 1 AND v_types >= 16 AND v_pend = 2
+             AND v_ctlCol = 5 AND v_ctlTab = 4 AND v_views = 2 AND v_master = 1);
 
     DBMS_OUTPUT.PUT_LINE('---------------------------------------------------------------');
     IF v_ok THEN
@@ -899,12 +1311,28 @@ PROMPT    DELETE FROM NOTIFICATION_TYPES
 PROMPT     WHERE TYPE_CODE IN ('BOOKING_PENDING_APPROVAL','BOOKING_PENDING_APPROVAL_DIGEST');
 PROMPT    COMMIT;
 PROMPT
-PROMPT  Removing the preference system entirely is a bigger step and takes the
-PROMPT  user-notification-preferences page with it:
+PROMPT  Removing the preference and control system entirely is a bigger step and
+PROMPT  takes the user-notification-preferences and admin-notification-control
+PROMPT  pages with it:
+PROMPT    DROP VIEW  VW_EFFECTIVE_USER_PREFERENCES;
+PROMPT    DROP VIEW  VW_ACTIVE_NOTIFICATION_TYPES;
+PROMPT    DROP TABLE USER_NOTIFICATION_SETTINGS CASCADE CONSTRAINTS;
+PROMPT    DROP TABLE NOTIFICATION_ANALYTICS CASCADE CONSTRAINTS;
+PROMPT    DROP TABLE NOTIFICATION_SCHEDULES CASCADE CONSTRAINTS;
+PROMPT    DROP TABLE SYSTEM_NOTIFICATION_SETTINGS CASCADE CONSTRAINTS;
 PROMPT    DROP TABLE NOTIFICATION_PREFERENCES CASCADE CONSTRAINTS;
 PROMPT    DROP TABLE NOTIFICATION_TYPES CASCADE CONSTRAINTS;
 PROMPT    DROP SEQUENCE NOTIFICATION_PREFERENCES_SEQ;
+PROMPT    DROP SEQUENCE SYSTEM_NOTIFICATION_SETTINGS_SEQ;
+PROMPT    DROP SEQUENCE NOTIFICATION_SCHEDULES_SEQ;
+PROMPT    DROP SEQUENCE NOTIFICATION_ANALYTICS_SEQ;
+PROMPT    DROP SEQUENCE USER_NOTIFICATION_SETTINGS_SEQ;
 PROMPT    (dropping the tables drops their triggers with them)
+PROMPT
+PROMPT  To drop ONLY the five control columns, leaving the tables:
+PROMPT    ALTER TABLE NOTIFICATION_TYPES DROP (ENABLED, OVERRIDE_USER_PREFERENCES,
+PROMPT          CRITICAL_NOTIFICATION, EMERGENCY_OVERRIDE, MAINTENANCE_MODE);
+PROMPT    (the two views reference these columns -- drop the views first)
 PROMPT
 PROMPT  Deleting a NOTIFICATION_TYPES row cascades to every per-user preference
 PROMPT  saved against it. Rolling back also requires reverting the application
