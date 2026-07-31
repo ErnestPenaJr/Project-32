@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Bingo Caller - MD Anderson Cancer Center</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Pro 5.15.4 -->
+    <link href="https://pro.fontawesome.com/releases/v5.15.4/css/all.css" rel="stylesheet">
+    <!-- Montserrat (style guide standard) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --md-primary: #003C7F;
+            --md-secondary: #006BA6;
+            --md-success: #28a745;
+            --md-danger: #dc3545;
+            --md-warning: #ffc107;
+            --md-info: #17a2b8;
+            --md-light: #f8f9fa;
+            --md-dark: #343a40;
+            /* Traditional bingo column colors (kept accessible, dark text where needed) */
+            --col-b: #d9534f;
+            --col-i: #f0ad4e;
+            --col-n: #5cb85c;
+            --col-g: #5bc0de;
+            --col-o: #6f42c1;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--md-light);
+            color: var(--md-dark);
+        }
+
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .08);
+        }
+
+        .navbar-brand img {
+            height: 40px;
+        }
+
+        .page-title {
+            color: var(--md-primary);
+            font-weight: 800;
+        }
+
+        .card {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, .08);
+        }
+
+        /* ---- Current call display ---- */
+        .current-call {
+            background: linear-gradient(135deg, var(--md-primary) 0%, var(--md-secondary) 100%);
+            border-radius: 1rem;
+            color: #fff;
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .call-ball {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: inset 0 -8px 18px rgba(0, 0, 0, .12), 0 0.5rem 1rem rgba(0, 0, 0, .25);
+            margin: 0 auto;
+        }
+
+        .call-ball .letter {
+            font-size: 2.25rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 2px;
+        }
+
+        .call-ball .number {
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--md-dark);
+        }
+
+        .call-ball.empty .letter {
+            color: #adb5bd;
+        }
+
+        .call-ball.empty .number {
+            font-size: 2rem;
+            color: #adb5bd;
+        }
+
+        /* Colored letter tokens */
+        .col-B { color: var(--col-b); }
+        .col-I { color: var(--col-i); }
+        .col-N { color: var(--col-n); }
+        .col-G { color: var(--col-g); }
+        .col-O { color: var(--col-o); }
+
+        .call-pop {
+            animation: pop 0.45s ease;
+        }
+
+        @keyframes pop {
+            0%   { transform: scale(0.4); opacity: 0; }
+            60%  { transform: scale(1.12); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        .call-meta {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        /* ---- Board ---- */
+        .bingo-board {
+            display: grid;
+            grid-template-columns: 2.5rem repeat(15, 1fr);
+            gap: 4px;
+        }
+
+        .board-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: #fff;
+            border-radius: 0.5rem;
+            aspect-ratio: 1 / 1;
+        }
+
+        .board-header.h-B { background: var(--col-b); }
+        .board-header.h-I { background: var(--col-i); color: var(--md-dark); }
+        .board-header.h-N { background: var(--col-n); }
+        .board-header.h-G { background: var(--col-g); color: var(--md-dark); }
+        .board-header.h-O { background: var(--col-o); }
+
+        .board-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 0.4rem;
+            background: #fff;
+            border: 1px solid #e3e6ea;
+            color: #adb5bd;
+            transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+        }
+
+        .board-cell.called {
+            background: var(--md-primary);
+            color: #fff;
+            border-color: var(--md-primary);
+        }
+
+        .board-cell.latest {
+            background: var(--md-warning);
+            color: var(--md-dark);
+            border-color: var(--md-warning);
+            transform: scale(1.12);
+            box-shadow: 0 0 0 3px rgba(255, 193, 7, .4);
+        }
+
+        /* ---- History strip ---- */
+        .history-strip {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding: 0.25rem 0.1rem 0.75rem;
+        }
+
+        .history-ball {
+            flex: 0 0 auto;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            background: #fff;
+            border: 2px solid var(--md-primary);
+            color: var(--md-primary);
+        }
+
+        .history-empty {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .stat-pill {
+            background: #fff;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, .06);
+            text-align: center;
+        }
+
+        .stat-pill .value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--md-primary);
+            line-height: 1;
+        }
+
+        .stat-pill .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6c757d;
+        }
+
+        .btn-call {
+            font-weight: 700;
+            font-size: 1.25rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .form-range { accent-color: var(--md-primary); }
+
+        .voice-unsupported {
+            display: none;
+        }
+
+        kbd {
+            background: var(--md-dark);
+            color: #fff;
+            border-radius: 0.25rem;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">
+                <img src="assets/images/mda-logo-black.png" alt="MD Anderson Cancer Center">
+            </a>
+            <span class="navbar-text page-title h4 mb-0">
+                <i class="fas fa-dice me-2" aria-hidden="true"></i>Bingo Caller
+            </span>
+        </div>
+    </nav>
+
+    <main class="container py-4">
+        <!-- Screen-reader / no-voice notice -->
+        <div class="alert alert-warning voice-unsupported" id="voiceUnsupported" role="alert">
+            <i class="fas fa-exclamation-triangle me-1" aria-hidden="true"></i>
+            Your browser does not support text-to-speech. The caller will still work visually.
+        </div>
+
+        <div class="row g-4">
+            <!-- Left column: current call + controls -->
+            <div class="col-lg-5">
+                <!-- Current call -->
+                <div class="current-call mb-4">
+                    <div class="call-ball empty" id="callBall">
+                        <span class="letter" id="callLetter">&nbsp;</span>
+                        <span class="number" id="callNumber"><i class="fas fa-play" aria-hidden="true"></i></span>
+                    </div>
+                    <div class="call-meta mt-3" id="callMeta" aria-live="polite">Press <strong>Call Next</strong> to begin</div>
+                </div>
+
+                <!-- Primary controls -->
+                <div class="d-grid gap-2 mb-3">
+                    <button type="button" class="btn btn-primary btn-call" id="callNextBtn">
+                        <i class="fas fa-bullhorn me-2" aria-hidden="true"></i>Call Next Number
+                    </button>
+                    <div class="row g-2">
+                        <div class="col">
+                            <button type="button" class="btn btn-outline-secondary w-100" id="autoBtn">
+                                <i class="fas fa-play me-1" aria-hidden="true"></i>Auto-Call
+                            </button>
+                        </div>
+                        <div class="col">
+                            <button type="button" class="btn btn-outline-secondary w-100" id="repeatBtn" disabled>
+                                <i class="fas fa-redo me-1" aria-hidden="true"></i>Repeat
+                            </button>
+                        </div>
+                        <div class="col">
+                            <button type="button" class="btn btn-outline-danger w-100" id="resetBtn">
+                                <i class="fas fa-rotate-left me-1" aria-hidden="true"></i>Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="row g-2 mb-4">
+                    <div class="col-4"><div class="stat-pill"><div class="value" id="statCalled">0</div><div class="label">Called</div></div></div>
+                    <div class="col-4"><div class="stat-pill"><div class="value" id="statRemaining">75</div><div class="label">Remaining</div></div></div>
+                    <div class="col-4"><div class="stat-pill"><div class="value" id="statLast">&mdash;</div><div class="label">Last</div></div></div>
+                </div>
+
+                <!-- Voice settings -->
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-volume-up me-2" aria-hidden="true"></i>Voice Settings</h6>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="voiceToggle" checked>
+                            <label class="form-check-label" for="voiceToggle">Announce calls out loud</label>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="voiceSelect" class="form-label mb-1">Voice</label>
+                            <select class="form-select form-select-sm" id="voiceSelect"></select>
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="rateRange" class="form-label mb-1 d-flex justify-content-between">
+                                <span>Speed</span><span id="rateVal" class="text-muted">1.0&times;</span>
+                            </label>
+                            <input type="range" class="form-range" id="rateRange" min="0.5" max="1.5" step="0.1" value="1">
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="pitchRange" class="form-label mb-1 d-flex justify-content-between">
+                                <span>Pitch</span><span id="pitchVal" class="text-muted">1.0</span>
+                            </label>
+                            <input type="range" class="form-range" id="pitchRange" min="0" max="2" step="0.1" value="1">
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="phoneticToggle" checked>
+                            <label class="form-check-label" for="phoneticToggle">Read digits separately (e.g. "four two")</label>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-2">
+                            <label for="intervalRange" class="form-label mb-1 d-flex justify-content-between">
+                                <span>Auto-call interval</span><span id="intervalVal" class="text-muted">5s</span>
+                            </label>
+                            <input type="range" class="form-range" id="intervalRange" min="2" max="15" step="1" value="5">
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-muted small mt-3 mb-0">
+                    <i class="fas fa-keyboard me-1" aria-hidden="true"></i>
+                    Shortcuts: <kbd>Space</kbd> call next &middot; <kbd>R</kbd> repeat &middot; <kbd>A</kbd> auto
+                </p>
+            </div>
+
+            <!-- Right column: board + history -->
+            <div class="col-lg-7">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0"><i class="fas fa-th me-2" aria-hidden="true"></i>Called Board</h6>
+                            <span class="badge bg-warning text-dark" id="progressBadge">0 / 75</span>
+                        </div>
+                        <div class="bingo-board" id="bingoBoard" role="grid" aria-label="Bingo called-number board"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-history me-2" aria-hidden="true"></i>Recent Calls</h6>
+                        <div class="history-strip" id="historyStrip">
+                            <span class="history-empty">No numbers called yet.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ---- Bingo model ----------------------------------------------------
+        var COLUMNS = [
+            { letter: 'B', min: 1,  max: 15 },
+            { letter: 'I', min: 16, max: 30 },
+            { letter: 'N', min: 31, max: 45 },
+            { letter: 'G', min: 46, max: 60 },
+            { letter: 'O', min: 61, max: 75 }
+        ];
+        var TOTAL = 75;
+
+        function letterFor(n) {
+            for (var i = 0; i < COLUMNS.length; i++) {
+                if (n >= COLUMNS[i].min && n <= COLUMNS[i].max) return COLUMNS[i].letter;
+            }
+            return '';
+        }
+
+        // Remaining pool of un-called numbers, and the ordered list of calls.
+        var remaining = [];
+        var called = [];       // in call order
+        var calledSet = {};     // quick lookup
+        var autoTimer = null;
+
+        function buildPool() {
+            remaining = [];
+            for (var n = 1; n <= TOTAL; n++) remaining.push(n);
+            called = [];
+            calledSet = {};
+        }
+
+        function drawNext() {
+            if (remaining.length === 0) return null;
+            var idx = Math.floor(Math.random() * remaining.length);
+            var n = remaining.splice(idx, 1)[0];
+            called.push(n);
+            calledSet[n] = true;
+            return n;
+        }
+
+        // ---- DOM refs -------------------------------------------------------
+        var el = {
+            board: document.getElementById('bingoBoard'),
+            history: document.getElementById('historyStrip'),
+            callBall: document.getElementById('callBall'),
+            callLetter: document.getElementById('callLetter'),
+            callNumber: document.getElementById('callNumber'),
+            callMeta: document.getElementById('callMeta'),
+            statCalled: document.getElementById('statCalled'),
+            statRemaining: document.getElementById('statRemaining'),
+            statLast: document.getElementById('statLast'),
+            progressBadge: document.getElementById('progressBadge'),
+            callNextBtn: document.getElementById('callNextBtn'),
+            autoBtn: document.getElementById('autoBtn'),
+            repeatBtn: document.getElementById('repeatBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            voiceToggle: document.getElementById('voiceToggle'),
+            voiceSelect: document.getElementById('voiceSelect'),
+            rateRange: document.getElementById('rateRange'),
+            rateVal: document.getElementById('rateVal'),
+            pitchRange: document.getElementById('pitchRange'),
+            pitchVal: document.getElementById('pitchVal'),
+            phoneticToggle: document.getElementById('phoneticToggle'),
+            intervalRange: document.getElementById('intervalRange'),
+            intervalVal: document.getElementById('intervalVal'),
+            voiceUnsupported: document.getElementById('voiceUnsupported')
+        };
+
+        // ---- Board rendering ------------------------------------------------
+        var cellMap = {}; // number -> cell element
+
+        function buildBoard() {
+            el.board.innerHTML = '';
+            cellMap = {};
+            for (var c = 0; c < COLUMNS.length; c++) {
+                var col = COLUMNS[c];
+                // header
+                var h = document.createElement('div');
+                h.className = 'board-header h-' + col.letter;
+                h.textContent = col.letter;
+                h.setAttribute('role', 'columnheader');
+                // Place header at start of its row via grid: we lay out row-major,
+                // so build header then its 15 numbers sequentially.
+                el.board.appendChild(h);
+                for (var n = col.min; n <= col.max; n++) {
+                    var cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    cell.textContent = n;
+                    cell.setAttribute('role', 'gridcell');
+                    cell.id = 'cell-' + n;
+                    el.board.appendChild(cell);
+                    cellMap[n] = cell;
+                }
+            }
+        }
+
+        function markCell(n) {
+            // clear previous latest
+            var prev = el.board.querySelector('.board-cell.latest');
+            if (prev) prev.classList.remove('latest');
+            var cell = cellMap[n];
+            if (cell) {
+                cell.classList.add('called', 'latest');
+            }
+        }
+
+        // ---- Display update -------------------------------------------------
+        function updateStats() {
+            el.statCalled.textContent = called.length;
+            el.statRemaining.textContent = remaining.length;
+            var last = called.length ? called[called.length - 1] : null;
+            el.statLast.textContent = last ? (letterFor(last) + last) : '—';
+            el.progressBadge.textContent = called.length + ' / ' + TOTAL;
+        }
+
+        function renderHistory() {
+            if (called.length === 0) {
+                el.history.innerHTML = '<span class="history-empty">No numbers called yet.</span>';
+                return;
+            }
+            el.history.innerHTML = '';
+            // most-recent first, cap at 20 for the strip
+            var recent = called.slice(-20).reverse();
+            for (var i = 0; i < recent.length; i++) {
+                var n = recent[i];
+                var b = document.createElement('div');
+                b.className = 'history-ball';
+                b.textContent = letterFor(n) + n;
+                el.history.appendChild(b);
+            }
+        }
+
+        function showCall(n) {
+            var letter = letterFor(n);
+            el.callBall.classList.remove('empty');
+            el.callLetter.innerHTML = '<span class="col-' + letter + '">' + letter + '</span>';
+            el.callNumber.textContent = n;
+            el.callMeta.textContent = 'Call #' + called.length + '  ·  ' + letter + '-' + n;
+            // retrigger pop animation
+            el.callBall.classList.remove('call-pop');
+            void el.callBall.offsetWidth;
+            el.callBall.classList.add('call-pop');
+        }
+
+        // ---- Speech ---------------------------------------------------------
+        var synth = window.speechSynthesis;
+        var voices = [];
+        var speechSupported = !!synth;
+
+        function loadVoices() {
+            voices = synth ? synth.getVoices() : [];
+            el.voiceSelect.innerHTML = '';
+            if (!voices.length) {
+                var opt = document.createElement('option');
+                opt.textContent = 'Default';
+                opt.value = '';
+                el.voiceSelect.appendChild(opt);
+                return;
+            }
+            voices.forEach(function (v, i) {
+                var opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = v.name + (v.lang ? ' (' + v.lang + ')' : '');
+                if (v.default) opt.selected = true;
+                el.voiceSelect.appendChild(opt);
+            });
+        }
+
+        function speakText(n) {
+            if (!speechSupported || !el.voiceToggle.checked) return;
+            synth.cancel();
+            var letter = letterFor(n);
+            var digits = String(n);
+            var numberSpoken;
+            if (el.phoneticToggle.checked && n >= 10) {
+                numberSpoken = digits.split('').join(', ');   // "4, 2"
+            } else {
+                numberSpoken = digits;
+            }
+            // Announce letter, then the number twice (classic bingo cadence).
+            var phrase = letter + '... ' + numberSpoken + '. ' + letter + ' ' + digits + '.';
+            var u = new SpeechSynthesisUtterance(phrase);
+            var vi = parseInt(el.voiceSelect.value, 10);
+            if (!isNaN(vi) && voices[vi]) u.voice = voices[vi];
+            u.rate = parseFloat(el.rateRange.value);
+            u.pitch = parseFloat(el.pitchRange.value);
+            u.volume = 1;
+            synth.speak(u);
+        }
+
+        // ---- Actions --------------------------------------------------------
+        function callNext() {
+            var n = drawNext();
+            if (n === null) {
+                stopAuto();
+                el.callMeta.textContent = 'All ' + TOTAL + ' numbers have been called!';
+                el.callNextBtn.disabled = true;
+                el.repeatBtn.disabled = true;
+                return;
+            }
+            showCall(n);
+            markCell(n);
+            renderHistory();
+            updateStats();
+            el.repeatBtn.disabled = false;
+            speakText(n);
+        }
+
+        function repeatLast() {
+            if (!called.length) return;
+            speakText(called[called.length - 1]);
+        }
+
+        function stopAuto() {
+            if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+            el.autoBtn.innerHTML = '<i class="fas fa-play me-1" aria-hidden="true"></i>Auto-Call';
+            el.autoBtn.classList.remove('btn-secondary', 'text-white');
+            el.autoBtn.classList.add('btn-outline-secondary');
+        }
+
+        function startAuto() {
+            if (remaining.length === 0) return;
+            callNext(); // immediate first call
+            var secs = parseInt(el.intervalRange.value, 10);
+            autoTimer = setInterval(function () {
+                if (remaining.length === 0) { stopAuto(); return; }
+                callNext();
+            }, secs * 1000);
+            el.autoBtn.innerHTML = '<i class="fas fa-pause me-1" aria-hidden="true"></i>Pause';
+            el.autoBtn.classList.remove('btn-outline-secondary');
+            el.autoBtn.classList.add('btn-secondary', 'text-white');
+        }
+
+        function toggleAuto() {
+            if (autoTimer) stopAuto(); else startAuto();
+        }
+
+        function resetGame() {
+            stopAuto();
+            if (speechSupported) synth.cancel();
+            buildPool();
+            buildBoard();
+            renderHistory();
+            updateStats();
+            el.callBall.classList.add('empty');
+            el.callLetter.innerHTML = '&nbsp;';
+            el.callNumber.innerHTML = '<i class="fas fa-play" aria-hidden="true"></i>';
+            el.callMeta.innerHTML = 'Press <strong>Call Next</strong> to begin';
+            el.callNextBtn.disabled = false;
+            el.repeatBtn.disabled = true;
+        }
+
+        // ---- Wire up --------------------------------------------------------
+        el.callNextBtn.addEventListener('click', function () { callNext(); });
+        el.repeatBtn.addEventListener('click', repeatLast);
+        el.autoBtn.addEventListener('click', toggleAuto);
+        el.resetBtn.addEventListener('click', resetGame);
+
+        el.rateRange.addEventListener('input', function () {
+            el.rateVal.textContent = parseFloat(this.value).toFixed(1) + '×';
+        });
+        el.pitchRange.addEventListener('input', function () {
+            el.pitchVal.textContent = parseFloat(this.value).toFixed(1);
+        });
+        el.intervalRange.addEventListener('input', function () {
+            el.intervalVal.textContent = this.value + 's';
+            // if auto is running, restart with the new interval
+            if (autoTimer) { stopAuto(); startAuto(); }
+        });
+
+        // Keyboard shortcuts (ignore when typing in a form control)
+        document.addEventListener('keydown', function (e) {
+            var tag = (e.target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!el.callNextBtn.disabled) callNext();
+            } else if (e.key === 'r' || e.key === 'R') {
+                repeatLast();
+            } else if (e.key === 'a' || e.key === 'A') {
+                toggleAuto();
+            }
+        });
+
+        // Speech voice list loads asynchronously in most browsers
+        if (speechSupported) {
+            loadVoices();
+            if (typeof synth.onvoiceschanged !== 'undefined') {
+                synth.onvoiceschanged = loadVoices;
+            }
+        } else {
+            el.voiceUnsupported.style.display = 'block';
+            el.voiceToggle.checked = false;
+            el.voiceToggle.disabled = true;
+        }
+
+        // Initial render
+        resetGame();
+    })();
+    </script>
+</body>
+
+</html>
