@@ -1161,6 +1161,15 @@
     <script src="assets/js/recurring-booking.js"></script>
 
     <script>
+        // Rooms deactivated/removed by an admin must not be offered anywhere users
+        // pick or filter rooms. ROOMS.STATUS has no CHECK constraint and the schema
+        // files disagree on casing ('Active' vs 'ACTIVE'), so compare case-insensitively.
+        // A missing/blank status is treated as active so legacy rows stay visible.
+        function isRoomInactive(room) {
+            const status = (room && (room.active_status || room.activeStatus) || '').toString().trim().toLowerCase();
+            return status === 'inactive';
+        }
+
         // Function to format date for ColdFusion - placed in global scope for accessibility
         function formatDateForColdFusion(isoString) {
             if (!isoString) return '';
@@ -1750,8 +1759,12 @@
                                 roomSelect.append('<option value="">Choose a room...</option>');
 
                                 response.forEach(room => {
-                                    //if room is booked disable it
-                                    if (room.maintenance === 'YES' || room.active_status === 'Inactive') {
+                                    // Disabled/removed rooms should not appear in the booking list at all
+                                    if (isRoomInactive(room)) {
+                                        return;
+                                    }
+                                    //if room is under maintenance, show it but disable selection
+                                    if (room.maintenance === 'YES') {
                                         roomSelect.append(`<option value="${room.id}" disabled>${room.roomName} </option>`);
                                     } else {
                                         roomSelect.append(`<option value="${room.id}" data-recurring="${room.recurring}">${room.roomName} </option>`);
@@ -2026,6 +2039,10 @@
                         if (response && Array.isArray(response)) {
                             const $roomFilter = $('#roomFilter');
                             response.forEach(room => {
+                                // Disabled/removed rooms are dropped from the filter list too
+                                if (isRoomInactive(room)) {
+                                    return;
+                                }
                                 if (room.maintenance === 'YES') {
                                     $roomFilter.append(`<option value="${room.id}" disabled>${room.roomName}</option>`);
                                 } else {

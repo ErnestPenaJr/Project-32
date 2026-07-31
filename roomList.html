@@ -271,8 +271,16 @@
                     roomList.empty();
 
                     if (response && response.rooms) {
+                        // Disabled/removed rooms should not appear in the room list.
+                        // ROOMS.STATUS has no CHECK constraint and the schema files
+                        // disagree on casing ('Active' vs 'ACTIVE'), so compare
+                        // case-insensitively; blank/missing status stays visible.
+                        const activeRooms = response.rooms.filter(room =>
+                            ((room.active_status || '').toString().trim().toLowerCase() !== 'inactive')
+                        );
+
                         // Create all room cards in parallel
-                        const cardPromises = response.rooms.map(room => createRoomCard(room));
+                        const cardPromises = activeRooms.map(room => createRoomCard(room));
                         const cards = await Promise.all(cardPromises);
                         cards.forEach(card => roomList.append(card));
                     } else {
